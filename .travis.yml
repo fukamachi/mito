@@ -19,6 +19,11 @@ install:
   - ros install prove
   - git clone https://github.com/fukamachi/sxql ~/lisp/sxql
 
+cache:
+  directories:
+    - $HOME/.roswell
+    - $HOME/.config/common-lisp
+
 before_script:
   - t/init.sh
   - ros --version
