@@ -54,6 +54,8 @@
            #:connect-toplevel
            #:disconnect-toplevel
 
+           #:execute-sql
+           #:retrieve-by-sql
            #:insert-dao
            #:create-dao
            #:update-dao
