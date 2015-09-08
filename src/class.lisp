@@ -21,16 +21,16 @@
     (apply #'sxql:make-statement
            :create-table
            (list (intern (table-name class) :keyword)
-            :if-not-exists if-not-exists)
+                 :if-not-exists if-not-exists)
            (mapcar (lambda (column)
                      (table-column-info-for-create-table column driver-type))
                    (database-column-slots class))
            (mapcar (lambda (index)
                      (cond
-                       ((getf index :primary-key)
-                        (sxql:primary-key (getf index :columns)))
-                       ((getf index :unique-key)
-                        (sxql:unique-key (getf index :columns)))
+                       ((getf (cdr index) :primary-key)
+                        (sxql:primary-key (getf (cdr index) :columns)))
+                       ((getf (cdr index) :unique-key)
+                        (sxql:unique-key (getf (cdr index) :columns)))
                        (t
-                        (sxql:index-key (getf index :columns)))))
+                        (sxql:index-key (getf (cdr index) :columns)))))
                    (table-indices-info class driver-type)))))
