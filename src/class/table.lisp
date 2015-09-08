@@ -4,9 +4,13 @@
         #:mito.util)
   (:import-from #:mito.class.column
                 #:table-column-class
+                #:table-column-type
+                #:primary-key-p
                 #:ghost-slot-p)
   (:export #:table-class
            #:table-name
+           #:table-primary-key
+           #:table-serial-key
            #:table-indices-info
            #:database-column-slots))
 (in-package :mito.class.table)
@@ -48,6 +52,32 @@
                     (char= (aref class-name (1- (length class-name))) #\>))
                (subseq class-name 1 (1- (length class-name)))
                class-name))))))
+
+(defgeneric table-primary-key (class)
+  (:method ((class table-class))
+    (or (slot-value class 'primary-key)
+        (let ((primary-slot (find-if
+                             #'primary-key-p
+                             (database-column-slots class))))
+          (if primary-slot
+              (list (c2mop:slot-definition-name primary-slot))
+              nil)))))
+
+(defgeneric table-serial-key (class)
+  (:method ((class table-class))
+    (let* ((primary-key (table-primary-key class))
+           (slot (find-if
+                  (lambda (slot)
+                    (and
+                     ;; AUTO INCREMENT slot
+                     (member (table-column-type slot) '(:serial :bigserial)
+                                 :test #'eq)
+                     (member (c2mop:slot-definition-name slot)
+                             primary-key :test #'eq)))
+                  (database-column-slots class))))
+      (if slot
+          (c2mop:slot-definition-name slot)
+          nil))))
 
 (defgeneric database-column-slots (class)
   (:method ((class table-class))

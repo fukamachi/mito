@@ -24,7 +24,7 @@
                :split-sequence)
   :components ((:module "src"
                 :components
-                ((:file "mito" :depends-on ("class" "dao"))
+                ((:file "mito" :depends-on ("class" "dao" "db" "connection" "util"))
                  (:file "dao" :depends-on ("class"))
                  (:file "class" :depends-on ("class-components"))
                  (:module "class-components"

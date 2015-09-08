@@ -12,7 +12,11 @@
 
            #:table-class
            #:table-column-class
+           #:table-column-name
            #:table-name
+           #:table-primary-key
+           #:table-serial-key
+           #:database-column-slots
            #:table-column-info
            #:table-indices-info))
 (in-package :mito.class)

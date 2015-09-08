@@ -20,8 +20,6 @@
                 :initarg :primary-key
                 :initform nil
                 :accessor primary-key-p)
-   (auto-increment :type boolean
-                   :initform nil)
    (not-null :type boolean
              :initarg :not-null
              :initform nil)
@@ -38,7 +36,7 @@
 (defgeneric table-column-info (column driver-type)
   (:method (column (driver-type (eql :sqlite3)))
     (let ((col-type (table-column-type column))
-          (auto-increment (slot-value column 'auto-increment))
+          auto-increment
           (not-null (slot-value column 'not-null)))
       (when (or (eq col-type :serial)
                 (eq col-type :bigserial))
@@ -61,15 +59,17 @@
                        (primary-key-p column)))))
   (:method (column (driver-type (eql :mysql)))
     (let ((col-type (table-column-type column))
-          (auto-increment (slot-value column 'auto-increment))
+          auto-increment
           (not-null (slot-value column 'not-null)))
       (cond
         ((eq col-type :bigserial)
          ;; BIGSERIAL is not allowed in MySQL.
          (setf col-type :serial
+               auto-increment t
                not-null t))
         ((eq col-type :serial)
-         (setf not-null t)))
+         (setf auto-increment t
+               not-null t)))
       `(,(string (table-column-name column))
         :type ,col-type
         :auto-increment ,auto-increment
@@ -78,7 +78,7 @@
                        (primary-key-p column)))))
   (:method (column (driver-type (eql :postgres)))
     (let ((col-type (table-column-type column))
-          (auto-increment (slot-value column 'auto-increment))
+          auto-increment
           (not-null (slot-value column 'not-null)))
       (cond
         ((eq col-type :bigserial)
@@ -102,6 +102,12 @@
     (let ((column-info (call-next-method)))
       (rplaca column-info
               (intern (car column-info) :keyword))
+      column-info))
+  (:method (column (driver-type (eql :mysql)))
+    (let ((column-info (table-column-info column driver-type)))
+      (when (and (getf (cdr column-info) :auto-increment)
+                 (member (getf (cdr column-info) :type) '(:serial :bigserial) :test #'eq))
+        (setf (getf (cdr column-info) :auto-increment) nil))
       column-info))
   (:method (column (driver-type (eql :sqlite3)))
     (let ((column-info (table-column-info column driver-type)))

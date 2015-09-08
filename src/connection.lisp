@@ -10,7 +10,8 @@
            #:connected-p
            #:check-connected
            #:connect-toplevel
-           #:disconnect-toplevel))
+           #:disconnect-toplevel
+           #:connection-quote-character))
 (in-package :mito.connection)
 
 (defvar *connection*)
@@ -37,3 +38,9 @@
   (when (connected-p)
     (dbi:disconnect *connection*)
     (makunbound '*connection*)))
+
+(defun connection-quote-character (conn)
+  (ecase (connection-driver-type conn)
+    (:mysql #\`)
+    (:postgres #\")
+    (:sqlite3 #\")))
