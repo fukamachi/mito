@@ -36,15 +36,19 @@
 
 (defun column-definitions (conn table-name)
   ;; FIXME: quote
-  (loop for column in (table-info conn table-name)
-        collect (let* ((type (getf column :|type|))
-                       (pos (search "AUTO_INCREMENT" type :test #'string-equal)))
-                  (list (getf column :|name|)
-                        :type (if pos
-                                  ;; FIXME: Ignores after AUTO_INCREMENT
-                                  (subseq type 0 (1- pos))
-                                  type)
-                        :auto-increment (not (null pos))
+  (flet ((column-auto-increment-p (column)
+           (and (= (getf column :|pk|) 1)
+                (string-equal (getf column :|type|) "INTEGER")
+                (dbi:fetch
+                 (dbi:execute
+                  (dbi:prepare conn
+                               "SELECT 1 FROM sqlite_master WHERE type = 'index' AND tbl_name = ?")
+                  table-name))
+                t)))
+    (loop for column in (table-info conn table-name)
+          collect (list (getf column :|name|)
+                        :type (getf column :|type|)
+                        :auto-increment (column-auto-increment-p column)
                         :primary-key (= (getf column :|pk|) 1)
                         :not-null (or (= (getf column :|pk|) 1)
                                       (not (= (getf column :|notnull|) 0)))))))
