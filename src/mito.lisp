@@ -6,7 +6,8 @@
                 #:check-connected
                 #:connection-quote-character
                 #:connect-toplevel
-                #:disconnect-toplevel)
+                #:disconnect-toplevel
+                #:with-connection)
   (:import-from #:mito.class
                 #:table-class
                 #:table-column-class
@@ -53,6 +54,7 @@
            #:*connection*
            #:connect-toplevel
            #:disconnect-toplevel
+           #:with-connection
 
            #:execute-sql
            #:retrieve-by-sql
