@@ -8,8 +8,9 @@ env:
   global:
     - PATH=$HOME/.roswell/bin:$PATH
     - ROSWELL_INSTALL_DIR=$HOME/.roswell
+    - COVERAGE_EXCLUDE=t
   matrix:
-    - LISP=sbcl-bin
+    - LISP=sbcl-bin COVERALLS=true
     - LISP=ccl-bin
 
 install:
