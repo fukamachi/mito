@@ -2,7 +2,8 @@
 (defpackage mito-test.dao
   (:use #:cl
         #:prove
-        #:mito.dao))
+        #:mito.dao
+        #:mito-test.util))
 (in-package :mito-test.dao)
 
 (plan nil)
@@ -26,6 +27,32 @@
 
   (is (c2mop:class-direct-superclasses (find-class 'tweet))
       (list (find-class 'my-dao-class))
-      "Not inherit dao-class directly"))
+      "Not inherit dao-class directly")
+
+
+  (is-table-class :mysql
+                  (defclass tweet ()
+                    ((status :col-type :text)
+                     (user :col-type :integer))
+                    (:metaclass dao-table-class))
+                  "CREATE TABLE tweet (%oid SERIAL NOT NULL PRIMARY KEY, status TEXT, user INTEGER)")
+
+  ;; add original primary-key
+  (is-table-class :mysql
+                  (defclass tweet ()
+                    ((id :col-type :serial
+                         :primary-key t)
+                     (status :col-type :text)
+                     (user :col-type :integer))
+                    (:metaclass dao-table-class))
+                  "CREATE TABLE tweet (id SERIAL NOT NULL PRIMARY KEY, status TEXT, user INTEGER)")
+
+  ;; redefinition
+  (is-table-class :mysql
+                  (defclass tweet ()
+                    ((status :col-type :text)
+                     (user :col-type :integer))
+                    (:metaclass dao-table-class))
+                  "CREATE TABLE tweet (%oid SERIAL NOT NULL PRIMARY KEY, status TEXT, user INTEGER)"))
 
 (finalize)

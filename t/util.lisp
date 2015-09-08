@@ -2,6 +2,8 @@
 (defpackage mito-test.util
   (:use #:cl
         #:sxql)
+  (:import-from #:mito.class
+                #:create-table-sxql)
   (:import-from #:dbi
                 #:disconnect
                 #:connect
@@ -9,7 +11,8 @@
                 #:connection-database-name)
   (:export #:disconnect-from-testdb
            #:connect-to-testdb
-           #:reconnect-to-testdb))
+           #:reconnect-to-testdb
+           #:is-table-class))
 (in-package :mito-test.util)
 
 (defun sqlite3-disconnect-from-testdb (conn)
@@ -67,3 +70,12 @@
                                         :test #'string=))
                             :type))
       (dbi:disconnect conn))))
+
+
+(defmacro is-table-class (driver class-definition create-table)
+  (let ((class (gensym "CLASS")))
+    `(let ((,class ,class-definition))
+       (prove:is (let ((sxql:*use-placeholder* nil))
+                   (sxql:yield (create-table-sxql ,class ,driver)))
+                 ,create-table
+                 (format nil "~A (~S)" (class-name ,class) ,driver)))))
