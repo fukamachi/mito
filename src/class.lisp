@@ -23,19 +23,7 @@
            (list (intern (table-name class) :keyword)
             :if-not-exists if-not-exists)
            (mapcar (lambda (column)
-                     (let ((column-info (table-column-info column driver-type)))
-                       (rplaca column-info
-                               (intern (car column-info) :keyword))
-                       (case driver-type
-                         ;; PostgreSQL use SERIAL instead of AUTO_INCREMENT
-                         (:postgres
-                          (setf (getf (cdr column-info) :auto-increment) nil))
-                         ;; SQLite3 uses AUTOINCREMENT rather than AUTO_INCREMENT
-                         (:sqlite3
-                          (when (getf (cdr column-info) :auto-increment)
-                            (rplaca (member :auto-increment (cdr column-info) :test #'eq)
-                                    :autoincrement))))
-                       column-info))
+                     (table-column-info-for-create-table column driver-type))
                    (database-column-slots class))
            (mapcar (lambda (index)
                      (cond

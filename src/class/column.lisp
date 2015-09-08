@@ -7,7 +7,8 @@
            #:table-column-name
            #:primary-key-p
            #:ghost-slot-p
-           #:table-column-info))
+           #:table-column-info
+           #:table-column-info-for-create-table))
 (in-package :mito.class.column)
 
 (defclass table-column (c2mop:standard-direct-slot-definition)
@@ -92,3 +93,23 @@
         :primary-key ,(primary-key-p column)
         :not-null ,(or not-null
                        (primary-key-p column))))))
+
+(defgeneric table-column-info-for-create-table (column driver-type)
+  (:documentation "Similar to table-column-info except the return value is for sxql:make-create-table.")
+  (:method (column driver-type)
+    (table-column-info column driver-type))
+  (:method :around (column driver-type)
+    (let ((column-info (call-next-method)))
+      (rplaca column-info
+              (intern (car column-info) :keyword))
+      column-info))
+  (:method (column (driver-type (eql :sqlite3)))
+    (let ((column-info (table-column-info column driver-type)))
+      (when (getf (cdr column-info) :auto-increment)
+        (rplaca (member :auto-increment (cdr column-info) :test #'eq)
+                :autoincrement))
+      column-info))
+  (:method (column (driver-type (eql :postgres)))
+    (let ((column-info (table-column-info column driver-type)))
+      (setf (getf (cdr column-info) :auto-increment) nil)
+      column-info)))
