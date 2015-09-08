@@ -29,15 +29,14 @@
       (list (find-class 'my-dao-class))
       "Not inherit dao-class directly")
 
-
   (is-table-class :mysql
                   (defclass tweet ()
                     ((status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass dao-table-class))
-                  "CREATE TABLE tweet (%oid SERIAL NOT NULL PRIMARY KEY, status TEXT, user INTEGER)")
+                  "CREATE TABLE tweet (%oid SERIAL NOT NULL PRIMARY KEY, status TEXT, user INTEGER)"
+                  "auto-pk")
 
-  ;; add original primary-key
   (is-table-class :mysql
                   (defclass tweet ()
                     ((id :col-type :serial
@@ -45,14 +44,24 @@
                      (status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass dao-table-class))
-                  "CREATE TABLE tweet (id SERIAL NOT NULL PRIMARY KEY, status TEXT, user INTEGER)")
+                  "CREATE TABLE tweet (id SERIAL NOT NULL PRIMARY KEY, status TEXT, user INTEGER)"
+                  "add original PK")
 
-  ;; redefinition
   (is-table-class :mysql
                   (defclass tweet ()
                     ((status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass dao-table-class))
-                  "CREATE TABLE tweet (%oid SERIAL NOT NULL PRIMARY KEY, status TEXT, user INTEGER)"))
+                  "CREATE TABLE tweet (%oid SERIAL NOT NULL PRIMARY KEY, status TEXT, user INTEGER)"
+                  "redefinition w/o PK")
+
+  (is-table-class :mysql
+                  (defclass tweet ()
+                    ((status :col-type :text)
+                     (user :col-type :integer))
+                    (:metaclass dao-table-class)
+                    (:auto-pk nil))
+                  "CREATE TABLE tweet (status TEXT, user INTEGER)"
+                  "auto-pk is nil"))
 
 (finalize)

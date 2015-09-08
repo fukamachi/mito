@@ -12,7 +12,8 @@
 (defclass dao-class () ())
 
 (defclass dao-table-class (table-class)
-  ())
+  ((auto-pk :initarg :auto-pk
+            :initform '(t))))
 
 (defparameter *oid-slot-definition*
   '(:name %oid :col-type :bigserial :primary-key t :readers (getoid)))
@@ -36,6 +37,9 @@
                           (class-inherit-p target-class class)))))
              target-classes)))
 
+(defun initargs-enables-auto-pk (initargs)
+  (first (or (getf initargs :auto-pk) '(t))))
+
 (defun initargs-contains-primary-key (initargs)
   (or (getf initargs :primary-key)
       (find-if (lambda (slot)
@@ -44,7 +48,8 @@
 
 (defmethod initialize-instance :around ((class dao-table-class) &rest initargs
                                         &key direct-superclasses &allow-other-keys)
-  (unless (initargs-contains-primary-key initargs)
+  (unless (or (not (initargs-enables-auto-pk initargs))
+              (initargs-contains-primary-key initargs))
     (push *oid-slot-definition* (getf initargs :direct-slots)))
 
   (unless (contains-class-or-subclasses 'dao-class direct-superclasses)
@@ -53,7 +58,8 @@
   (apply #'call-next-method class initargs))
 
 (defmethod reinitialize-instance :around ((class dao-table-class) &rest initargs)
-  (if (initargs-contains-primary-key initargs)
+  (if (or (not (initargs-enables-auto-pk initargs))
+          (initargs-contains-primary-key initargs))
       (setf (getf initargs :direct-slots)
             (remove '%oid (getf initargs :direct-slots)
                     :key #'car

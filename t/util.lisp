@@ -72,10 +72,10 @@
       (dbi:disconnect conn))))
 
 
-(defmacro is-table-class (driver class-definition create-table)
+(defmacro is-table-class (driver class-definition create-table &optional desc)
   (let ((class (gensym "CLASS")))
     `(let ((,class ,class-definition))
        (prove:is (let ((sxql:*use-placeholder* nil))
                    (sxql:yield (create-table-sxql ,class ,driver)))
                  ,create-table
-                 (format nil "~A (~S)" (class-name ,class) ,driver)))))
+                 (format nil "~A (~S)~:[~;~:* ~A~]" (class-name ,class) ,driver ,desc)))))
