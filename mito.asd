@@ -33,6 +33,7 @@
                   :components
                   ((:file "table" :depends-on ("column"))
                    (:file "column")))
+                 (:file "connection")
                  (:file "type")
                  (:file "db" :depends-on ("db-drivers"))
                  (:module "db-drivers"
