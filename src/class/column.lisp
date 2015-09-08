@@ -2,7 +2,7 @@
 (defpackage mito.class.column
   (:use #:cl
         #:mito.util)
-  (:export #:table-column
+  (:export #:table-column-class
            #:table-column-type
            #:table-column-name
            #:primary-key-p
@@ -11,7 +11,7 @@
            #:table-column-info-for-create-table))
 (in-package :mito.class.column)
 
-(defclass table-column (c2mop:standard-direct-slot-definition)
+(defclass table-column-class (c2mop:standard-direct-slot-definition)
   ((col-type :type (or symbol cons)
              :initarg :col-type
              :initform (error ":col-type is required")
@@ -32,7 +32,7 @@
           :documentation "Option to specify slots as ghost slots. Ghost slots do not depend on a database.")))
 
 (defgeneric table-column-name (column)
-  (:method ((column table-column))
+  (:method ((column table-column-class))
     (unlispify (c2mop:slot-definition-name column))))
 
 (defgeneric table-column-info (column driver-type)

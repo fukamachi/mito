@@ -3,7 +3,7 @@
   (:use #:cl
         #:mito.util)
   (:import-from #:mito.class.column
-                #:table-column
+                #:table-column-class
                 #:ghost-slot-p)
   (:export #:table-class
            #:table-name
@@ -33,7 +33,7 @@
   (apply #'call-next-method class initargs))
 
 (defmethod c2mop:direct-slot-definition-class ((class table-class) &key)
-  'table-column)
+  'table-column-class)
 
 (defmethod c2mop:validate-superclass ((class table-class) (super standard-class))
   t)

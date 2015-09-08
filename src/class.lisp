@@ -11,6 +11,7 @@
   (:export #:create-table-sxql
 
            #:table-class
+           #:table-column-class
            #:table-name
            #:table-column-info
            #:table-indices-info))
