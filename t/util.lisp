@@ -1,0 +1,69 @@
+(in-package :cl-user)
+(defpackage mito-test.util
+  (:use #:cl
+        #:sxql)
+  (:import-from #:dbi
+                #:disconnect
+                #:connect
+                #:connection-driver-type
+                #:connection-database-name)
+  (:export #:disconnect-from-testdb
+           #:connect-to-testdb
+           #:reconnect-to-testdb))
+(in-package :mito-test.util)
+
+(defun sqlite3-disconnect-from-testdb (conn)
+  (when conn
+    (dbi:disconnect conn)
+    (let ((db-path (dbi:connection-database-name conn)))
+      (when (probe-file db-path)
+        (delete-file db-path)))))
+
+(defun sqlite3-connect-to-testdb ()
+  (dbi:connect :sqlite3 :database-name (asdf:system-relative-pathname :mito #P"t/test.db")))
+
+(defun postgres-disconnect-from-testdb (conn)
+  (dbi:disconnect conn))
+
+(defun postgres-connect-to-testdb ()
+  (dbi:connect-cached :postgres :database-name "mito_test" :username "nobody" :password "nobody"))
+
+(defun mysql-disconnect-from-testdb (conn)
+  (dbi:disconnect conn))
+
+(defun mysql-connect-to-testdb ()
+  (dbi:connect :mysql :database-name "mito_test" :username "nobody" :password "nobody"))
+
+(defun disconnect-from-testdb (conn)
+  (funcall
+   (ecase (connection-driver-type conn)
+     (:sqlite3  #'sqlite3-disconnect-from-testdb)
+     (:mysql    #'mysql-disconnect-from-testdb)
+     (:postgres #'postgres-disconnect-from-testdb))
+   conn))
+
+(defun connect-to-testdb (driver-type)
+  (funcall
+   (ecase driver-type
+     (:sqlite3  #'sqlite3-connect-to-testdb)
+     (:mysql    #'mysql-connect-to-testdb)
+     (:postgres #'postgres-connect-to-testdb))))
+
+(defun reconnect-to-testdb (conn)
+  (disconnect-from-testdb conn)
+  (connect-to-testdb (connection-driver-type conn)))
+
+(defun get-column-real-name (driver-type name)
+  (let ((conn (connect-to-testdb driver-type)))
+    (unwind-protect (progn
+                      (dbi:do-sql conn
+                        (yield
+                         (drop-table :get_column_real_name :if-exists t)))
+                      (dbi:do-sql conn
+                        (yield
+                         (create-table :get_column_real_name
+                             ((test :type name)))))
+                      (getf (cdr (assoc "test" (mito.db:column-definitions conn "get_column_real_name")
+                                        :test #'string=))
+                            :type))
+      (dbi:disconnect conn))))
