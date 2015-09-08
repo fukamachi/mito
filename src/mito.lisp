@@ -19,7 +19,8 @@
                 #:last-insert-id)
   (:import-from #:mito.dao
                 #:dao-class
-                #:dao-table-class)
+                #:dao-table-class
+                #:dao-synced)
   (:import-from #:mito.util
                 :unlispify)
   (:import-from #:dbi
@@ -47,7 +48,8 @@
            #:insert-dao
            #:create-dao
            #:update-dao
-           #:delete-dao))
+           #:delete-dao
+           #:save-dao))
 (in-package :mito)
 
 (defun execute-sxql (sxql)
@@ -81,6 +83,7 @@
         (when serial-key
           (setf (slot-value obj serial-key)
                 (last-insert-id *connection* (table-name (class-of obj)) serial-key))))
+      (setf (dao-synced obj) t)
       obj)))
 
 (defgeneric create-dao (class &rest initargs)
@@ -112,9 +115,17 @@
       (unless primary-key
         (error "Unknown primary key in ~S." (table-name (class-of obj))))
 
-      (execute-sxql
-       (sxql:delete-from (intern (table-name (class-of obj)) :keyword)
-         (sxql:where
-          `(:and ,@(mapcar (lambda (key)
-                             `(:= ,(unlispify key) ,(slot-value obj key)))
-                           primary-key))))))))
+      (prog1
+          (execute-sxql
+           (sxql:delete-from (intern (table-name (class-of obj)) :keyword)
+             (sxql:where
+              `(:and ,@(mapcar (lambda (key)
+                                 `(:= ,(unlispify key) ,(slot-value obj key)))
+                               primary-key)))))
+        (setf (dao-synced obj) nil)))))
+
+(defgeneric save-dao (obj)
+  (:method ((obj dao-class))
+    (if (dao-synced obj)
+        (update-dao obj)
+        (insert-dao obj))))

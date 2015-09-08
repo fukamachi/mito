@@ -6,7 +6,8 @@
   (:export #:dao-class
            #:dao-table-class
 
-           #:getoid))
+           #:getoid
+           #:dao-synced))
 (in-package :mito.dao)
 
 (defclass dao-class () ())
@@ -17,6 +18,11 @@
 
 (defparameter *oid-slot-definition*
   '(:name %oid :col-type :bigserial :primary-key t :readers (getoid)))
+
+(declaim (ftype (function (t) *) dao-synced))
+(declaim (ftype (function (t t) *) (setf dao-synced)))
+(defparameter *synced-slot-definition*
+  `(:name %synced :type boolean :initform nil :initfunction ,(lambda () nil) :readers (dao-synced) :writers ((setf dao-synced)) :ghost t))
 
 (defun class-inherit-p (target parent)
   (not (null
@@ -52,6 +58,8 @@
               (initargs-contains-primary-key initargs))
     (push *oid-slot-definition* (getf initargs :direct-slots)))
 
+  (push *synced-slot-definition* (getf initargs :direct-slots))
+
   (unless (contains-class-or-subclasses 'dao-class direct-superclasses)
     (setf (getf initargs :direct-superclasses)
           (cons (find-class 'dao-class) direct-superclasses)))
@@ -65,6 +73,8 @@
                     :key #'car
                     :test #'eq))
       (push *oid-slot-definition* (getf initargs :direct-slots)))
+
+  (push *synced-slot-definition* (getf initargs :direct-slots))
 
   (apply #'call-next-method class initargs))
 
