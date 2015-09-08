@@ -14,7 +14,6 @@
 (defclass table-column-class (c2mop:standard-direct-slot-definition)
   ((col-type :type (or symbol cons)
              :initarg :col-type
-             :initform (error ":col-type is required")
              :accessor table-column-type)
    (primary-key :type boolean
                 :initarg :primary-key
@@ -28,6 +27,12 @@
           :initform nil
           :accessor ghost-slot-p
           :documentation "Option to specify slots as ghost slots. Ghost slots do not depend on a database.")))
+
+(defmethod initialize-instance :after ((class table-column-class) &rest initargs)
+  (declare (ignore initargs))
+  (when (and (not (slot-boundp class 'col-type))
+             (not (ghost-slot-p class)))
+    (error ":col-type is required")))
 
 (defgeneric table-column-name (column)
   (:method ((column table-column-class))
