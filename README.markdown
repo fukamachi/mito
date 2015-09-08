@@ -1,5 +1,7 @@
 # Mito
 
+[![Build Status](https://travis-ci.org/fukamachi/mito.svg?branch=master)](https://travis-ci.org/fukamachi/mito)
+
 Work in progress.
 
 Mito is yet another object relational mapper and it aims to be a successor of [Integral](https://github.com/fukamachi/integral).

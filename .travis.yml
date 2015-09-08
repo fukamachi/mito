@@ -1,0 +1,27 @@
+language: common-lisp
+sudo: false
+
+addons:
+  postgresql: "9.3"
+
+env:
+  global:
+    - PATH=$HOME/.roswell/bin:$PATH
+    - ROSWELL_INSTALL_DIR=$HOME/.roswell
+  matrix:
+    - LISP=sbcl-bin
+    - LISP=ccl-bin
+
+install:
+  # Install Roswell
+  - curl -L https://raw.githubusercontent.com/snmsts/roswell/release/scripts/install-for-ci.sh | sh
+  - ros install prove
+  - git clone https://github.com/fukamachi/sxql ~/lisp/sxql
+
+before_script:
+  - t/init.sh
+  - ros --version
+  - ros config
+
+script:
+  - run-prove mito-test.asd
