@@ -1,7 +1,8 @@
 (in-package :cl-user)
 (defpackage mito.class.column
   (:use #:cl
-        #:mito.util)
+        #:mito.util
+        #:mito.error)
   (:export #:table-column-class
            #:table-column-type
            #:table-column-name
@@ -32,7 +33,8 @@
   (declare (ignore initargs))
   (when (and (not (slot-boundp class 'col-type))
              (not (ghost-slot-p class)))
-    (error ":col-type is required")))
+    (error 'col-type-required
+           :slot class)))
 
 (defgeneric table-column-name (column)
   (:method ((column table-column-class))

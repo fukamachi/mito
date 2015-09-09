@@ -1,6 +1,7 @@
 (in-package :cl-user)
 (defpackage mito
-  (:use #:cl)
+  (:use #:cl
+        #:mito.error)
   (:import-from #:mito.connection
                 #:*connection*
                 #:check-connected
@@ -55,6 +56,12 @@
            #:connect-toplevel
            #:disconnect-toplevel
            #:with-connection
+
+           #:mito-error
+           #:invalid-definition
+           #:col-type-required
+           #:no-primary-keys
+           #:connection-not-established
 
            #:execute-sql
            #:retrieve-by-sql
@@ -165,7 +172,7 @@
     (check-connected)
     (let ((primary-key (table-primary-key (class-of obj))))
       (unless primary-key
-        (error "Unknown primary key in ~S." (table-name (class-of obj))))
+        (error 'no-primary-keys :table (table-name (class-of obj))))
 
       (execute-sql
        (sxql:update (intern (table-name (class-of obj)) :keyword)
@@ -180,7 +187,7 @@
     (check-connected)
     (let ((primary-key (table-primary-key (class-of obj))))
       (unless primary-key
-        (error "Unknown primary key in ~S." (table-name (class-of obj))))
+        (error 'no-primary-keys :table (table-name (class-of obj))))
 
       (prog1
           (execute-sql

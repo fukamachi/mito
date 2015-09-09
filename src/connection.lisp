@@ -1,6 +1,7 @@
 (in-package :cl-user)
 (defpackage mito.connection
-  (:use #:cl)
+  (:use #:cl
+        #:mito.error)
   (:import-from #:dbi
                 #:connect-cached
                 #:disconnect
@@ -23,7 +24,7 @@
 
 (defun check-connected ()
   (or (connected-p)
-      (error "Connection is not established yet.")))
+      (error 'connection-not-established)))
 
 (defun driver-type (&optional conn)
   (unless conn

@@ -24,16 +24,16 @@
                :split-sequence)
   :components ((:module "src"
                 :components
-                ((:file "mito" :depends-on ("class" "dao" "db" "connection" "util"))
+                ((:file "mito" :depends-on ("class" "dao" "db" "connection" "error" "util"))
                  (:file "dao" :depends-on ("class"))
                  (:file "class" :depends-on ("class-components"))
                  (:module "class-components"
                   :pathname "class"
-                  :depends-on ("util")
+                  :depends-on ("error" "util")
                   :components
                   ((:file "table" :depends-on ("column"))
                    (:file "column")))
-                 (:file "connection")
+                 (:file "connection" :depends-on ("error"))
                  (:file "type")
                  (:file "db" :depends-on ("db-drivers"))
                  (:module "db-drivers"
@@ -43,6 +43,7 @@
                   ((:file "mysql")
                    (:file "postgres")
                    (:file "sqlite3")))
+                 (:file "error")
                  (:file "util"))))
   :description "Abstraction layer for DB schema"
   :long-description
