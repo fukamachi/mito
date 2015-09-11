@@ -8,7 +8,8 @@
                 #:connection-quote-character
                 #:connect-toplevel
                 #:disconnect-toplevel
-                #:with-connection)
+                #:with-connection
+                #:driver-type)
   (:import-from #:mito.class
                 #:table-class
                 #:table-column-class
@@ -16,7 +17,8 @@
                 #:table-primary-key
                 #:table-serial-key
                 #:table-column-name
-                #:database-column-slots)
+                #:database-column-slots
+                #:create-table-sxql)
   (:import-from #:mito.db
                 #:last-insert-id
                 #:execute-sql
@@ -64,9 +66,10 @@
            #:update-dao
            #:delete-dao
            #:save-dao
-           #:select-dao))
-(in-package :mito)
+           #:select-dao
 
+           #:table-definition))
+(in-package :mito)
 
 (defun make-set-clause (obj)
   (apply #'sxql:make-clause :set=
@@ -152,3 +155,7 @@
         (sxql:add-child select-sql ex))
 
       (retrieve-by-sql select-sql :as class))))
+
+(defun table-definition (class)
+  (check-type class table-class)
+  (create-table-sxql class (driver-type)))
