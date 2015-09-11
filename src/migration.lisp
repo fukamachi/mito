@@ -22,8 +22,10 @@
                 #:list-diff)
   (:import-from #:sxql
                 #:make-statement
+                #:make-clause
                 #:drop-column
-                #:add-column)
+                #:add-column
+                #:drop-primary-key)
   (:export #:migrate-table))
 (in-package :mito.migration)
 
