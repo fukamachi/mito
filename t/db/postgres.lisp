@@ -29,4 +29,4 @@
 
 (run-db-tests *conn*)
 
-(dbi:disconnect *conn*)
+(disconnect-from-testdb *conn*)

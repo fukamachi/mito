@@ -17,7 +17,7 @@
 
 (defun sqlite3-disconnect-from-testdb (conn)
   (when conn
-    (dbi:disconnect conn)
+    (ignore-errors (dbi:disconnect conn))
     (let ((db-path (dbi:connection-database-name conn)))
       (when (probe-file db-path)
         (delete-file db-path)))))

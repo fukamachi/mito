@@ -37,4 +37,4 @@
 
 (finalize)
 
-(dbi:disconnect *conn*)
+(disconnect-from-testdb *conn*)
