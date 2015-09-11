@@ -10,7 +10,8 @@
                 #:table-indices-info)
   (:import-from #:mito.db
                 #:table-indices
-                #:column-definitions)
+                #:column-definitions
+                #:execute-sql)
   (:import-from #:mito.connection
                 #:*connection*
                 #:driver-type
@@ -31,8 +32,8 @@
     (migrate-table (find-class class)))
   (:method ((class dao-table-class))
     (check-connected)
-    ;; TODO
-    (migration-expressions class (driver-type *connection*))))
+    (mapc #'execute-sql
+          (migration-expressions class (driver-type *connection*)))))
 
 (defun migration-expressions (class driver-type)
   (let* ((table-name (table-name class))

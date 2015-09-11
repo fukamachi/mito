@@ -18,7 +18,9 @@
                 #:table-column-name
                 #:database-column-slots)
   (:import-from #:mito.db
-                #:last-insert-id)
+                #:last-insert-id
+                #:execute-sql
+                #:retrieve-by-sql)
   (:import-from #:mito.dao
                 #:dao-class
                 #:dao-table-class
@@ -27,14 +29,8 @@
                 #:lispify
                 #:unlispify)
   (:import-from #:dbi
-                #:with-transaction
-                #:do-sql
-                #:prepare
-                #:execute
-                #:fetch-all)
+                #:with-transaction)
   (:import-from #:sxql
-                #:*quote-character*
-                #:yield
                 #:insert-into
                 #:update
                 #:delete-from
@@ -43,8 +39,6 @@
                 #:where
                 #:add-child
                 #:make-clause)
-  (:import-from #:sxql.sql-type
-                #:sql-statement)
   (:export #:table-class
            #:table-column-class
            #:table-name
@@ -73,66 +67,6 @@
            #:select-dao))
 (in-package :mito)
 
-(defmacro with-quote-char (&body body)
-  `(let ((sxql:*quote-character* (or sxql:*quote-character*
-                                     (connection-quote-character *connection*))))
-     ,@body))
-
-(defgeneric execute-sql (sql &optional binds)
-  (:method :before (sql &optional binds)
-    (declare (ignore sql binds))
-    (check-connected))
-  (:method ((sql string) &optional binds)
-    (apply #'dbi:do-sql *connection* sql binds))
-  (:method ((sql sql-statement) &optional binds)
-    (declare (ignore binds))
-    (with-quote-char
-      (multiple-value-bind (sql binds)
-          (sxql:yield sql)
-        (apply #'dbi:do-sql *connection* sql binds)))))
-
-(defun make-dao-instance (class &rest initargs)
-  (when (symbolp class)
-    (setf class (find-class class)))
-
-  (assert (and class
-               (typep class 'dao-table-class)))
-
-  (let ((obj (make-instance class)))
-    ;; Ignore columns which is not defined in defclass as a slot.
-    (loop with undef = '#:undef
-          for column in (database-column-slots class)
-          for val = (getf initargs (intern (symbol-name (table-column-name column)) :keyword)
-                          undef)
-          unless (eq val undef)
-            do (setf (slot-value obj (table-column-name column)) val))
-    (setf (dao-synced obj) t)
-    obj))
-
-(defgeneric retrieve-by-sql (sql &key binds as)
-  (:method :before (sql &key binds as)
-    (declare (ignore sql binds as))
-    (check-connected))
-  (:method ((sql string) &key binds as)
-    (let* ((results
-             (dbi:fetch-all
-              (apply #'dbi:execute (dbi:prepare *connection* sql)
-                     binds)))
-           (results
-             (loop for (k v) on results by #'cddr
-                   collect (lispify k)
-                   collect v)))
-      (if as
-          (mapcar (lambda (result)
-                    (apply #'make-dao-instance as result))
-                  results)
-          results)))
-  (:method ((sql sql-statement) &key binds as)
-    (declare (ignore binds))
-    (with-quote-char
-      (multiple-value-bind (sql binds)
-          (sxql:yield sql)
-        (retrieve-by-sql sql :binds binds :as as)))))
 
 (defun make-set-clause (obj)
   (apply #'sxql:make-clause :set=
