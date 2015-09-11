@@ -2,13 +2,17 @@
 (defpackage mito.db
   (:use #:cl)
   (:import-from #:mito.connection
-                #:*connection*)
+                #:*connection*
+                #:connection-quote-character
+                #:check-connected)
   (:import-from #:mito.dao
                 #:dao-table-class
                 #:dao-synced)
   (:import-from #:mito.class
                 #:database-column-slots
                 #:table-column-name)
+  (:import-from #:mito.util
+                #:lispify)
   (:import-from #:dbi
                 #:connection-driver-type
                 #:do-sql

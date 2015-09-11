@@ -5,7 +5,6 @@
   (:import-from #:mito.connection
                 #:*connection*
                 #:check-connected
-                #:connection-quote-character
                 #:connect-toplevel
                 #:disconnect-toplevel
                 #:with-connection
@@ -157,5 +156,7 @@
       (retrieve-by-sql select-sql :as class))))
 
 (defun table-definition (class)
+  (when (symbolp class)
+    (setf class (find-class class)))
   (check-type class table-class)
   (create-table-sxql class (driver-type)))

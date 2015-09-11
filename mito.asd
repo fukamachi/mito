@@ -36,7 +36,7 @@
                  (:file "connection" :depends-on ("error"))
                  (:file "migration" :depends-on ("db" "type" "util"))
                  (:file "type" :depends-on ("db"))
-                 (:file "db" :depends-on ("db-drivers" "connection" "dao" "class"))
+                 (:file "db" :depends-on ("db-drivers" "connection" "dao" "class" "util"))
                  (:module "db-drivers"
                   :pathname "db"
                   :depends-on ("util")
