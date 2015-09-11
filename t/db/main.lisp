@@ -29,15 +29,13 @@
 
   (subtest "table-indices"
     (is (mapcar #'cdr (table-indices conn "tweets"))
-        (mapcar #'cdr
-                '(("dummy_autoindex_tweets_2" :unique-key t :primary-key nil :columns ("id" "user"))
-                  ("dummy_autoindex_tweets_1" :unique-key t :primary-key t :columns ("id"))))
+        '((:unique-key t :primary-key t :columns ("id"))
+          (:unique-key t :primary-key nil :columns ("id" "user")))
         "tweets")
 
     (is (mapcar #'cdr (table-indices conn "users"))
-        (mapcar #'cdr
-                '(("dummy_autoindex_users_1" :unique-key t :primary-key nil :columns ("first_name" "family_name"))
-                  ("PRIMARY" :unique-key t :primary-key t :columns ("id"))))
+        '((:unique-key t :primary-key t :columns ("id"))
+          (:unique-key t :primary-key nil :columns ("first_name" "family_name")))
         "users"))
 
   (subtest "last-insert-id"

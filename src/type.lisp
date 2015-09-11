@@ -1,7 +1,16 @@
 (in-package :cl-user)
 (defpackage mito.type
   (:use #:cl)
-  (:export #:parse-dbtype))
+  (:import-from #:mito.db
+                #:column-definitions)
+  (:import-from #:dbi
+                #:do-sql)
+  (:import-from #:sxql
+                #:yield
+                #:drop-table
+                #:create-table)
+  (:export #:parse-dbtype
+           #:get-column-real-name))
 (in-package :mito.type)
 
 (defun parse-type-vars (vars)
@@ -36,3 +45,16 @@
       `(,(intern (string-upcase name) :keyword)
         ,vars
         ,@rest))))
+
+;; TODO: caching
+(defun get-column-real-name (conn name)
+  (dbi:do-sql conn
+    (sxql:yield
+     (sxql:drop-table :get_column_real_name :if-exists t)))
+  (dbi:do-sql conn
+    (sxql:yield
+     (sxql:create-table :get_column_real_name
+         ((test :type name)))))
+  (getf (cdr (assoc "test" (mito.db:column-definitions conn "get_column_real_name")
+                    :test #'string=))
+        :type))

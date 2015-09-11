@@ -70,12 +70,12 @@
           (not-null (slot-value column 'not-null)))
       (cond
         ((eq col-type :bigserial)
-         ;; BIGSERIAL is not allowed in MySQL.
-         (setf col-type :serial
+         (setf col-type '(:bigint () :unsigned)
                auto-increment t
                not-null t))
         ((eq col-type :serial)
-         (setf auto-increment t
+         (setf col-type '(:int () :unsigned)
+               auto-increment t
                not-null t)))
       `(,(string (table-column-name column))
         :type ,col-type
@@ -109,6 +109,7 @@
     (let ((column-info (call-next-method)))
       (rplaca column-info
               (intern (car column-info) :keyword))
+      (setf (getf (cdr column-info) :primary-key) nil)
       column-info))
   (:method (column (driver-type (eql :mysql)))
     (let ((column-info (table-column-info column driver-type)))

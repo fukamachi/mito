@@ -21,7 +21,10 @@
                  (:test-file "db/mysql")
                  (:test-file "db/postgres")
                  (:test-file "class")
-                 (:test-file "dao"))))
+                 (:test-file "dao")
+                 (:test-file "migration/sqlite3")
+                 (:test-file "migration/mysql")
+                 (:test-file "migration/postgres"))))
   :description "Test system for mito"
 
   :defsystem-depends-on (:prove-asdf)

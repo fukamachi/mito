@@ -16,7 +16,7 @@
                      (status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass table-class))
-                  "CREATE TABLE tweet (id SERIAL NOT NULL PRIMARY KEY, status TEXT, user INTEGER)")
+                  "CREATE TABLE tweet (id INT UNSIGNED NOT NULL AUTO_INCREMENT, status TEXT, user INTEGER, PRIMARY KEY (id))")
   (is-table-class :mysql
                   (defclass tweet ()
                     ((id :col-type :bigserial
@@ -24,8 +24,8 @@
                      (status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass table-class))
-                  "CREATE TABLE tweet (id SERIAL NOT NULL PRIMARY KEY, status TEXT, user INTEGER)"
-                  "BIGSERIAL is the same as SERIAL in MySQL")
+                  "CREATE TABLE tweet (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, status TEXT, user INTEGER, PRIMARY KEY (id))"
+                  "BIGSERIAL")
   (is-table-class :mysql
                   (defclass tweet ()
                     ((status :col-type :text)
@@ -62,7 +62,7 @@
                      (status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass table-class))
-                  "CREATE TABLE tweet (id SERIAL NOT NULL PRIMARY KEY, status TEXT, user INTEGER)")
+                  "CREATE TABLE tweet (id SERIAL NOT NULL, status TEXT, user INTEGER, PRIMARY KEY (id))")
   (is-table-class :postgres
                   (defclass tweet ()
                     ((id :col-type :bigserial
@@ -70,7 +70,7 @@
                      (status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass table-class))
-                  "CREATE TABLE tweet (id BIGSERIAL NOT NULL PRIMARY KEY, status TEXT, user INTEGER)")
+                  "CREATE TABLE tweet (id BIGSERIAL NOT NULL, status TEXT, user INTEGER, PRIMARY KEY (id))")
   (is-table-class :postgres
                   (defclass tweet ()
                     ((status :col-type :text)
@@ -107,7 +107,7 @@
                      (status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass table-class))
-                  "CREATE TABLE tweet (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, status TEXT, user INTEGER)")
+                  "CREATE TABLE tweet (id INTEGER NOT NULL AUTOINCREMENT, status TEXT, user INTEGER, PRIMARY KEY (id))")
   ;; bigserial
   (is-table-class :sqlite3
                   (defclass tweet ()
@@ -116,7 +116,7 @@
                      (status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass table-class))
-                  "CREATE TABLE tweet (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, status TEXT, user INTEGER)")
+                  "CREATE TABLE tweet (id INTEGER NOT NULL AUTOINCREMENT, status TEXT, user INTEGER, PRIMARY KEY (id))")
   (is-table-class :sqlite3
                   (defclass tweet ()
                     ((status :col-type :text)

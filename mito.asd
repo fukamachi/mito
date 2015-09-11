@@ -34,7 +34,8 @@
                   ((:file "table" :depends-on ("column"))
                    (:file "column")))
                  (:file "connection" :depends-on ("error"))
-                 (:file "type")
+                 (:file "migration" :depends-on ("type" "util"))
+                 (:file "type" :depends-on ("db"))
                  (:file "db" :depends-on ("db-drivers"))
                  (:module "db-drivers"
                   :pathname "db"

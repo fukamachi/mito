@@ -5,8 +5,11 @@
   (:import-from #:mito.class.column
                 #:table-column-class
                 #:table-column-type
+                #:table-column-name
                 #:primary-key-p
                 #:ghost-slot-p)
+  (:import-from #:alexandria
+                #:ensure-list)
   (:export #:table-class
            #:table-name
            #:table-primary-key
@@ -88,8 +91,8 @@
   (:method (class driver-type)
     (flet ((unlispify-keys (keys)
              (if (listp keys)
-                 (mapcar #'unlispify keys)
-                 (unlispify keys))))
+                 (mapcar #'string (mapcar #'unlispify keys))
+                 (string (unlispify keys)))))
       (append
        (when (slot-value class 'primary-key)
          (let ((primary-keys (slot-value class 'primary-key)))
@@ -98,19 +101,32 @@
                   :unique-key t
                   :primary-key t
                   :columns (unlispify-keys primary-keys)))))
+       ;; See also :primary-key column
+       (let ((primary-key-slot (find-if #'primary-key-p (database-column-slots class))))
+         (when primary-key-slot
+           (list
+            (list "PRIMARY"
+                  :unique-key t
+                  :primary-key t
+                  :columns (unlispify-keys (list (table-column-name primary-key-slot)))))))
+
        (when (slot-value class 'unique-keys)
          (mapcar (lambda (key)
-                   (list (format nil "UNIQUE-~A" key)
+                   ;; FIXME: it'll raise an error if the index name is too long
+                   (list (format nil "UNIQUE_~{~A~^_~}"
+                                 (ensure-list key))
                          :unique-key t
                          :primary-key nil
-                         :columns (unlispify-keys key)))
+                         :columns (ensure-list (unlispify-keys key))))
                  (slot-value class 'unique-keys)))
        ;; Ignore :keys when using SQLite3
        (when (and (slot-value class 'keys)
                   (not (eq driver-type :sqlite3)))
          (mapcar (lambda (key)
-                   (list (format nil "KEY-~A" key)
+                   ;; FIXME: it'll raise an error if the index name is too long
+                   (list (format nil "KEY_~{~A~^_~}"
+                                 (ensure-list key))
                          :unique-key nil
                          :primary-key nil
-                         :columns (unlispify-keys key)))
+                         :columns (ensure-list (unlispify-keys key))))
                  (slot-value class 'keys)))))))

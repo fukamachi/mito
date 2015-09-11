@@ -93,10 +93,10 @@
                                                 ~%    and a.attrelid = t.oid~
                                                 ~%    and a.attnum = ANY(ix.indkey)~
                                                 ~%    and t.relkind = 'r'~
-                                                ~%    and t.relname LIKE '~A'~
-                                                ~%ORDER BY i.relname" table-name)))))
+                                                ~%    and t.relname LIKE '~A'" table-name)))))
     (mapcar #'(lambda (plist)
                 (destructuring-bind (index-name &rest column-list) plist
+                  (declare (ignore index-name))
                   (list index-name
                         :unique-key (getf (first column-list) :|is_unique|)
                         :primary-key (getf (first column-list) :|is_primary|)
@@ -104,8 +104,8 @@
                                                    (getf column :|column_name|))
                                                column-list)
                                        (lambda (a b)
-                                           (< (position a columns :test #'string=)
-                                              (position b columns :test #'string=)))))))
+                                         (< (position a columns :test #'string=)
+                                            (position b columns :test #'string=)))))))
             (group-by-plist (dbi:fetch-all query)
                             :key :|index_name|
-                            :test #'string=))))
+                                 :test #'string=))))

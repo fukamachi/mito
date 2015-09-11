@@ -8,6 +8,8 @@
                 #:primary-key
                 #:unique-key
                 #:index-key)
+  (:import-from #:alexandria
+                #:make-keyword)
   (:export #:create-table-sxql
 
            #:table-class
@@ -33,9 +35,9 @@
            (mapcar (lambda (index)
                      (cond
                        ((getf (cdr index) :primary-key)
-                        (sxql:primary-key (getf (cdr index) :columns)))
+                        (sxql:primary-key (mapcar #'make-keyword (getf (cdr index) :columns))))
                        ((getf (cdr index) :unique-key)
-                        (sxql:unique-key (getf (cdr index) :columns)))
+                        (sxql:unique-key (mapcar #'make-keyword (getf (cdr index) :columns))))
                        (t
-                        (sxql:index-key (getf (cdr index) :columns)))))
+                        (sxql:index-key (mapcar #'make-keyword (getf (cdr index) :columns))))))
                    (table-indices-info class driver-type)))))

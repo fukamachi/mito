@@ -56,21 +56,6 @@
   (disconnect-from-testdb conn)
   (connect-to-testdb (connection-driver-type conn)))
 
-(defun get-column-real-name (driver-type name)
-  (let ((conn (connect-to-testdb driver-type)))
-    (unwind-protect (progn
-                      (dbi:do-sql conn
-                        (yield
-                         (drop-table :get_column_real_name :if-exists t)))
-                      (dbi:do-sql conn
-                        (yield
-                         (create-table :get_column_real_name
-                             ((test :type name)))))
-                      (getf (cdr (assoc "test" (mito.db:column-definitions conn "get_column_real_name")
-                                        :test #'string=))
-                            :type))
-      (dbi:disconnect conn))))
-
 
 (defmacro is-table-class (driver class-definition create-table &optional desc)
   (let ((class (gensym "CLASS")))

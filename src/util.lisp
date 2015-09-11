@@ -2,6 +2,7 @@
 (defpackage mito.util
   (:use #:cl)
   (:export #:group-by-plist
+           #:list-diff
            #:lispify
            #:unlispify
            #:symbol-name-literally))
@@ -23,6 +24,49 @@
                      (rplacd record
                              (nreverse (cdr record))))
                    (nreverse map)))))
+
+(defun %list-diff (a b &key (key #'identity) (test #'string=))
+  (cond
+    ((null a)
+     (values nil nil b))
+    ((null b)
+     (values nil a nil))
+    ((funcall test
+              (funcall key (car a))
+              (funcall key (car b)))
+     (multiple-value-bind (intersection sub-a sub-b)
+         (%list-diff (cdr a) (cdr b)
+                     :key key
+                     :test test)
+       (values (cons (car a) intersection)
+               sub-a
+               sub-b)))
+    (T (let ((pos (position (funcall key (car a)) (cdr b)
+                            :key key
+                            :test test)))
+         (if pos
+             (multiple-value-bind (intersection sub-a sub-b)
+                 (%list-diff (cdr a) (nthcdr (+ 2 pos) b)
+                             :key key
+                             :test test)
+               (values (cons (car a) intersection)
+                       sub-a
+                       (append (subseq b 0 (1+ pos)) sub-b)))
+             (multiple-value-bind (intersection sub-a sub-b)
+                 (%list-diff (cdr a) b
+                             :key key
+                             :test test)
+                 (values intersection
+                         (cons (car a) sub-a)
+                         sub-b)))))))
+
+(defun list-diff (a b &key sort-key sort-key-a sort-key-b (sort-fn #'string<) (key #'identity) (test #'string=))
+  "Compute differences two lists.
+Note this can be applied for a list of string-designators."
+  (%list-diff (sort (copy-list a) sort-fn :key (or sort-key-a sort-key key))
+              (sort (copy-list b) sort-fn :key (or sort-key-b sort-key key))
+              :key key
+              :test test))
 
 (defun escaped-symbol-p (symbol)
   (declare (optimize speed)

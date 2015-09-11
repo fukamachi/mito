@@ -15,12 +15,24 @@
     (:sqlite3  (mito.db.sqlite3:last-insert-id conn table-name))))
 
 (defun table-indices (conn table-name)
-  (funcall
-   (ecase (dbi:connection-driver-type conn)
-     (:mysql    #'mito.db.mysql:table-indices)
-     (:postgres #'mito.db.postgres:table-indices)
-     (:sqlite3  #'mito.db.sqlite3:table-indices))
-   conn table-name))
+  (sort
+   (funcall
+    (ecase (dbi:connection-driver-type conn)
+      (:mysql    #'mito.db.mysql:table-indices)
+      (:postgres #'mito.db.postgres:table-indices)
+      (:sqlite3  #'mito.db.sqlite3:table-indices))
+    conn table-name)
+   (lambda (a b)
+     (cond
+       ((getf a :primary-key)
+        (not (getf b :primary-key)))
+       ((getf b :primary-key) nil)
+       ((getf a :unique-key)
+        (or (not (getf b :unique-key))
+            (string< (prin1-to-string a) (prin1-to-string b))))
+       (t
+        (string< (prin1-to-string a) (prin1-to-string b)))))
+   :key #'cdr))
 
 (defun column-definitions (conn table-name)
   (funcall
