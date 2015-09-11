@@ -31,7 +31,7 @@
   (:unique-keys (id user)))
 
 (with-connection *conn*
-  (is (mito.migration::migration-expressions (find-class 'tweets) :sqlite3) nil
+  (is (mito.migration::migration-expressions (find-class 'tweets) :sqlite3) '(nil nil nil nil nil)
       "Nothing to migrate"))
 
 (finalize)

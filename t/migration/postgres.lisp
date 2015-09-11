@@ -32,7 +32,7 @@
   (:unique-keys (id user)))
 
 (with-connection *conn*
-  (is (mito.migration::migration-expressions (find-class 'tweets) :postgres) nil
+  (is (mito.migration::migration-expressions (find-class 'tweets) :postgres) '(nil nil nil nil nil)
       "Nothing to migrate"))
 
 (finalize)
