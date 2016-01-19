@@ -50,9 +50,34 @@
       (when add-columns
         (execute-sql add-columns))
       (when change-columns
-        (execute-sql change-columns))
+        (mapc #'execute-sql change-columns))
       (when add-indices
         (mapc #'execute-sql add-indices)))))
+
+(defstruct (set-default (:include sxql.sql-type:expression-clause (sxql.sql-type::name "SET DEFAULT"))
+                        (:constructor make-set-default (expression &aux (expression (sxql.clause::detect-and-convert expression))))))
+(defstruct (drop-default (:include sxql.sql-type:sql-clause)))
+(defmethod sxql:yield ((clause drop-default))
+  "DROP DEFAULT")
+
+(defstruct (create-sequence (:include sxql.sql-type:sql-statement (sxql.sql-type::name "CREATE SEQUENCE"))
+                            (:constructor make-create-sequence (sequence-name &aux (sequence-name (sxql.clause::detect-and-convert sequence-name)))))
+  sequence-name)
+(defmethod sxql:yield ((statement create-sequence))
+  (sxql.sql-type:with-yield-binds
+    (format nil "CREATE SEQUENCE ~A" (sxql:yield (create-sequence-sequence-name statement)))))
+
+(defstruct (drop-sequence (:include sxql.sql-type:sql-statement (sxql.sql-type::name "DROP SEQUENCE"))
+                          (:constructor make-drop-sequence (sequence-name
+                                                            &key if-exists
+                                                            &aux (sequence-name (sxql.clause::detect-and-convert sequence-name)))))
+  sequence-name
+  if-exists)
+(defmethod sxql:yield ((statement drop-sequence))
+  (sxql.sql-type:with-yield-binds
+    (format nil "DROP SEQUENCE~:[~; IF EXISTS~] ~A"
+            (drop-sequence-if-exists statement)
+            (sxql:yield (drop-sequence-sequence-name statement)))))
 
 (defun migration-expressions (class driver-type)
   (let* ((table-name (table-name class))
@@ -72,6 +97,12 @@
         (list-diff db-columns table-columns
                    :key #'car)
 
+      (dolist (idx db-indices)
+        (setf (getf (cdr idx) :columns)
+              (sort (getf (cdr idx) :columns) #'string<=)))
+      (dolist (idx table-indices)
+        (setf (getf (cdr idx) :columns)
+              (sort (getf (cdr idx) :columns) #'string<=)))
       (multiple-value-bind (indices-intersection
                             indices-to-delete
                             indices-to-add)
@@ -84,34 +115,84 @@
         (list
          ;; add columns
          (if columns-to-add
-             (apply #'sxql:make-statement :alter-table (intern table-name :keyword)
+             (apply #'sxql:make-statement :alter-table (make-keyword table-name)
                     (mapcar (lambda (column)
-                              (apply #'sxql:make-clause :add-column (intern (car column) :keyword)
-                                     (cdr column)))
+                              (sxql:make-clause :add-column (make-keyword (car column))
+                                                :type
+                                                (let ((type (getf (cdr column) :type)))
+                                                  (if (and (eq driver-type :postgres)
+                                                           (getf (cdr column) :auto-increment))
+                                                      (cond
+                                                        ((string= type "integer")
+                                                         "serial")
+                                                        ((string= type "bigint")
+                                                         "bigserial")
+                                                        (t
+                                                         (error "Invalid PostgreSQL serial type: ~S" type)))
+                                                      type))
+                                                :primary-key (getf (cdr column) :primary-key)
+                                                :not-null (getf (cdr column) :not-null)
+                                                :auto-increment (and (eq driver-type :mysql)
+                                                                     (getf (cdr column) :auto-increment))))
                             columns-to-add))
              nil)
          ;; drop columns
          (if columns-to-delete
-             (apply #'sxql:make-statement :alter-table (intern table-name :keyword)
+             (apply #'sxql:make-statement :alter-table (make-keyword table-name)
                     (mapcar (lambda (column)
-                              (sxql:drop-column (intern (car column) :keyword)))
+                              (sxql:drop-column (make-keyword (car column))))
                             columns-to-delete))
              nil)
          ;; change columns
          (if columns-intersection
-             (loop for db-column in columns-intersection
+             (loop with alter-sequences = '()
+                   for db-column in columns-intersection
                    for table-column = (find (car db-column) table-columns :test #'string= :key #'car)
                    unless (equalp db-column table-column)
-                     collect (progn
+                     append (case driver-type
+                              (:postgres
+                               (loop for (k v) on (cdr table-column) by #'cddr
+                                     for current-value = (getf (cdr db-column) k)
+                                     unless (or (eq k :primary-key) ;; ignore :primary-key as it'll be added in the later indices' section
+                                                (eql v current-value))
+                                       collect
+                                       (case k
+                                         (:auto-increment
+                                          (let ((seq (format nil "~A_~A_seq"
+                                                             table-name
+                                                             (car table-column))))
+                                            (if v
+                                                (progn
+                                                  ;; create a new sequence
+                                                  (push
+                                                   (make-create-sequence seq)
+                                                   alter-sequences)
+                                                  (make-set-default `(:nextval ,seq)))
+                                                (progn
+                                                  ;; delete the existing sequence
+                                                  (push
+                                                   (make-drop-sequence seq)
+                                                   alter-sequences)
+                                                  (make-drop-default)))))
+                                         (otherwise
+                                          (sxql:make-clause :alter-column
+                                                            (make-keyword (car table-column))
+                                                            k v)))))
+                              (otherwise
                                ;; Don't add PRIMARY KEY if the column is already the primary key
                                (when (getf (cdr db-column) :primary-key)
                                  (setf (getf (cdr table-column) :primary-key) nil))
-                               (apply #'sxql:make-clause :modify-column (intern (car table-column) :keyword)
-                                      (cdr table-column))) into clauses
+                               (list
+                                (apply #'sxql:make-clause :modify-column (make-keyword (car table-column))
+                                       (cdr table-column)))))
+                       into clauses
                    finally
-                      (return (and clauses
-                                   (apply #'sxql:make-statement :alter-table (intern table-name :keyword)
-                                          clauses))))
+                      (return
+                        (nconc
+                         (nreverse alter-sequences)
+                         (and clauses
+                              (list (apply #'sxql:make-statement :alter-table (make-keyword table-name)
+                                           clauses))))))
              nil)
          ;; add indices
          (if indices-to-add
@@ -125,7 +206,7 @@
                                         :key #'car
                                         :test #'string=)))
                          (list
-                          (sxql:make-statement :alter-table (intern table-name :keyword)
+                          (sxql:make-statement :alter-table (make-keyword table-name)
                                                (apply #'sxql:make-clause :add-primary-key
                                                       (mapcar #'make-keyword (getf options :columns)))))
                          nil)
@@ -133,7 +214,7 @@
                      collect (sxql:create-index
                               index-name
                               :unique (getf options :unique-key)
-                              :on (list* (intern table-name :keyword)
+                              :on (list* (make-keyword table-name)
                                          (mapcar #'make-keyword (getf options :columns)))))
              nil)
          ;; drop indices
@@ -145,10 +226,15 @@
                                          :key #'car
                                          :test #'string=))
                                  (getf options :columns))
-                     collect
-                     (if (getf options :primary-key)
-                         (sxql:make-statement :alter-table (intern table-name :keyword)
-                                              (sxql:drop-primary-key))
-                         (sxql:drop-index index-name
-                                          :on (intern table-name :keyword))))
+                     append
+                     (nconc
+                      (when (and (not (eq driver-type :postgres))
+                                 (getf options :primary-key))
+                        (list (sxql:make-statement :alter-table (make-keyword table-name)
+                                                   (sxql:drop-primary-key))))
+                      (list
+                       (apply #'sxql:drop-index index-name
+                              (if (eq driver-type :postgres)
+                                  nil
+                                  (list :on (make-keyword table-name)))))))
              nil))))))

@@ -112,7 +112,9 @@
       (mito.migration::migration-expressions (find-class 'tweets) :mysql)
     (is (sxql:yield add-columns) "ALTER TABLE tweets ADD COLUMN created_at char(8)")
     (is (sxql:yield drop-columns) "ALTER TABLE tweets DROP COLUMN status")
-    (is (sxql:yield change-columns) "ALTER TABLE tweets MODIFY COLUMN user varchar(64)")
+    (is (format nil "~{~A~^~%~}"
+                (mapcar #'sxql:yield change-columns))
+        "ALTER TABLE tweets MODIFY COLUMN user varchar(64)")
     (is add-indices nil)
     (is drop-indices nil))
 
@@ -140,7 +142,8 @@
       (mito.migration::migration-expressions (find-class 'tweets) :mysql)
     (is add-columns nil)
     (is drop-columns nil)
-    (is (sxql:yield change-columns) "ALTER TABLE tweets MODIFY COLUMN user varchar(128)")
+    (is (format nil "~{~A~^~%~}"
+                (mapcar #'sxql:yield change-columns)) "ALTER TABLE tweets MODIFY COLUMN user varchar(128)")
     (is add-indices nil)
     (is drop-indices nil))
 
@@ -160,7 +163,6 @@
      (created-at :col-type (:char 8)))
     (:metaclass dao-table-class))
 
-  
   (destructuring-bind (add-columns
                        drop-columns
                        change-columns
@@ -169,7 +171,9 @@
       (mito.migration::migration-expressions (find-class 'tweets) :mysql)
     (is add-columns nil)
     (is drop-columns nil)
-    (is (sxql:yield change-columns) "ALTER TABLE tweets MODIFY COLUMN id bigint(20) unsigned NOT NULL AUTO_INCREMENT")
+    (is (format nil "~{~A~^~%~}"
+                (mapcar #'sxql:yield change-columns))
+        "ALTER TABLE tweets MODIFY COLUMN id bigint(20) unsigned NOT NULL AUTO_INCREMENT")
     (is add-indices nil)
     (is drop-indices nil))
 
@@ -200,7 +204,7 @@
     (is drop-columns nil)
     (is change-columns nil)
     (is (length add-indices) 1)
-    (like (sxql:yield (first add-indices)) "^CREATE UNIQUE INDEX [^ ]+ ON tweets \\(user, created_at\\)$")
+    (like (sxql:yield (first add-indices)) "^CREATE UNIQUE INDEX [^ ]+ ON tweets \\(created_at, user\\)$")
     (is drop-indices nil))
 
   (migrate-table (find-class 'tweets))
@@ -230,7 +234,7 @@
     (is drop-columns nil)
     (is change-columns nil)
     (is (length add-indices) 1)
-    (like (sxql:yield (first add-indices)) "^CREATE UNIQUE INDEX [^ ]+ ON tweets \\(id, user, created_at\\)$")
+    (like (sxql:yield (first add-indices)) "^CREATE UNIQUE INDEX [^ ]+ ON tweets \\(created_at, id, user\\)$")
     (is (length drop-indices) 1)
     (like (sxql:yield (first drop-indices)) "^DROP INDEX [^ ]+ ON tweets$"))
 
@@ -261,7 +265,7 @@
     (is drop-columns nil)
     (is change-columns nil)
     (is (length add-indices) 1)
-    (like (sxql:yield (first add-indices)) "^CREATE INDEX [^ ]+ ON tweets \\(user, created_at\\)$")
+    (like (sxql:yield (first add-indices)) "^CREATE INDEX [^ ]+ ON tweets \\(created_at, user\\)$")
     (is (length drop-indices) 1)
     (like (sxql:yield (first drop-indices)) "^DROP INDEX [^ ]+ ON tweets$"))
 

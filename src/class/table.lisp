@@ -113,8 +113,9 @@
        (when (slot-value class 'unique-keys)
          (mapcar (lambda (key)
                    ;; FIXME: it'll raise an error if the index name is too long
-                   (list (format nil "UNIQUE_~{~A~^_~}"
-                                 (ensure-list key))
+                   (list (format nil "unique_~{~A~^_~}"
+                                 (mapcar #'string-downcase
+                                         (ensure-list key)))
                          :unique-key t
                          :primary-key nil
                          :columns (ensure-list (unlispify-keys key))))

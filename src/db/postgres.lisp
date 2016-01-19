@@ -96,7 +96,6 @@
                                                 ~%    and t.relname LIKE '~A'" table-name)))))
     (mapcar #'(lambda (plist)
                 (destructuring-bind (index-name &rest column-list) plist
-                  (declare (ignore index-name))
                   (list index-name
                         :unique-key (getf (first column-list) :|is_unique|)
                         :primary-key (getf (first column-list) :|is_primary|)
