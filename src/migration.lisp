@@ -7,7 +7,8 @@
                 #:database-column-slots
                 #:table-name
                 #:table-column-info
-                #:table-indices-info)
+                #:table-indices-info
+                #:create-table-sxql)
   (:import-from #:mito.db
                 #:table-indices
                 #:column-definitions
@@ -28,6 +29,7 @@
                 #:create-index
                 #:drop-index)
   (:import-from #:alexandria
+                #:compose
                 #:make-keyword)
   (:export #:migrate-table))
 (in-package :mito.migration)
@@ -37,22 +39,28 @@
     (migrate-table (find-class class)))
   (:method ((class dao-table-class))
     (check-connected)
-    (destructuring-bind (add-columns
-                         drop-columns
-                         change-columns
-                         add-indices
-                         drop-indices)
-        (migration-expressions class (driver-type *connection*))
-      (when drop-indices
-        (mapc #'execute-sql drop-indices))
-      (when drop-columns
-        (execute-sql drop-columns))
-      (when add-columns
-        (execute-sql add-columns))
-      (when change-columns
-        (mapc #'execute-sql change-columns))
-      (when add-indices
-        (mapc #'execute-sql add-indices)))))
+    (let ((driver-type (driver-type *connection*)))
+      (when (eq driver-type :sqlite3)
+        (return-from migrate-table
+          (mapc #'execute-sql
+                (migration-expressions-for-sqlite3 class))))
+
+      (destructuring-bind (add-columns
+                           drop-columns
+                           change-columns
+                           add-indices
+                           drop-indices)
+          (migration-expressions class driver-type)
+        (when drop-indices
+          (mapc #'execute-sql drop-indices))
+        (when drop-columns
+          (execute-sql drop-columns))
+        (when add-columns
+          (execute-sql add-columns))
+        (when change-columns
+          (mapc #'execute-sql change-columns))
+        (when add-indices
+          (mapc #'execute-sql add-indices))))))
 
 (defstruct (set-default (:include sxql.sql-type:expression-clause (sxql.sql-type::name "SET DEFAULT"))
                         (:constructor make-set-default (expression &aux (expression (sxql.clause::detect-and-convert expression))))))
@@ -80,6 +88,10 @@
             (sxql:yield (drop-sequence-sequence-name statement)))))
 
 (defun migration-expressions (class driver-type)
+  (when (eq driver-type :sqlite3)
+    (return-from migration-expressions
+      (migration-expressions-for-sqlite3 class)))
+
   (let* ((table-name (table-name class))
          (table-columns
            (mapcar (lambda (column)
@@ -238,3 +250,47 @@
                                   nil
                                   (list :on (make-keyword table-name)))))))
              nil))))))
+
+(defun migration-expressions-for-sqlite3 (class)
+  (let* ((table-name (table-name class))
+         (tmp-table-name (gensym table-name))
+         (table-columns
+           (mapcar (lambda (column)
+                     (let ((info (table-column-info column :sqlite3)))
+                       (setf (getf (cdr info) :type)
+                             (get-column-real-name *connection* (getf (cdr info) :type)))
+                       info))
+                   (database-column-slots class)))
+         (table-indices (table-indices-info class :sqlite3))
+         (db-columns (column-definitions *connection* table-name))
+         (db-indices (table-indices *connection* table-name)))
+
+    (dolist (idx db-indices)
+      (setf (getf (cdr idx) :columns)
+            (sort (getf (cdr idx) :columns) #'string<=)))
+    (dolist (idx table-indices)
+      (setf (getf (cdr idx) :columns)
+            (sort (getf (cdr idx) :columns) #'string<=)))
+
+    (unless (every #'null
+                   (append (cdr (multiple-value-list (list-diff db-columns table-columns
+                                                                :test #'equalp
+                                                                :sort-fn (constantly t))))
+                           (cdr (multiple-value-list
+                                 (list-diff db-indices table-indices :key #'cdr
+                                                                     :test #'equalp
+                                                                     :sort-fn (constantly t))))))
+      (list
+       (sxql:alter-table (make-keyword table-name)
+         (sxql:rename-to tmp-table-name))
+
+       (create-table-sxql class :sqlite3)
+
+       (let* ((column-names (mapcar (compose #'make-keyword #'car)
+                                    (column-definitions *connection* table-name)))
+              (slot-names (mapcar (compose #'make-keyword #'car)
+                                  table-columns))
+              (same (list-diff column-names slot-names)))
+         (sxql:insert-into (make-keyword table-name) same
+           (sxql:select same
+             (sxql:from tmp-table-name))))))))

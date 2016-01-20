@@ -32,12 +32,14 @@
            (mapcar (lambda (column)
                      (table-column-info-for-create-table column driver-type))
                    (database-column-slots class))
-           (mapcar (lambda (index)
+           (mapcan (lambda (index)
                      (cond
                        ((getf (cdr index) :primary-key)
-                        (sxql:primary-key (mapcar #'make-keyword (getf (cdr index) :columns))))
+                        (if (cdr (getf (cdr index) :columns))
+                            (list (sxql:primary-key (mapcar #'make-keyword (getf (cdr index) :columns))))
+                            nil))
                        ((getf (cdr index) :unique-key)
-                        (sxql:unique-key (mapcar #'make-keyword (getf (cdr index) :columns))))
+                        (list (sxql:unique-key (mapcar #'make-keyword (getf (cdr index) :columns)))))
                        (t
-                        (sxql:index-key (mapcar #'make-keyword (getf (cdr index) :columns))))))
+                        (list (sxql:index-key (mapcar #'make-keyword (getf (cdr index) :columns)))))))
                    (table-indices-info class driver-type)))))

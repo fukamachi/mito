@@ -38,13 +38,7 @@
   ;; FIXME: quote
   (flet ((column-auto-increment-p (column)
            (and (= (getf column :|pk|) 1)
-                (string-equal (getf column :|type|) "INTEGER")
-                (dbi:fetch
-                 (dbi:execute
-                  (dbi:prepare conn
-                               "SELECT 1 FROM sqlite_master WHERE type = 'index' AND tbl_name = ?")
-                  table-name))
-                t)))
+                (string-equal (getf column :|type|) "INTEGER"))))
     (loop for column in (table-info conn table-name)
           collect (list (getf column :|name|)
                         :type (getf column :|type|)

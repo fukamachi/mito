@@ -34,7 +34,7 @@
                     ((status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass dao-table-class))
-                  "CREATE TABLE tweet (%oid BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, status TEXT, user INTEGER, PRIMARY KEY (%oid))"
+                  "CREATE TABLE tweet (%oid BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT, user INTEGER)"
                   "auto-pk")
 
   (is-table-class :mysql
@@ -44,7 +44,7 @@
                      (status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass dao-table-class))
-                  "CREATE TABLE tweet (id INT UNSIGNED NOT NULL AUTO_INCREMENT, status TEXT, user INTEGER, PRIMARY KEY (id))"
+                  "CREATE TABLE tweet (id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT, user INTEGER)"
                   "add original PK")
 
   (is-table-class :mysql
@@ -52,7 +52,7 @@
                     ((status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass dao-table-class))
-                  "CREATE TABLE tweet (%oid BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, status TEXT, user INTEGER, PRIMARY KEY (%oid))"
+                  "CREATE TABLE tweet (%oid BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT, user INTEGER)"
                   "redefinition w/o PK")
 
   (is-table-class :mysql

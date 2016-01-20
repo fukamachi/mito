@@ -3,6 +3,8 @@
   (:use #:cl
         #:mito.util
         #:mito.error)
+  (:import-from #:alexandria
+                #:delete-from-plist)
   (:export #:table-column-class
            #:table-column-type
            #:table-column-name
@@ -109,7 +111,6 @@
     (let ((column-info (call-next-method)))
       (rplaca column-info
               (intern (car column-info) :keyword))
-      (setf (getf (cdr column-info) :primary-key) nil)
       column-info))
   (:method (column (driver-type (eql :mysql)))
     (let ((column-info (table-column-info column driver-type)))
@@ -121,7 +122,9 @@
     (let ((column-info (table-column-info column driver-type)))
       (when (getf (cdr column-info) :auto-increment)
         (rplaca (member :auto-increment (cdr column-info) :test #'eq)
-                :autoincrement))
+                :autoincrement)
+        ;; NOT NULL cannot be specified for an AUTOINCREMENT column
+        (setf (cdr column-info) (delete-from-plist (cdr column-info) :not-null)))
       column-info))
   (:method (column (driver-type (eql :postgres)))
     (let ((column-info (table-column-info column driver-type)))
