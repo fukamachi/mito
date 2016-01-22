@@ -28,6 +28,9 @@
                 #:dao-synced
                 #:inflate
                 #:deflate)
+  (:import-from #:mito.logger
+                #:enable-sql-logger
+                #:disable-sql-logger)
   (:import-from #:mito.util
                 #:lispify
                 #:unlispify)
@@ -51,6 +54,9 @@
 
            #:inflate
            #:deflate
+
+           #:enable-sql-logger
+           #:disable-sql-logger
 
            #:*connection*
            #:connect-toplevel

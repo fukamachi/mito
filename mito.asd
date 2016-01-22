@@ -20,11 +20,13 @@
                :sxql
                :cl-ppcre
                :closer-mop
+               :dissect
                :alexandria
-               :split-sequence)
+               :split-sequence
+               :vom)
   :components ((:module "src"
                 :components
-                ((:file "mito" :depends-on ("class" "dao" "db" "connection" "error" "util"))
+                ((:file "mito" :depends-on ("class" "dao" "db" "connection" "error" "logger" "util"))
                  (:file "dao" :depends-on ("class"))
                  (:file "class" :depends-on ("class-components"))
                  (:module "class-components"
@@ -39,11 +41,12 @@
                  (:file "db" :depends-on ("db-drivers" "connection" "dao" "class" "util"))
                  (:module "db-drivers"
                   :pathname "db"
-                  :depends-on ("util")
+                  :depends-on ("logger" "util")
                   :components
                   ((:file "mysql")
                    (:file "postgres")
                    (:file "sqlite3")))
+                 (:file "logger")
                  (:file "error")
                  (:file "util"))))
   :description "Abstraction layer for DB schema"

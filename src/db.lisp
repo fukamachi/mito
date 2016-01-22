@@ -12,6 +12,8 @@
   (:import-from #:mito.class
                 #:database-column-slots
                 #:table-column-name)
+  (:import-from #:mito.logger
+                #:trace-sql)
   (:import-from #:mito.util
                 #:lispify)
   (:import-from #:dbi
@@ -76,12 +78,14 @@
     (declare (ignore sql binds))
     (check-connected))
   (:method ((sql string) &optional binds)
+    (trace-sql sql binds)
     (apply #'dbi:do-sql *connection* sql binds))
   (:method ((sql sql-statement) &optional binds)
     (declare (ignore binds))
     (with-quote-char
       (multiple-value-bind (sql binds)
           (sxql:yield sql)
+        (trace-sql sql binds)
         (apply #'dbi:do-sql *connection* sql binds)))))
 
 (defun make-dao-instance (class &rest initargs)
@@ -117,6 +121,7 @@
              (loop for (k v) on results by #'cddr
                    collect (lispify k)
                    collect v)))
+      (trace-sql sql binds results)
       (if as
           (mapcar (lambda (result)
                     (apply #'make-dao-instance as result))
