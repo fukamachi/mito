@@ -2,7 +2,8 @@
 (defpackage mito.dao
   (:use #:cl)
   (:import-from #:mito.class
-                #:table-class)
+                #:table-class
+                #:table-column-class)
   (:export #:dao-class
            #:dao-table-class
 
@@ -18,6 +19,19 @@
 (defclass dao-table-class (table-class)
   ((auto-pk :initarg :auto-pk
             :initform '(t))))
+
+(defclass dao-table-column-class (table-column-class)
+  ((inflate :type (or function null)
+            :initarg :inflate
+            :initform nil
+            :reader dao-table-column-inflate)
+   (deflate :type (or function null)
+            :initarg :deflate
+            :initform nil
+            :reader dao-table-column-deflate)))
+
+(defmethod c2mop:direct-slot-definition-class ((class table-class) &key)
+  'dao-table-column-class)
 
 (defparameter *oid-slot-definition*
   '(:name %oid :col-type :bigserial :primary-key t :readers (getoid)))
@@ -88,11 +102,26 @@
           (cons (find-class 'dao-class) direct-superclasses)))
   (apply #'call-next-method class name keys))
 
+(defun get-slot-by-slot-name (obj slot-name)
+  (find slot-name
+        (c2mop:class-direct-slots (if (typep obj 'symbol)
+                                      (find-class obj)
+                                      (class-of obj)))
+        :test #'eq
+        :key #'c2mop:slot-definition-name))
+
 (defgeneric inflate (object slot-name value)
   (:method ((object dao-class) slot-name value)
-    (declare (ignore object slot-name))
-    value))
+    (let* ((slot (get-slot-by-slot-name object slot-name))
+           (inflate (dao-table-column-inflate slot)))
+      (if inflate
+          (funcall inflate value)
+          value))))
 
 (defgeneric deflate (object slot-name value)
   (:method ((object dao-class) slot-name value)
-    value))
+    (let* ((slot (get-slot-by-slot-name object slot-name))
+           (deflate (dao-table-column-deflate slot)))
+      (if deflate
+          (funcall deflate value)
+          value))))
