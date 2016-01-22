@@ -85,7 +85,8 @@
            #:select-dao
            #:find-dao
 
-           #:table-definition))
+           #:table-definition
+           #:ensure-table-exists))
 (in-package :mito)
 
 (defun make-set-clause (obj)
@@ -192,8 +193,12 @@
                 (sxql:limit 1))))
         (first (retrieve-by-sql sql :as class))))))
 
-(defun table-definition (class)
+(defun table-definition (class &key if-not-exists)
   (when (symbolp class)
     (setf class (find-class class)))
   (check-type class table-class)
-  (create-table-sxql class (driver-type)))
+  (create-table-sxql class (driver-type)
+                     :if-not-exists if-not-exists))
+
+(defun ensure-table-exists (class)
+  (execute-sql (table-definition class :if-not-exists t)))
