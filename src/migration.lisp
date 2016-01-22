@@ -30,8 +30,10 @@
                 #:drop-index)
   (:import-from #:alexandria
                 #:compose
-                #:make-keyword)
-  (:export #:migrate-table))
+                #:make-keyword
+                #:ensure-list)
+  (:export #:migrate-table
+           #:migration-expressions))
 (in-package :mito.migration)
 
 (defgeneric migrate-table (class)
@@ -39,29 +41,9 @@
     (migrate-table (find-class class)))
   (:method ((class dao-table-class))
     (check-connected)
-    (let ((driver-type (driver-type *connection*)))
-      (when (eq driver-type :sqlite3)
-        (return-from migrate-table
-          (mapc #'execute-sql
-                (migration-expressions-for-sqlite3 class))))
-
-      (dbi:with-transaction *connection*
-        (destructuring-bind (add-columns
-                             drop-columns
-                             change-columns
-                             add-indices
-                             drop-indices)
-            (migration-expressions class driver-type)
-          (when drop-indices
-            (mapc #'execute-sql drop-indices))
-          (when drop-columns
-            (execute-sql drop-columns))
-          (when add-columns
-            (execute-sql add-columns))
-          (when change-columns
-            (mapc #'execute-sql change-columns))
-          (when add-indices
-            (mapc #'execute-sql add-indices)))))))
+    (dbi:with-transaction *connection*
+      (mapc #'execute-sql
+            (migration-expressions class)))))
 
 (defstruct (set-default (:include sxql.sql-type:expression-clause (sxql.sql-type::name "SET DEFAULT"))
                         (:constructor make-set-default (expression &aux (expression (sxql.clause::detect-and-convert expression))))))
@@ -88,11 +70,7 @@
             (drop-sequence-if-exists statement)
             (sxql:yield (drop-sequence-sequence-name statement)))))
 
-(defun migration-expressions (class driver-type)
-  (when (eq driver-type :sqlite3)
-    (return-from migration-expressions
-      (migration-expressions-for-sqlite3 class)))
-
+(defun migration-expressions-for-others (class driver-type)
   (let* ((table-name (table-name class))
          (table-columns
            (mapcar (lambda (column)
@@ -295,3 +273,18 @@
          (sxql:insert-into (make-keyword table-name) same
            (sxql:select same
              (sxql:from tmp-table-name))))))))
+
+(defun migration-expressions (class &optional (driver-type (driver-type *connection*)))
+  (if (eq driver-type :sqlite3)
+      (migration-expressions-for-sqlite3 class)
+      (destructuring-bind (add-columns
+                           drop-columns
+                           change-columns
+                           add-indices
+                           drop-indices)
+          (migration-expressions-for-others class driver-type)
+        (nconc drop-indices
+               (ensure-list drop-columns)
+               (ensure-list add-columns)
+               change-columns
+               add-indices))))

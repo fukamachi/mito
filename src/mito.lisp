@@ -28,6 +28,9 @@
                 #:dao-synced
                 #:inflate
                 #:deflate)
+  (:import-from #:mito.migration
+                #:migrate-table
+                #:migration-expressions)
   (:import-from #:mito.logger
                 #:enable-sql-logger
                 #:disable-sql-logger)
@@ -57,6 +60,9 @@
 
            #:enable-sql-logger
            #:disable-sql-logger
+
+           #:migrate-table
+           #:migration-expressions
 
            #:*connection*
            #:connect-toplevel
