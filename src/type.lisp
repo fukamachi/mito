@@ -46,15 +46,22 @@
         ,vars
         ,@rest))))
 
-;; TODO: caching
+(defvar *real-type-cache* (make-hash-table :test 'equalp))
+
 (defun get-column-real-type (conn name)
-  (dbi:do-sql conn
-    (sxql:yield
-     (sxql:drop-table :get_column_real_type :if-exists t)))
-  (dbi:do-sql conn
-    (sxql:yield
-     (sxql:create-table :get_column_real_type
-         ((test :type name)))))
-  (getf (cdr (assoc "test" (mito.db:column-definitions conn "get_column_real_type")
-                    :test #'string=))
-        :type))
+  (symbol-macrolet ((real-type
+                      (gethash (list (dbi:connection-driver-type conn) name)
+                               *real-type-cache*)))
+    (or real-type
+        (setf real-type
+              (progn
+                (dbi:do-sql conn
+                  (sxql:yield
+                   (sxql:drop-table :get_column_real_type :if-exists t)))
+                (dbi:do-sql conn
+                  (sxql:yield
+                   (sxql:create-table :get_column_real_type
+                       ((test :type name)))))
+                (getf (cdr (assoc "test" (mito.db:column-definitions conn "get_column_real_type")
+                                  :test #'string=))
+                      :type))))))
