@@ -45,22 +45,23 @@
           (mapc #'execute-sql
                 (migration-expressions-for-sqlite3 class))))
 
-      (destructuring-bind (add-columns
-                           drop-columns
-                           change-columns
-                           add-indices
-                           drop-indices)
-          (migration-expressions class driver-type)
-        (when drop-indices
-          (mapc #'execute-sql drop-indices))
-        (when drop-columns
-          (execute-sql drop-columns))
-        (when add-columns
-          (execute-sql add-columns))
-        (when change-columns
-          (mapc #'execute-sql change-columns))
-        (when add-indices
-          (mapc #'execute-sql add-indices))))))
+      (dbi:with-transaction *connection*
+        (destructuring-bind (add-columns
+                             drop-columns
+                             change-columns
+                             add-indices
+                             drop-indices)
+            (migration-expressions class driver-type)
+          (when drop-indices
+            (mapc #'execute-sql drop-indices))
+          (when drop-columns
+            (execute-sql drop-columns))
+          (when add-columns
+            (execute-sql add-columns))
+          (when change-columns
+            (mapc #'execute-sql change-columns))
+          (when add-indices
+            (mapc #'execute-sql add-indices)))))))
 
 (defstruct (set-default (:include sxql.sql-type:expression-clause (sxql.sql-type::name "SET DEFAULT"))
                         (:constructor make-set-default (expression &aux (expression (sxql.clause::detect-and-convert expression))))))
