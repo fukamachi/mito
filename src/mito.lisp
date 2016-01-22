@@ -25,7 +25,9 @@
   (:import-from #:mito.dao
                 #:dao-class
                 #:dao-table-class
-                #:dao-synced)
+                #:dao-synced
+                #:inflate
+                #:deflate)
   (:import-from #:mito.util
                 #:lispify
                 #:unlispify)
@@ -46,6 +48,9 @@
 
            #:dao-class
            #:dao-table-class
+
+           #:inflate
+           #:deflate
 
            #:*connection*
            #:connect-toplevel
@@ -78,7 +83,7 @@
               (if (slot-boundp obj slot-name)
                   (let ((value (slot-value obj slot-name)))
                     (list (intern (symbol-name (table-column-name slot)) :keyword)
-                          value))
+                          (deflate obj slot-name value)))
                   nil)))
           (database-column-slots (class-of obj)))))
 

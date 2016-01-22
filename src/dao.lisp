@@ -7,7 +7,10 @@
            #:dao-table-class
 
            #:getoid
-           #:dao-synced))
+           #:dao-synced
+
+           #:inflate
+           #:deflate))
 (in-package :mito.dao)
 
 (defclass dao-class () ())
@@ -84,3 +87,12 @@
     (setf (getf keys :direct-superclasses)
           (cons (find-class 'dao-class) direct-superclasses)))
   (apply #'call-next-method class name keys))
+
+(defgeneric inflate (object slot-name value)
+  (:method ((object dao-class) slot-name value)
+    (declare (ignore object slot-name))
+    value))
+
+(defgeneric deflate (object slot-name value)
+  (:method ((object dao-class) slot-name value)
+    value))

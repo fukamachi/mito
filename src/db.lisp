@@ -7,7 +7,8 @@
                 #:check-connected)
   (:import-from #:mito.dao
                 #:dao-table-class
-                #:dao-synced)
+                #:dao-synced
+                #:inflate)
   (:import-from #:mito.class
                 #:database-column-slots
                 #:table-column-name)
@@ -94,10 +95,12 @@
     ;; Ignore columns which is not defined in defclass as a slot.
     (loop with undef = '#:undef
           for column in (database-column-slots class)
-          for val = (getf initargs (intern (symbol-name (table-column-name column)) :keyword)
+          for column-name = (table-column-name column)
+          for val = (getf initargs (intern (symbol-name column-name) :keyword)
                           undef)
           unless (eq val undef)
-            do (setf (slot-value obj (table-column-name column)) val))
+            do (setf (slot-value obj column-name)
+                     (inflate obj column-name val)))
     (setf (dao-synced obj) t)
     obj))
 
