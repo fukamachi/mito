@@ -10,7 +10,7 @@
                 #:drop-table
                 #:create-table)
   (:export #:parse-dbtype
-           #:get-column-real-name))
+           #:get-column-real-type))
 (in-package :mito.type)
 
 (defun parse-type-vars (vars)
@@ -47,14 +47,14 @@
         ,@rest))))
 
 ;; TODO: caching
-(defun get-column-real-name (conn name)
+(defun get-column-real-type (conn name)
   (dbi:do-sql conn
     (sxql:yield
-     (sxql:drop-table :get_column_real_name :if-exists t)))
+     (sxql:drop-table :get_column_real_type :if-exists t)))
   (dbi:do-sql conn
     (sxql:yield
-     (sxql:create-table :get_column_real_name
+     (sxql:create-table :get_column_real_type
          ((test :type name)))))
-  (getf (cdr (assoc "test" (mito.db:column-definitions conn "get_column_real_name")
+  (getf (cdr (assoc "test" (mito.db:column-definitions conn "get_column_real_type")
                     :test #'string=))
         :type))

@@ -18,7 +18,7 @@
                 #:driver-type
                 #:check-connected)
   (:import-from #:mito.type
-                #:get-column-real-name)
+                #:get-column-real-type)
   (:import-from #:mito.util
                 #:list-diff)
   (:import-from #:sxql
@@ -97,7 +97,7 @@
            (mapcar (lambda (column)
                      (let ((info (table-column-info column driver-type)))
                        (setf (getf (cdr info) :type)
-                             (get-column-real-name *connection* (getf (cdr info) :type)))
+                             (get-column-real-type *connection* (getf (cdr info) :type)))
                        info))
                    (database-column-slots class)))
          (table-indices (table-indices-info class driver-type))
@@ -258,7 +258,7 @@
            (mapcar (lambda (column)
                      (let ((info (table-column-info column :sqlite3)))
                        (setf (getf (cdr info) :type)
-                             (get-column-real-name *connection* (getf (cdr info) :type)))
+                             (get-column-real-type *connection* (getf (cdr info) :type)))
                        info))
                    (database-column-slots class)))
          (table-indices (table-indices-info class :sqlite3))
