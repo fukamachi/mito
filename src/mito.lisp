@@ -71,6 +71,7 @@
            #:delete-dao
            #:save-dao
            #:select-dao
+           #:find-dao
 
            #:table-definition))
 (in-package :mito)
@@ -159,6 +160,25 @@
         (sxql:add-child select-sql ex))
 
       (retrieve-by-sql select-sql :as class))))
+
+(defgeneric find-dao (class &rest pk-values)
+  (:method :before (class &rest pk-values)
+    (declare (ignore class pk-values))
+    (check-connected))
+  (:method ((class dao-table-class) &rest pk-values)
+    (let ((primary-key (table-primary-key class)))
+      (unless primary-key
+        (error 'no-primary-keys :table (table-name class)))
+
+      (let ((sql
+              (sxql:select :*
+                (sxql:from (intern (table-name class) :keyword))
+                (sxql:where `(:and ,@(mapcar (lambda (key val)
+                                               `(:= ,(unlispify key) ,val))
+                                             primary-key
+                                             pk-values)))
+                (sxql:limit 1))))
+        (first (retrieve-by-sql sql :as class))))))
 
 (defun table-definition (class)
   (when (symbolp class)
