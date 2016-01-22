@@ -26,8 +26,8 @@
                :vom)
   :components ((:module "src"
                 :components
-                ((:file "mito" :depends-on ("class" "dao" "db" "connection" "error" "logger" "util"))
-                 (:file "dao" :depends-on ("class"))
+                ((:file "mito" :depends-on ("class" "dao" "db" "connection" "migration" "error" "logger" "util"))
+                 (:file "dao" :depends-on ("connection" "class"))
                  (:file "class" :depends-on ("class-components"))
                  (:module "class-components"
                   :pathname "class"
@@ -36,7 +36,7 @@
                   ((:file "table" :depends-on ("column"))
                    (:file "column")))
                  (:file "connection" :depends-on ("error"))
-                 (:file "migration" :depends-on ("db" "type" "logger" "util"))
+                 (:file "migration" :depends-on ("connection" "class" "db" "dao" "type" "logger" "util"))
                  (:file "type" :depends-on ("db"))
                  (:file "db" :depends-on ("db-drivers" "connection" "dao" "class" "util"))
                  (:module "db-drivers"

@@ -1,9 +1,12 @@
 (in-package :cl-user)
 (defpackage mito.dao
   (:use #:cl)
+  (:import-from #:mito.connection
+                #:driver-type)
   (:import-from #:mito.class
                 #:table-class
-                #:table-column-class)
+                #:table-column-class
+                #:create-table-sxql)
   (:export #:dao-class
            #:dao-table-class
 
@@ -11,7 +14,9 @@
            #:dao-synced
 
            #:inflate
-           #:deflate))
+           #:deflate
+
+           #:table-definition))
 (in-package :mito.dao)
 
 (defclass dao-class () ())
@@ -125,3 +130,10 @@
       (if deflate
           (funcall deflate value)
           value))))
+
+(defun table-definition (class &key if-not-exists)
+  (when (symbolp class)
+    (setf class (find-class class)))
+  (check-type class table-class)
+  (create-table-sxql class (driver-type)
+                     :if-not-exists if-not-exists))

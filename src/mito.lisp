@@ -7,8 +7,7 @@
                 #:check-connected
                 #:connect-toplevel
                 #:disconnect-toplevel
-                #:with-connection
-                #:driver-type)
+                #:with-connection)
   (:import-from #:mito.class
                 #:table-class
                 #:table-column-class
@@ -16,8 +15,7 @@
                 #:table-primary-key
                 #:table-serial-key
                 #:table-column-name
-                #:database-column-slots
-                #:create-table-sxql)
+                #:database-column-slots)
   (:import-from #:mito.db
                 #:last-insert-id
                 #:execute-sql
@@ -27,8 +25,10 @@
                 #:dao-table-class
                 #:dao-synced
                 #:inflate
-                #:deflate)
+                #:deflate
+                #:table-definition)
   (:import-from #:mito.migration
+                #:*auto-migration-mode*
                 #:migrate-table
                 #:migration-expressions)
   (:import-from #:mito.logger
@@ -62,6 +62,7 @@
            #:enable-sql-logger
            #:disable-sql-logger
 
+           #:*auto-migration-mode*
            #:migrate-table
            #:migration-expressions
 
@@ -194,13 +195,6 @@
                                              pk-values)))
                 (sxql:limit 1))))
         (first (retrieve-by-sql sql :as class))))))
-
-(defun table-definition (class &key if-not-exists)
-  (when (symbolp class)
-    (setf class (find-class class)))
-  (check-type class table-class)
-  (create-table-sxql class (driver-type)
-                     :if-not-exists if-not-exists))
 
 (defun ensure-table-exists (class)
   (with-sql-logging

@@ -2,7 +2,8 @@
 (defpackage mito.migration
   (:use #:cl)
   (:import-from #:mito.dao
-                #:dao-table-class)
+                #:dao-table-class
+                #:table-definition)
   (:import-from #:mito.class
                 #:database-column-slots
                 #:table-name
@@ -12,11 +13,13 @@
   (:import-from #:mito.db
                 #:table-indices
                 #:column-definitions
+                #:table-exists-p
                 #:execute-sql)
   (:import-from #:mito.connection
                 #:*connection*
                 #:driver-type
-                #:check-connected)
+                #:check-connected
+                #:connected-p)
   (:import-from #:mito.type
                 #:get-column-real-type)
   (:import-from #:mito.logger
@@ -34,9 +37,12 @@
                 #:compose
                 #:make-keyword
                 #:ensure-list)
-  (:export #:migrate-table
+  (:export #:*auto-migration-mode*
+           #:migrate-table
            #:migration-expressions))
 (in-package :mito.migration)
+
+(defvar *auto-migration-mode* nil)
 
 (defgeneric migrate-table (class)
   (:method ((class symbol))
@@ -291,3 +297,21 @@
                (ensure-list add-columns)
                change-columns
                add-indices))))
+
+(defmethod initialize-instance :after ((class dao-table-class) &rest initargs)
+  (declare (ignore initargs))
+  (when (and *auto-migration-mode*
+             (connected-p))
+    (unless (table-exists-p *connection* (table-name class))
+      (with-sql-logging
+        (execute-sql (table-definition class))))
+    (migrate-table class)))
+
+(defmethod reinitialize-instance :after ((class dao-table-class) &rest initargs)
+  (declare (ignore initargs))
+  (when (and *auto-migration-mode*
+             (connected-p))
+    (unless (table-exists-p *connection* (table-name class))
+      (with-sql-logging
+        (execute-sql (table-definition class))))
+    (migrate-table class)))

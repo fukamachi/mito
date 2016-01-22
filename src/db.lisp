@@ -30,6 +30,7 @@
   (:export #:last-insert-id
            #:table-indices
            #:column-definitions
+           #:table-exists-p
            #:execute-sql
            #:retrieve-by-sql))
 (in-package :mito.db)
@@ -67,6 +68,26 @@
      (:postgres #'mito.db.postgres:column-definitions)
      (:sqlite3  #'mito.db.sqlite3:column-definitions))
    conn table-name))
+
+(defun table-exists-p (conn table-name)
+  (multiple-value-bind (sql binds)
+      (sxql:yield
+       (ecase (dbi:connection-driver-type conn)
+         ((:mysql :postgres)
+          (sxql:select :1
+            (sxql:from :information_schema.tables)
+            (sxql:where (:and (:= :table_schema (dbi:connection-database-name conn))
+                              (:= :table_name table-name)))
+            (sxql:limit 1)))
+         (:sqlite3
+          (sxql:select :1
+            (sxql:from :sqlite_master)
+            (sxql:where (:and (:= :name table-name)
+                              (:= :type "table")))
+            (sxql:limit 1)))))
+    (and (dbi:fetch
+          (apply #'dbi:execute (dbi:prepare conn sql) binds))
+         t)))
 
 (defmacro with-quote-char (&body body)
   `(let ((sxql:*quote-character* (or sxql:*quote-character*
