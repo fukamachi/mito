@@ -86,7 +86,8 @@
            #:find-dao
 
            #:table-definition
-           #:ensure-table-exists))
+           #:ensure-table-exists
+           #:recreate-table))
 (in-package :mito)
 
 (defun make-set-clause (obj)
@@ -202,3 +203,9 @@
 
 (defun ensure-table-exists (class)
   (execute-sql (table-definition class :if-not-exists t)))
+
+(defun recreate-table (class)
+  (when (symbolp class)
+    (setf class (find-class class)))
+  (execute-sql (sxql:drop-table (intern (table-name class) :keyword)))
+  (execute-sql (table-definition class)))
