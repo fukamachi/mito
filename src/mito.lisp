@@ -33,7 +33,8 @@
                 #:migration-expressions)
   (:import-from #:mito.logger
                 #:enable-sql-logger
-                #:disable-sql-logger)
+                #:disable-sql-logger
+                #:with-sql-logging)
   (:import-from #:mito.util
                 #:lispify
                 #:unlispify)
@@ -202,10 +203,12 @@
                      :if-not-exists if-not-exists))
 
 (defun ensure-table-exists (class)
-  (execute-sql (table-definition class :if-not-exists t)))
+  (with-sql-logging
+    (execute-sql (table-definition class :if-not-exists t))))
 
 (defun recreate-table (class)
   (when (symbolp class)
     (setf class (find-class class)))
-  (execute-sql (sxql:drop-table (intern (table-name class) :keyword)))
-  (execute-sql (table-definition class)))
+  (with-sql-logging
+    (execute-sql (sxql:drop-table (intern (table-name class) :keyword)))
+    (execute-sql (table-definition class))))

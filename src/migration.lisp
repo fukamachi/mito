@@ -19,6 +19,8 @@
                 #:check-connected)
   (:import-from #:mito.type
                 #:get-column-real-type)
+  (:import-from #:mito.logger
+                #:with-sql-logging)
   (:import-from #:mito.util
                 #:list-diff)
   (:import-from #:sxql
@@ -42,8 +44,9 @@
   (:method ((class dao-table-class))
     (check-connected)
     (dbi:with-transaction *connection*
-      (mapc #'execute-sql
-            (migration-expressions class)))))
+      (with-sql-logging
+        (mapc #'execute-sql
+              (migration-expressions class))))))
 
 (defstruct (set-default (:include sxql.sql-type:expression-clause (sxql.sql-type::name "SET DEFAULT"))
                         (:constructor make-set-default (expression &aux (expression (sxql.clause::detect-and-convert expression))))))

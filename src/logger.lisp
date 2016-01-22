@@ -5,6 +5,7 @@
                 #:delete-from-plist)
   (:export #:enable-sql-logger
            #:disable-sql-logger
+           #:with-sql-logging
            #:trace-sql))
 (in-package :mito.logger)
 
@@ -47,6 +48,10 @@
   (setf vom::*config*
         (delete-from-plist vom::*config* :mito.logger))
   (getf vom::*config* t))
+
+(defmacro with-sql-logging (&body body)
+  `(let ((vom::*config* (append '(:mito.logger :debug) vom::*config*)))
+     ,@body))
 
 (defun trace-sql (sql params &optional results)
   (vom:debug "~A (~{~S~^, ~}) [~D row~:P]~:[~;~:* | ~S~]~%"
