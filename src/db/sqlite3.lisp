@@ -1,6 +1,7 @@
 (in-package :cl-user)
 (defpackage mito.db.sqlite3
   (:use #:cl
+        #:mito.util
         #:sxql)
   (:import-from #:dbi
                 #:prepare
@@ -21,14 +22,14 @@
   (let ((primary-keys (table-primary-keys conn table-name)))
     (when (rest primary-keys)
       (error "last-insert-id doesn't support composite primary keys."))
-    (let ((primary-key (intern (first primary-keys) :keyword)))
+    (let ((primary-key (sxql:make-sql-symbol (unlispify (first primary-keys)))))
 
       (getf (dbi:fetch
              (dbi:execute
               (dbi:prepare conn
                            (sxql:yield
                             (select ((:as primary-key :last_insert_id))
-                              (from (intern table-name :keyword))
+                              (from (sxql:make-sql-symbol table-name))
                               (order-by (:desc primary-key))
                               (limit 1))))))
             :|last_insert_id|

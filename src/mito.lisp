@@ -99,7 +99,7 @@
             (let ((slot-name (c2mop:slot-definition-name slot)))
               (if (slot-boundp obj slot-name)
                   (let ((value (slot-value obj slot-name)))
-                    (list (intern (symbol-name (table-column-name slot)) :keyword)
+                    (list (sxql:make-sql-symbol (table-column-name slot))
                           (deflate obj slot-name value)))
                   nil)))
           (database-column-slots (class-of obj)))))
@@ -110,11 +110,12 @@
     (let ((serial-key (table-serial-key (class-of obj))))
       (dbi:with-transaction *connection*
         (execute-sql
-         (sxql:insert-into (intern (table-name (class-of obj)) :keyword)
+         (sxql:insert-into (sxql:make-sql-symbol (table-name (class-of obj)))
            (make-set-clause obj)))
         (when serial-key
           (setf (slot-value obj serial-key)
-                (last-insert-id *connection* (table-name (class-of obj)) serial-key))))
+                (last-insert-id *connection* (table-name (class-of obj))
+                                (unlispify (string serial-key))))))
       (setf (dao-synced obj) t)
       obj)))
 
@@ -133,7 +134,7 @@
         (error 'no-primary-keys :table (table-name (class-of obj))))
 
       (execute-sql
-       (sxql:update (intern (table-name (class-of obj)) :keyword)
+       (sxql:update (sxql:make-sql-symbol (table-name (class-of obj)))
          (make-set-clause obj)
          (sxql:where
           `(:and ,@(mapcar (lambda (key)
@@ -149,7 +150,7 @@
 
       (prog1
           (execute-sql
-           (sxql:delete-from (intern (table-name (class-of obj)) :keyword)
+           (sxql:delete-from (sxql:make-sql-symbol (table-name (class-of obj)))
              (sxql:where
               `(:and ,@(mapcar (lambda (key)
                                  `(:= ,(unlispify key) ,(slot-value obj key)))
@@ -171,7 +172,7 @@
   (:method ((class dao-table-class) &rest expressions)
     (let ((select-sql
             (sxql:select :*
-              (sxql:from (intern (table-name class) :keyword)))))
+              (sxql:from (sxql:make-sql-symbol (table-name class))))))
       (dolist (ex expressions)
         (sxql:add-child select-sql ex))
 
@@ -188,7 +189,7 @@
 
       (let ((sql
               (sxql:select :*
-                (sxql:from (intern (table-name class) :keyword))
+                (sxql:from (sxql:make-sql-symbol (table-name class)))
                 (sxql:where `(:and ,@(mapcar (lambda (key val)
                                                `(:= ,(unlispify key) ,val))
                                              primary-key
@@ -204,5 +205,5 @@
   (when (symbolp class)
     (setf class (find-class class)))
   (with-sql-logging
-    (execute-sql (sxql:drop-table (intern (table-name class) :keyword)))
+    (execute-sql (sxql:drop-table (sxql:make-sql-symbol (table-name class))))
     (execute-sql (table-definition class))))

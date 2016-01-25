@@ -34,8 +34,6 @@
                 #:create-index
                 #:drop-index)
   (:import-from #:alexandria
-                #:compose
-                #:make-keyword
                 #:ensure-list)
   (:export #:*auto-migration-mode*
            #:migrate-table
@@ -115,9 +113,9 @@
         (list
          ;; add columns
          (if columns-to-add
-             (apply #'sxql:make-statement :alter-table (make-keyword table-name)
+             (apply #'sxql:make-statement :alter-table (sxql:make-sql-symbol table-name)
                     (mapcar (lambda (column)
-                              (sxql:make-clause :add-column (make-keyword (car column))
+                              (sxql:make-clause :add-column (sxql:make-sql-symbol (car column))
                                                 :type
                                                 (let ((type (getf (cdr column) :type)))
                                                   (if (and (eq driver-type :postgres)
@@ -138,9 +136,9 @@
              nil)
          ;; drop columns
          (if columns-to-delete
-             (apply #'sxql:make-statement :alter-table (make-keyword table-name)
+             (apply #'sxql:make-statement :alter-table (sxql:make-sql-symbol table-name)
                     (mapcar (lambda (column)
-                              (sxql:drop-column (make-keyword (car column))))
+                              (sxql:drop-column (sxql:make-sql-symbol (car column))))
                             columns-to-delete))
              nil)
          ;; change columns
@@ -176,14 +174,14 @@
                                                   (make-drop-default)))))
                                          (otherwise
                                           (sxql:make-clause :alter-column
-                                                            (make-keyword (car table-column))
+                                                            (sxql:make-sql-symbol (car table-column))
                                                             k v)))))
                               (otherwise
                                ;; Don't add PRIMARY KEY if the column is already the primary key
                                (when (getf (cdr db-column) :primary-key)
                                  (setf (getf (cdr table-column) :primary-key) nil))
                                (list
-                                (apply #'sxql:make-clause :modify-column (make-keyword (car table-column))
+                                (apply #'sxql:make-clause :modify-column (sxql:make-sql-symbol (car table-column))
                                        (cdr table-column)))))
                        into clauses
                    finally
@@ -191,7 +189,7 @@
                         (nconc
                          (nreverse alter-sequences)
                          (and clauses
-                              (list (apply #'sxql:make-statement :alter-table (make-keyword table-name)
+                              (list (apply #'sxql:make-statement :alter-table (sxql:make-sql-symbol table-name)
                                            clauses))))))
              nil)
          ;; add indices
@@ -206,16 +204,16 @@
                                         :key #'car
                                         :test #'string=)))
                          (list
-                          (sxql:make-statement :alter-table (make-keyword table-name)
+                          (sxql:make-statement :alter-table (sxql:make-sql-symbol table-name)
                                                (apply #'sxql:make-clause :add-primary-key
-                                                      (mapcar #'make-keyword (getf options :columns)))))
+                                                      (mapcar #'sxql:make-sql-symbol (getf options :columns)))))
                          nil)
                    else
                      collect (sxql:create-index
                               index-name
                               :unique (getf options :unique-key)
-                              :on (list* (make-keyword table-name)
-                                         (mapcar #'make-keyword (getf options :columns)))))
+                              :on (list* (sxql:make-sql-symbol table-name)
+                                         (mapcar #'sxql:make-sql-symbol (getf options :columns)))))
              nil)
          ;; drop indices
          (if indices-to-delete
@@ -230,13 +228,13 @@
                      (nconc
                       (when (and (not (eq driver-type :postgres))
                                  (getf options :primary-key))
-                        (list (sxql:make-statement :alter-table (make-keyword table-name)
+                        (list (sxql:make-statement :alter-table (sxql:make-sql-symbol table-name)
                                                    (sxql:drop-primary-key))))
                       (list
                        (apply #'sxql:drop-index index-name
                               (if (eq driver-type :postgres)
                                   nil
-                                  (list :on (make-keyword table-name)))))))
+                                  (list :on (sxql:make-sql-symbol table-name)))))))
              nil))))))
 
 (defun migration-expressions-for-sqlite3 (class)
@@ -269,18 +267,19 @@
                                                                      :test #'equalp
                                                                      :sort-fn (constantly t))))))
       (list
-       (sxql:alter-table (make-keyword table-name)
+       (sxql:alter-table (sxql:make-sql-symbol table-name)
          (sxql:rename-to tmp-table-name))
 
        (create-table-sxql class :sqlite3)
 
-       (let* ((column-names (mapcar (compose #'make-keyword #'car)
+       (let* ((column-names (mapcar #'car
                                     (column-definitions *connection* table-name)))
-              (slot-names (mapcar (compose #'make-keyword #'car)
-                                  table-columns))
-              (same (list-diff column-names slot-names)))
-         (sxql:insert-into (make-keyword table-name) same
-           (sxql:select same
+              (slot-names (mapcar #'car table-columns))
+              (same (list-diff column-names slot-names))
+              (same (mapcar #'sxql:make-sql-symbol same)))
+         (sxql:insert-into (sxql:make-sql-symbol table-name) same
+           (sxql:select
+               (apply #'sxql:make-clause :fields same)
              (sxql:from tmp-table-name))))))))
 
 (defun migration-expressions (class &optional (driver-type (driver-type *connection*)))

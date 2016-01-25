@@ -17,13 +17,13 @@
 (in-package :mito.db.mysql)
 
 (defun last-insert-id (conn table-name serial-key-name)
-  (let ((serial-key (intern serial-key-name :keyword)))
+  (let ((serial-key (sxql:make-sql-symbol serial-key-name)))
     (getf (dbi:fetch
            (dbi:execute
             (dbi:prepare conn
                          (sxql:yield
                           (select ((:as serial-key :last_insert_id))
-                            (from (intern table-name :keyword))
+                            (from (sxql:make-sql-symbol table-name))
                             (order-by (:desc serial-key))
                             (limit 1))))))
           :|last_insert_id|

@@ -42,7 +42,7 @@
                      (ppcre:split "\\s+" (aref match 2))))))
     (multiple-value-bind (name vars rest)
         (parse dbtype)
-      `(,(intern (string-upcase name) :keyword)
+      `(,(string-upcase name)
         ,vars
         ,@rest))))
 

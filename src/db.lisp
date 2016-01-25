@@ -36,6 +36,7 @@
 (in-package :mito.db)
 
 (defun last-insert-id (conn table-name serial-key-name)
+  (check-type serial-key-name string)
   (ecase (dbi:connection-driver-type conn)
     (:mysql    (mito.db.mysql:last-insert-id conn table-name serial-key-name))
     (:postgres (mito.db.postgres:last-insert-id conn table-name serial-key-name))
@@ -121,8 +122,11 @@
     (loop with undef = '#:undef
           for column in (database-column-slots class)
           for column-name = (table-column-name column)
-          for val = (getf initargs (intern (symbol-name column-name) :keyword)
-                          undef)
+          for val = (loop for (k v) on initargs by #'cddr
+                          when (and (symbolp k)
+                                    (string= (symbol-name k) column-name))
+                            do (return v)
+                          finally (return undef))
           unless (eq val undef)
             do (setf (slot-value obj column-name)
                      (inflate obj column-name val)))

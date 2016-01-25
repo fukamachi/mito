@@ -40,7 +40,7 @@
 
 (defgeneric table-column-name (column)
   (:method ((column table-column-class))
-    (unlispify (c2mop:slot-definition-name column))))
+    (unlispify (symbol-name-literally (c2mop:slot-definition-name column)))))
 
 (defgeneric table-column-info (column driver-type)
   (:method (column (driver-type (eql :sqlite3)))
@@ -60,7 +60,7 @@
           (warn "SQLite3 supports AUTOINCREMENT only for INTEGER columns. Ignoring :auto-increment.")
           (setf auto-increment nil)))
 
-      `(,(string (table-column-name column))
+      `(,(table-column-name column)
         :type ,col-type
         :auto-increment ,auto-increment
         :primary-key ,(primary-key-p column)
@@ -79,7 +79,7 @@
          (setf col-type '(:int () :unsigned)
                auto-increment t
                not-null t)))
-      `(,(string (table-column-name column))
+      `(,(table-column-name column)
         :type ,col-type
         :auto-increment ,auto-increment
         :primary-key ,(primary-key-p column)
@@ -96,7 +96,7 @@
         ((eq col-type :serial)
          (setf auto-increment t
                not-null t)))
-      `(,(string (table-column-name column))
+      `(,(table-column-name column)
         :type ,col-type
         :auto-increment ,auto-increment
         :primary-key ,(primary-key-p column)
@@ -110,7 +110,7 @@
   (:method :around (column driver-type)
     (let ((column-info (call-next-method)))
       (rplaca column-info
-              (intern (car column-info) :keyword))
+              (sxql:make-sql-symbol (car column-info)))
       column-info))
   (:method (column (driver-type (eql :mysql)))
     (let ((column-info (table-column-info column driver-type)))
