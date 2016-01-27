@@ -38,6 +38,27 @@
 (defmethod c2mop:direct-slot-definition-class ((class table-class) &key)
   'dao-table-column-class)
 
+(defmethod mito.class.column:table-column-info ((column dao-table-column-class) driver-type)
+  (let ((col-type (mito.class.column:table-column-type column)))
+    (if (and (symbolp col-type)
+             (not (keywordp col-type)))
+        (let* ((column-info (call-next-method))
+               (rel-class (find-class col-type))
+               (rel-pk (find (first (mito.class:table-primary-key rel-class))
+                             (mito.class:database-column-slots rel-class)
+                             :key #'c2mop:slot-definition-name
+                             :test #'eq))
+               (rel-column-info
+                 (mito.class.column:table-column-info rel-pk driver-type)))
+          (setf (getf (cdr column-info) :type)
+                (getf (cdr rel-column-info) :type))
+          (list*
+           (mito.util:unlispify
+            (format nil "~A-~A" (mito.util:symbol-name-literally (class-name rel-class))
+                    (car rel-column-info)))
+           (cdr column-info)))
+        (call-next-method))))
+
 (defparameter *oid-slot-definition*
   '(:name %oid :col-type :bigserial :primary-key t :readers (getoid)))
 

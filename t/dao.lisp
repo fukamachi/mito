@@ -3,6 +3,7 @@
   (:use #:cl
         #:prove
         #:mito.dao
+        #:mito.connection
         #:mito-test.util))
 (in-package :mito-test.dao)
 
@@ -63,5 +64,28 @@
                     (:auto-pk nil))
                   "CREATE TABLE tweet (status TEXT, user INTEGER)"
                   "auto-pk is nil"))
+
+(subtest "relation"
+  (when (find-class 'user nil)
+    (setf (find-class 'user) nil))
+  (when (find-class 'tweet nil)
+    (setf (find-class 'tweet) nil))
+
+  (defclass user ()
+    ((id :col-type :serial
+         :not-null t
+         :primary-key t))
+    (:metaclass dao-table-class))
+
+  (defclass tweet ()
+    ((status :col-type :text)
+     (user :col-type user))
+    (:metaclass dao-table-class))
+
+  (let ((*connection* (connect-to-testdb :mysql)))
+    (unwind-protect
+         (is (sxql:yield (table-definition 'tweet))
+             "CREATE TABLE tweet (%oid BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT, user_id INT UNSIGNED)")
+      (dbi:disconnect *connection*))))
 
 (finalize)
