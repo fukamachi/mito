@@ -15,7 +15,7 @@
 (in-package :mito.class.column)
 
 (defclass table-column-class (c2mop:standard-direct-slot-definition)
-  ((col-type :type (or symbol cons)
+  ((col-type :type (or symbol cons null)
              :initarg :col-type
              :accessor table-column-type)
    (primary-key :type boolean

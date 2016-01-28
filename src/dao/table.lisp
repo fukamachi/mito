@@ -6,15 +6,12 @@
                 #:driver-type)
   (:import-from #:mito.class
                 #:table-class
-                #:table-column-class
-                #:table-column-type
-                #:database-column-slots
+                #:table-primary-key
                 #:create-table-sxql)
   (:import-from #:mito.dao.column
                 #:dao-table-column-class
                 #:dao-table-column-inflate
-                #:dao-table-column-deflate
-                #:relational-column-type-p)
+                #:dao-table-column-deflate)
   (:export #:dao-class
            #:dao-table-class
 
@@ -61,15 +58,28 @@
 
   (push *synced-slot-definition* (getf initargs :direct-slots))
 
-  (loop for slot in (getf initargs :direct-slots)
-        when (relational-column-type-p (getf slot :col-type))
-          do (push `(:name ,(intern
-                             (format nil "~A-~A"
-                                     (getf slot :col-type)
-                                     (first (mito.class:table-primary-key (find-class (getf slot :col-type)))))
-                             (symbol-package (getf slot :name)))
-                     :ghost t)
-                   (getf initargs :direct-slots)))
+  ;; Add relational column slots (ex. user-id)
+  (loop for column in (getf initargs :direct-slots)
+        for col-type = (getf column :col-type)
+        when (and (symbolp col-type)
+                  (not (null col-type))
+                  (not (keywordp col-type)))
+          do (rplacd (cdr column)
+                     `(:ghost t ,@(cddr column)))
+             (let* ((name (getf column :name))
+                    (rel-class (find-class (getf column :col-type)))
+                    (pk (first (table-primary-key rel-class))))
+               (rplacd (last (getf initargs :direct-slots))
+                       `((:name ,(intern
+                                  (format nil "~A-~A" (getf column :col-type) pk)
+                                  (symbol-package name))
+                          ;; Defer retrieving the relational column type until table-column-info
+                          :col-type nil
+                          :rel-key ,(get-slot-by-slot-name rel-class pk)
+                          :rel-key-fn
+                          ,(lambda (obj)
+                             (and (slot-boundp obj name)
+                                  (slot-value (slot-value obj name) pk))))))))
 
   (unless (contains-class-or-subclasses 'dao-class direct-superclasses)
     (setf (getf initargs :direct-superclasses)
@@ -118,9 +128,3 @@
   (check-type class table-class)
   (create-table-sxql class (driver-type)
                      :if-not-exists if-not-exists))
-
-(defgeneric relational-column-slots (class)
-  (:method ((class dao-table-class))
-    (remove-if-not #'relational-column-type-p
-                   (database-column-slots class)
-                   :key #'table-column-type)))

@@ -83,9 +83,11 @@
 
   (defclass tweet ()
     ((status :col-type :text
-             :initarg :status)
+             :initarg :status
+             :accessor tweet-status)
      (user :col-type user
-           :initarg :user))
+           :initarg :user
+           :accessor tweet-user))
     (:metaclass dao-table-class))
 
   (is (sxql:yield (table-definition 'tweet))
@@ -96,7 +98,10 @@
   (mito:ensure-table-exists 'tweet)
   (let ((user (mito:create-dao 'user :name "Eitaro")))
     (mito:create-dao 'tweet :status "Hello" :user user))
-  (is (length (mito:select-dao 'tweet)) 1)
+
+  (let ((tweets (mito:select-dao 'tweet)))
+    (is (length tweets) 1)
+    (is-type (first tweets) 'tweet))
 
   (disconnect-toplevel))
 

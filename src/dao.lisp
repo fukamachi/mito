@@ -14,9 +14,8 @@
                 #:table-definition)
   (:import-from #:mito.dao.column
                 #:dao-table-column-class
-                #:relational-table
-                #:relational-column
-                #:relational-column-name)
+                #:dao-table-column-rel-key
+                #:dao-table-column-rel-key-fn)
   (:export #:mito.dao.table
            #:dao-class
            #:dao-table-class
@@ -30,8 +29,5 @@
 
            #:table-definition
 
-           #:relational-column-type-p
-           #:relational-table
-           #:relational-column
-           #:relational-column-name))
+           #:dao-table-column-rel-key-fn))
 (in-package :mito.dao)
