@@ -54,7 +54,7 @@
      ,@body))
 
 (defun trace-sql (sql params &optional results)
-  (vom:debug "~A (~{~S~^, ~}) [~D row~:P]~:[~;~:* | ~S~]~%"
+  (vom:debug "~A (~{~S~^, ~}) [~D row~:P]~:[~;~:* | ~S~]"
              sql
              params
              (length results)
