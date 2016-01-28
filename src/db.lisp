@@ -5,13 +5,6 @@
                 #:*connection*
                 #:with-quote-char
                 #:check-connected)
-  (:import-from #:mito.dao
-                #:dao-table-class
-                #:dao-synced
-                #:inflate)
-  (:import-from #:mito.class
-                #:database-column-slots
-                #:table-column-name)
   (:import-from #:mito.logger
                 #:trace-sql)
   (:import-from #:mito.util
@@ -28,7 +21,6 @@
   (:import-from #:sxql.sql-type
                 #:sql-statement)
   (:export #:last-insert-id
-           #:make-dao-instance
            #:table-indices
            #:column-definitions
            #:table-exists-p
@@ -106,33 +98,11 @@
         (trace-sql sql binds)
         (apply #'dbi:do-sql *connection* sql binds)))))
 
-(defun make-dao-instance (class &rest initargs)
-  (when (symbolp class)
-    (setf class (find-class class)))
-
-  (assert (and class
-               (typep class 'dao-table-class)))
-
-  (let ((obj (make-instance class)))
-    ;; Ignore columns which is not defined in defclass as a slot.
-    (loop with undef = '#:undef
-          for column in (database-column-slots class)
-          for column-name = (c2mop:slot-definition-name column)
-          for val = (loop for (k v) on initargs by #'cddr
-                          when (string= k column-name)
-                            do (return v)
-                          finally (return undef))
-          unless (eq val undef)
-            do (setf (slot-value obj column-name)
-                     (inflate obj column-name val)))
-    (setf (dao-synced obj) t)
-    obj))
-
-(defgeneric retrieve-by-sql (sql &key binds as)
-  (:method :before (sql &key binds as)
-    (declare (ignore sql binds as))
+(defgeneric retrieve-by-sql (sql &key binds)
+  (:method :before (sql &key binds)
+    (declare (ignore sql binds))
     (check-connected))
-  (:method ((sql string) &key binds as)
+  (:method ((sql string) &key binds)
     (let* ((results
              (dbi:fetch-all
               (apply #'dbi:execute (dbi:prepare *connection* sql)
@@ -145,14 +115,10 @@
                          collect v))))
 
       (trace-sql sql binds results)
-      (if as
-          (mapcar (lambda (result)
-                    (apply #'make-dao-instance as result))
-                  results)
-          results)))
-  (:method ((sql sql-statement) &key binds as)
+      results))
+  (:method ((sql sql-statement) &key binds)
     (declare (ignore binds))
     (with-quote-char
       (multiple-value-bind (sql binds)
           (sxql:yield sql)
-        (retrieve-by-sql sql :binds binds :as as)))))
+        (retrieve-by-sql sql :binds binds)))))

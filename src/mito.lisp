@@ -19,8 +19,7 @@
   (:import-from #:mito.db
                 #:last-insert-id
                 #:execute-sql
-                #:retrieve-by-sql
-                #:make-dao-instance)
+                #:retrieve-by-sql)
   (:import-from #:mito.dao
                 #:dao-class
                 #:dao-table-class
@@ -28,7 +27,8 @@
                 #:inflate
                 #:deflate
                 #:table-definition
-                #:dao-table-column-rel-key-fn)
+                #:dao-table-column-rel-key-fn
+                #:make-dao-instance)
   (:import-from #:mito.migration
                 #:*auto-migration-mode*
                 #:migrate-table
@@ -184,7 +184,9 @@
       (dolist (ex expressions)
         (sxql:add-child select-sql ex))
 
-      (retrieve-by-sql select-sql :as class))))
+      (mapcar (lambda (result)
+                (apply #'make-dao-instance class result))
+              (retrieve-by-sql select-sql)))))
 
 (defgeneric find-dao (class &rest pk-values)
   (:method :before (class &rest pk-values)
@@ -203,7 +205,7 @@
                                              primary-key
                                              pk-values)))
                 (sxql:limit 1))))
-        (first (retrieve-by-sql sql :as class))))))
+        (apply #'make-dao-instance class (first (retrieve-by-sql sql)))))))
 
 (defun ensure-table-exists (class)
   (with-sql-logging
