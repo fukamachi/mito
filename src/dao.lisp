@@ -13,7 +13,10 @@
 
                 #:table-definition)
   (:import-from #:mito.dao.column
-                #:dao-table-column-class)
+                #:dao-table-column-class
+                #:relational-table
+                #:relational-column
+                #:relational-column-name)
   (:export #:mito.dao.table
            #:dao-class
            #:dao-table-class
@@ -25,5 +28,10 @@
            #:inflate
            #:deflate
 
-           #:table-definition))
+           #:table-definition
+
+           #:relational-column-type-p
+           #:relational-table
+           #:relational-column
+           #:relational-column-name))
 (in-package :mito.dao)

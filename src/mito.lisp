@@ -27,7 +27,10 @@
                 #:dao-synced
                 #:inflate
                 #:deflate
-                #:table-definition)
+                #:table-definition
+                #:relational-table
+                #:relational-column
+                #:relational-column-name)
   (:import-from #:mito.migration
                 #:*auto-migration-mode*
                 #:migrate-table
@@ -98,12 +101,19 @@
   (apply #'sxql:make-clause :set=
          (mapcan
           (lambda (slot)
-            (let ((slot-name (c2mop:slot-definition-name slot)))
-              (if (slot-boundp obj slot-name)
-                  (let ((value (slot-value obj slot-name)))
-                    (list (sxql:make-sql-symbol (table-column-name slot))
-                          (deflate obj slot-name value)))
-                  nil)))
+            (let ((rel-col (relational-column slot))
+                  (slot-name (c2mop:slot-definition-name slot)))
+              (cond
+                ((not (slot-boundp obj slot-name))
+                 nil)
+                (rel-col
+                 (let ((rel-obj (slot-value obj slot-name)))
+                   (list (sxql:make-sql-symbol (relational-column-name slot))
+                         (slot-value rel-obj (first (table-primary-key (relational-table slot)))))))
+                (t
+                 (let ((value (slot-value obj slot-name)))
+                   (list (sxql:make-sql-symbol (table-column-name slot))
+                         (deflate obj slot-name value)))))))
           (database-column-slots (class-of obj)))))
 
 (defgeneric insert-dao (obj)

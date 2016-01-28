@@ -10,9 +10,13 @@
   (:import-from #:mito.class
                 #:table-primary-key
                 #:database-column-slots)
+  (:import-from #:alexandria
+                #:when-let)
   (:export #:dao-table-column-class
            #:dao-table-column-inflate
            #:dao-table-column-deflate
+           #:relational-table
+           #:relational-column
            #:relational-column-type-p
            #:relational-column-type
            #:relational-column-name))
@@ -44,24 +48,28 @@
        (not (null col-type))
        (not (keywordp col-type))))
 
+(defun relational-table (column)
+  (let ((col-type (table-column-type column)))
+    (when (relational-column-type-p col-type)
+      (find-class col-type))))
+
+(defun relational-column (column)
+  (when-let (rel-class (relational-table column))
+    (let ((rel-pk (and rel-class
+                       (table-primary-key rel-class))))
+      (when (cdr rel-pk)
+        (error "Cannot make a relational column to the class which has multiple primary keys."))
+      (get-slot-by-slot-name rel-class (first rel-pk)))))
+
 (defun relational-column-name (column)
-  (let* ((col-type (table-column-type column))
-         (rel-class (find-class col-type))
-         (rel-pk (table-primary-key rel-class)))
-    (when (cdr rel-pk)
-      (error "Cannot make a relational column to the class which has multiple primary keys."))
-    (let* ((rel-pk (get-slot-by-slot-name rel-class (first rel-pk)))
-           (rel-column-name (table-column-name rel-pk)))
+  (when-let (rel-class (relational-table column))
+    (let* ((rel-column (relational-column column))
+           (rel-column-name (table-column-name rel-column)))
       (unlispify
        (format nil "~A-~A" (symbol-name-literally (class-name rel-class))
                rel-column-name)))))
 
 (defun relational-column-type (column driver-type)
-  (let* ((col-type (table-column-type column))
-         (rel-class (find-class col-type))
-         (rel-pk (table-primary-key rel-class)))
-    (when (cdr rel-pk)
-      (error "Cannot make a relational column to the class which has multiple primary keys."))
-    (let* ((rel-pk (get-slot-by-slot-name rel-class (first rel-pk)))
-           (rel-column-info (table-column-info rel-pk driver-type)))
+  (when-let (rel-pk (relational-column column))
+    (let ((rel-column-info (table-column-info rel-pk driver-type)))
       (getf (cdr rel-column-info) :type))))
