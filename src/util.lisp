@@ -5,7 +5,10 @@
            #:list-diff
            #:lispify
            #:unlispify
-           #:symbol-name-literally))
+           #:symbol-name-literally
+           #:class-inherit-p
+           #:contains-class-or-subclasses
+           #:get-slot-by-slot-name))
 (in-package :mito.util)
 
 (defun group-by-plist (plists &key key (test #'equal))
@@ -89,3 +92,30 @@ Note this can be applied for a list of string-designators."
     (symbol (intern (unlispify (symbol-name-literally object))
                     (symbol-package object)))
     (string (substitute #\_ #\- object))))
+
+(defun class-inherit-p (target parent)
+  (not (null
+        (member parent
+                (c2mop:class-direct-superclasses target)
+                :test #'eq))))
+
+(defun contains-class-or-subclasses (class target-classes)
+  (let ((class (if (typep class 'class)
+                   class
+                   (find-class class))))
+    (find-if (lambda (target-class)
+               (let ((target-class (if (typep target-class 'class)
+                                       target-class
+                                       (find-class target-class nil))))
+                 (and target-class
+                      (or (eq target-class class)
+                          (class-inherit-p target-class class)))))
+             target-classes)))
+
+(defun get-slot-by-slot-name (class slot-name)
+  (find slot-name
+        (c2mop:class-direct-slots (if (typep class 'symbol)
+                                      (find-class class)
+                                      class))
+        :test #'eq
+        :key #'c2mop:slot-definition-name))

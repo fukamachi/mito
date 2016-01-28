@@ -3,7 +3,7 @@
   (:use #:cl)
   (:import-from #:mito.connection
                 #:*connection*
-                #:connection-quote-character
+                #:with-quote-char
                 #:check-connected)
   (:import-from #:mito.dao
                 #:dao-table-class
@@ -28,6 +28,7 @@
   (:import-from #:sxql.sql-type
                 #:sql-statement)
   (:export #:last-insert-id
+           #:make-dao-instance
            #:table-indices
            #:column-definitions
            #:table-exists-p
@@ -89,11 +90,6 @@
     (and (dbi:fetch
           (apply #'dbi:execute (dbi:prepare conn sql) binds))
          t)))
-
-(defmacro with-quote-char (&body body)
-  `(let ((sxql:*quote-character* (or sxql:*quote-character*
-                                     (connection-quote-character *connection*))))
-     ,@body))
 
 (defgeneric execute-sql (sql &optional binds)
   (:method :before (sql &optional binds)

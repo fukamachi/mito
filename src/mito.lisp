@@ -19,7 +19,8 @@
   (:import-from #:mito.db
                 #:last-insert-id
                 #:execute-sql
-                #:retrieve-by-sql)
+                #:retrieve-by-sql
+                #:make-dao-instance)
   (:import-from #:mito.dao
                 #:dao-class
                 #:dao-table-class
@@ -37,7 +38,8 @@
                 #:with-sql-logging)
   (:import-from #:mito.util
                 #:lispify
-                #:unlispify)
+                #:unlispify
+                #:symbol-name-literally)
   (:import-from #:dbi
                 #:with-transaction)
   (:import-from #:sxql
@@ -115,7 +117,7 @@
         (when serial-key
           (setf (slot-value obj serial-key)
                 (last-insert-id *connection* (table-name (class-of obj))
-                                (unlispify (string serial-key))))))
+                                (unlispify (symbol-name-literally serial-key))))))
       (setf (dao-synced obj) t)
       obj)))
 
@@ -123,7 +125,7 @@
   (:method ((class-name symbol) &rest initargs)
     (apply #'create-dao (find-class class-name) initargs))
   (:method ((class dao-table-class) &rest initargs)
-    (let ((obj (apply #'make-instance class initargs)))
+    (let ((obj (apply #'make-dao-instance class initargs)))
       (insert-dao obj))))
 
 (defgeneric update-dao (obj)

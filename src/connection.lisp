@@ -13,7 +13,8 @@
            #:connect-toplevel
            #:disconnect-toplevel
            #:with-connection
-           #:connection-quote-character))
+           #:connection-quote-character
+           #:with-quote-char))
 (in-package :mito.connection)
 
 (defvar *connection*)
@@ -50,3 +51,8 @@
     (:mysql #\`)
     (:postgres #\")
     (:sqlite3 #\")))
+
+(defmacro with-quote-char (&body body)
+  `(let ((sxql:*quote-character* (or sxql:*quote-character*
+                                     (connection-quote-character *connection*))))
+     ,@body))

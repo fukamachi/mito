@@ -27,7 +27,13 @@
   :components ((:module "src"
                 :components
                 ((:file "mito" :depends-on ("class" "dao" "db" "connection" "migration" "error" "logger" "util"))
-                 (:file "dao" :depends-on ("connection" "class"))
+                 (:file "dao" :depends-on ("dao-components"))
+                 (:module "dao-components"
+                  :pathname "dao"
+                  :depends-on ("class" "connection")
+                  :components
+                  ((:file "table" :depends-on ("column"))
+                   (:file "column")))
                  (:file "class" :depends-on ("class-components"))
                  (:module "class-components"
                   :pathname "class"
