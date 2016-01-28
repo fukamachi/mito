@@ -101,7 +101,8 @@
 
   (let ((tweets (mito:select-dao 'tweet)))
     (is (length tweets) 1)
-    (is-type (first tweets) 'tweet))
+    (is-type (first tweets) 'tweet)
+    (is-type (tweet-user (first tweets)) 'user))
 
   (disconnect-toplevel))
 

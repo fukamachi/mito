@@ -101,11 +101,12 @@
           (lambda (slot)
             (let ((slot-name (c2mop:slot-definition-name slot)))
               (cond
+                ((dao-table-column-rel-key-fn slot)
+                 (let ((val (funcall (dao-table-column-rel-key-fn slot) obj)))
+                   (list (sxql:make-sql-symbol (table-column-name slot))
+                         val)))
                 ((not (slot-boundp obj slot-name))
                  nil)
-                ((dao-table-column-rel-key-fn slot)
-                 (list (sxql:make-sql-symbol (table-column-name slot))
-                       (funcall (dao-table-column-rel-key-fn slot) obj)))
                 (t
                  (let ((value (slot-value obj slot-name)))
                    (list (sxql:make-sql-symbol (table-column-name slot))

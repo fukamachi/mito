@@ -30,7 +30,7 @@
                  (:file "dao" :depends-on ("dao-components"))
                  (:module "dao-components"
                   :pathname "dao"
-                  :depends-on ("class" "connection")
+                  :depends-on ("class" "connection" "db")
                   :components
                   ((:file "table" :depends-on ("column"))
                    (:file "column")))

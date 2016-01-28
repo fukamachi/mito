@@ -6,6 +6,8 @@
                 #:driver-type)
   (:import-from #:mito.class
                 #:table-class
+                #:table-name
+                #:table-column-name
                 #:table-primary-key
                 #:create-table-sxql)
   (:import-from #:mito.dao.column
@@ -21,6 +23,7 @@
            #:inflate
            #:deflate
 
+           #:make-dao-instance
            #:table-definition))
 (in-package :mito.dao.table)
 
@@ -50,6 +53,27 @@
                  (getf slot :primary-key))
                (getf initargs :direct-slots))))
 
+(defun make-dao-instance (class &rest initargs)
+  (when (symbolp class)
+    (setf class (find-class class)))
+
+  (assert (and class
+               (typep class 'dao-table-class)))
+
+  (let* ((obj (make-instance class))
+         (obj
+           (apply #'make-instance class
+                  (loop for (k v) on initargs by #'cddr
+                        for column = (find-if (lambda (initargs)
+                                                (find k initargs :test #'eq))
+                                              (c2mop:class-direct-slots class)
+                                              :key #'c2mop:slot-definition-initargs)
+                        when column
+                          append (list k
+                                       (inflate obj (c2mop:slot-definition-name column) v))))))
+    (setf (dao-synced obj) t)
+    obj))
+
 (defmethod initialize-instance :around ((class dao-table-class) &rest initargs
                                         &key direct-superclasses &allow-other-keys)
   (unless (or (not (initargs-enables-auto-pk initargs))
@@ -68,18 +92,36 @@
                      `(:ghost t ,@(cddr column)))
              (let* ((name (getf column :name))
                     (rel-class (find-class (getf column :col-type)))
-                    (pk (first (table-primary-key rel-class))))
+                    (pk-name (first (table-primary-key rel-class)))
+                    (rel-column-name (intern
+                                      (format nil "~A-~A" (getf column :col-type) pk-name)
+                                      (symbol-package name)))
+                    (pk (get-slot-by-slot-name rel-class pk-name)))
                (rplacd (last (getf initargs :direct-slots))
-                       `((:name ,(intern
-                                  (format nil "~A-~A" (getf column :col-type) pk)
-                                  (symbol-package name))
+                       `((:name ,rel-column-name
+                          :initargs (,(intern (symbol-name rel-column-name) :keyword))
                           ;; Defer retrieving the relational column type until table-column-info
                           :col-type nil
-                          :rel-key ,(get-slot-by-slot-name rel-class pk)
+                          :rel-key ,pk
                           :rel-key-fn
                           ,(lambda (obj)
                              (and (slot-boundp obj name)
-                                  (slot-value (slot-value obj name) pk))))))))
+                                  (slot-value (slot-value obj name) pk-name))))))
+
+               (dolist (reader (getf column :readers))
+                 (setf (fdefinition reader)
+                       (lambda (object)
+                         (if (slot-boundp object name)
+                             (slot-value object name)
+                             (apply #'make-dao-instance rel-class
+                                    (first
+                                     (mito.db:retrieve-by-sql
+                                      (sxql:select :*
+                                        (sxql:from (sxql:make-sql-symbol (table-name rel-class)))
+                                        (sxql:where (:= (sxql:make-sql-symbol (table-column-name pk))
+                                                        (slot-value object rel-column-name)))
+                                        (sxql:limit 1)))))))))
+               (setf (getf column :readers) '())))
 
   (unless (contains-class-or-subclasses 'dao-class direct-superclasses)
     (setf (getf initargs :direct-superclasses)
