@@ -117,10 +117,9 @@
     ;; Ignore columns which is not defined in defclass as a slot.
     (loop with undef = '#:undef
           for column in (database-column-slots class)
-          for column-name = (table-column-name column)
+          for column-name = (c2mop:slot-definition-name column)
           for val = (loop for (k v) on initargs by #'cddr
-                          when (and (symbolp k)
-                                    (string= (symbol-name k) column-name))
+                          when (string= k column-name)
                             do (return v)
                           finally (return undef))
           unless (eq val undef)
@@ -139,9 +138,12 @@
               (apply #'dbi:execute (dbi:prepare *connection* sql)
                      binds)))
            (results
-             (loop for (k v) on results by #'cddr
-                   collect (lispify k)
-                   collect v)))
+             (loop for result in results
+                   collect
+                   (loop for (k v) on result by #'cddr
+                         collect (lispify k)
+                         collect v))))
+
       (trace-sql sql binds results)
       (if as
           (mapcar (lambda (result)
