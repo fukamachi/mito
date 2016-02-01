@@ -35,7 +35,7 @@
                     ((status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass dao-table-class))
-                  "CREATE TABLE tweet (%oid BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT, user INTEGER)"
+                  "CREATE TABLE tweet (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT, user INTEGER)"
                   "auto-pk")
 
   (is-table-class :mysql
@@ -53,7 +53,7 @@
                     ((status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass dao-table-class))
-                  "CREATE TABLE tweet (%oid BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT, user INTEGER)"
+                  "CREATE TABLE tweet (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT, user INTEGER)"
                   "redefinition w/o PK")
 
   (is-table-class :mysql
@@ -91,7 +91,7 @@
     (:metaclass dao-table-class))
 
   (is (sxql:yield (table-definition 'tweet))
-      "CREATE TABLE tweet (%oid BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT, user_id INT UNSIGNED)")
+      "CREATE TABLE tweet (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT, user_id INT UNSIGNED)")
   (mito:execute-sql "DROP TABLE IF EXISTS user")
   (mito:execute-sql "DROP TABLE IF EXISTS tweet")
   (mito:ensure-table-exists 'user)

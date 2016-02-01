@@ -21,6 +21,7 @@
                 #:execute-sql
                 #:retrieve-by-sql)
   (:import-from #:mito.dao
+                #:object-id
                 #:dao-class
                 #:dao-table-class
                 #:dao-synced
@@ -52,7 +53,8 @@
                 #:where
                 #:add-child
                 #:make-clause)
-  (:export #:table-class
+  (:export #:object-id
+           #:table-class
            #:table-column-class
            #:table-name
 

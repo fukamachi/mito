@@ -51,8 +51,8 @@
       (mito.migration::migration-expressions-for-others (find-class 'tweets) :postgres)
     (is add-columns nil
         "No columns to add")
-    (is (sxql:yield drop-columns) "ALTER TABLE tweets DROP COLUMN %oid"
-        "Drop column %oid")
+    (is (sxql:yield drop-columns) "ALTER TABLE tweets DROP COLUMN id"
+        "Drop column id")
     (is change-columns nil
         "No columns to change")
     (is add-indices nil
@@ -62,9 +62,9 @@
 
 (subtest "redefinition (with explicit primary key)"
   (defclass tweets ()
-    ((id :col-type :serial
-         :primary-key t
-         :reader tweet-id)
+    ((tweet-id :col-type :serial
+               :primary-key t
+               :reader tweet-id)
      (status :col-type :text
              :accessor tweet-status)
      (user :col-type (:varchar 128)
@@ -77,10 +77,10 @@
                        add-indices
                        drop-indices)
       (mito.migration::migration-expressions-for-others (find-class 'tweets) :postgres)
-    (is (sxql:yield add-columns) "ALTER TABLE tweets ADD COLUMN id serial NOT NULL PRIMARY KEY, ADD COLUMN status text"
+    (is (sxql:yield add-columns) "ALTER TABLE tweets ADD COLUMN status text, ADD COLUMN tweet_id serial NOT NULL PRIMARY KEY"
         "Add id and status")
-    (is (sxql:yield drop-columns) "ALTER TABLE tweets DROP COLUMN %oid"
-        "Drop %oid")
+    (is (sxql:yield drop-columns) "ALTER TABLE tweets DROP COLUMN id"
+        "Drop id")
     (is change-columns nil
         "No columns to change")
     (is add-indices nil
@@ -96,9 +96,9 @@
 
 (subtest "redefinition"
   (defclass tweets ()
-    ((id :col-type :serial
-         :primary-key t
-         :reader tweet-id)
+    ((tweet-id :col-type :serial
+               :primary-key t
+               :reader tweet-id)
      (user :col-type (:varchar 64)
            :accessor tweet-user)
      (created-at :col-type (:char 8)))
@@ -126,9 +126,9 @@
 
 (subtest "redefinition (modifying the column type)"
   (defclass tweets ()
-    ((id :col-type :serial
-         :primary-key t
-         :reader tweet-id)
+    ((tweet-id :col-type :serial
+               :primary-key t
+               :reader tweet-id)
      (user :col-type (:varchar 128)
            :accessor tweet-user)
      (created-at :col-type (:char 8)))
@@ -156,9 +156,9 @@
 
 (subtest "redefinition of primary key"
   (defclass tweets ()
-    ((id :col-type :bigserial
-         :primary-key t
-         :reader tweet-id)
+    ((tweet-id :col-type :bigserial
+               :primary-key t
+               :reader tweet-id)
      (user :col-type (:varchar 128)
            :accessor tweet-user)
      (created-at :col-type (:char 8)))
@@ -174,7 +174,7 @@
     (is drop-columns nil)
     (is (format nil "~{~A~^~%~}"
                 (mapcar #'sxql:yield change-columns))
-        "ALTER TABLE tweets ALTER COLUMN id TYPE bigint")
+        "ALTER TABLE tweets ALTER COLUMN tweet_id TYPE bigint")
     (is add-indices nil)
     (is drop-indices nil))
 
@@ -186,9 +186,9 @@
 
 (subtest "add :unique-keys"
   (defclass tweets ()
-    ((id :col-type :bigserial
-         :primary-key t
-         :reader tweet-id)
+    ((tweet-id :col-type :bigserial
+               :primary-key t
+               :reader tweet-id)
      (user :col-type (:varchar 128)
            :accessor tweet-user)
      (created-at :col-type (:char 8)))
@@ -216,14 +216,14 @@
 
 (subtest "modify :unique-keys"
   (defclass tweets ()
-    ((id :col-type :bigserial
-         :primary-key t
-         :reader tweet-id)
+    ((tweet-id :col-type :bigserial
+               :primary-key t
+               :reader tweet-id)
      (user :col-type (:varchar 128)
            :accessor tweet-user)
      (created-at :col-type (:char 8)))
     (:metaclass dao-table-class)
-    (:unique-keys (id user created-at)))
+    (:unique-keys (tweet-id user created-at)))
 
   (destructuring-bind (add-columns
                        drop-columns
@@ -235,7 +235,7 @@
     (is drop-columns nil)
     (is change-columns nil)
     (is (length add-indices) 1)
-    (like (sxql:yield (first add-indices)) "^CREATE UNIQUE INDEX [^ ]+ ON tweets \\(created_at, id, user\\)$")
+    (like (sxql:yield (first add-indices)) "^CREATE UNIQUE INDEX [^ ]+ ON tweets \\(created_at, tweet_id, user\\)$")
     (is (length drop-indices) 1)
     (like (sxql:yield (first drop-indices)) "^DROP INDEX [^ ]+$"))
 
@@ -247,9 +247,9 @@
 
 (subtest "delete :unique-keys and add :keys"
   (defclass tweets ()
-    ((id :col-type :bigserial
-         :primary-key t
-         :reader tweet-id)
+    ((tweet-id :col-type :bigserial
+               :primary-key t
+               :reader tweet-id)
      (user :col-type (:varchar 128)
            :accessor tweet-user)
      (created-at :col-type (:char 8)))

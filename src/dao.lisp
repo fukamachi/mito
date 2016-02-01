@@ -5,7 +5,7 @@
                 #:dao-class
                 #:dao-table-class
 
-                #:getoid
+                #:object-id
                 #:dao-synced
 
                 #:inflate
@@ -24,7 +24,7 @@
            #:dao-table-class
            #:dao-table-column-class
 
-           #:getoid
+           #:object-id
            #:dao-synced
 
            #:inflate

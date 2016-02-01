@@ -17,7 +17,7 @@
   (:export #:dao-class
            #:dao-table-class
 
-           #:getoid
+           #:object-id
            #:dao-synced
 
            #:inflate
@@ -37,7 +37,7 @@
   'dao-table-column-class)
 
 (defparameter *oid-slot-definition*
-  '(:name %oid :col-type :bigserial :primary-key t :readers (getoid)))
+  '(:name id :col-type :bigserial :primary-key t :readers (object-id)))
 
 (declaim (ftype (function (t) *) dao-synced))
 (declaim (ftype (function (t t) *) (setf dao-synced)))
@@ -142,7 +142,7 @@
   (if (or (not (initargs-enables-auto-pk initargs))
           (initargs-contains-primary-key initargs))
       (setf (getf initargs :direct-slots)
-            (remove '%oid (getf initargs :direct-slots)
+            (remove 'id (getf initargs :direct-slots)
                     :key #'car
                     :test #'eq))
       (push *oid-slot-definition* (getf initargs :direct-slots)))
