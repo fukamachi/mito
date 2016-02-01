@@ -2,7 +2,6 @@
 (defpackage mito.db.postgres
   (:use #:cl
         #:sxql
-        #:split-sequence
         #:mito.util)
   (:import-from #:dbi
                 #:prepare
@@ -27,6 +26,11 @@
           :|last_insert_id|
           0)))
 
+(defun sequence-name-to-column-name (seq-name)
+  (let ((pos-a (position #\_ seq-name))
+        (pos-b (position #\_ seq-name :from-end t)))
+    (subseq seq-name (1+ pos-a) pos-b)))
+
 (defun get-serial-keys (conn table-name)
   (let ((query
           (dbi:execute
@@ -35,9 +39,7 @@
                                 table-name)))))
     (loop for row = (dbi:fetch query)
           while row
-          collect (second
-                   (split-sequence #\_ (getf row :|relname|)
-                                   :count 2)))))
+          collect (sequence-name-to-column-name (getf row :|relname|)))))
 
 (defun column-definitions (conn table-name)
   (let* ((serial-keys (get-serial-keys conn table-name))
