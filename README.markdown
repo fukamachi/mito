@@ -14,13 +14,21 @@ Mito is yet another object relational mapper and it aims to be a successor of [I
 ## Usage
 
 ```common-lisp
+(defclass user ()
+  ((name :col-type (:varchar 64)
+         :initarg :name
+         :accessor user-name)
+   (email :col-type (or (:varchar 128) :null)
+          :initarg :email
+          :accessor user-email))
+  (:metaclass dao-table-class))
+
 (defclass tweet ()
-  ((id :col-type :serial
-       :primary-key t
-       :reader tweet-id)
-   (status :col-type :text
+  ((status :col-type :text
+           :initarg :status
            :accessor tweet-status)
-   (user :col-type (:varchar 64)
+   (user :col-type user
+         :initarg :user
          :accessor tweet-user))
   (:metaclass dao-table-class))
 ```

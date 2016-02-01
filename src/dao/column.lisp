@@ -4,6 +4,7 @@
         #:mito.util)
   (:import-from #:mito.class.column
                 #:table-column-class
+                #:table-column-type
                 #:table-column-info)
   (:export #:dao-table-column-class
            #:dao-table-column-inflate
@@ -35,5 +36,11 @@
             (rel-column-info (table-column-info (dao-table-column-rel-key column) driver-type)))
         (setf (getf (cdr column-info) :type)
               (getf (cdr rel-column-info) :type))
+        (setf (getf (cdr column-info) :not-null)
+              (optima:match (table-column-type column)
+                ((or (list 'or :null _)
+                     (list 'or _ :null))
+                 nil)
+                (otherwise t)))
         column-info)
       (call-next-method)))

@@ -23,9 +23,6 @@
                 :initarg :primary-key
                 :initform nil
                 :accessor primary-key-p)
-   (not-null :type boolean
-             :initarg :not-null
-             :initform nil)
    (ghost :type boolean
           :initarg :ghost
           :initform nil
@@ -39,70 +36,78 @@
     (error 'col-type-required
            :slot class)))
 
+(defun parse-col-type (col-type)
+  (optima:match col-type
+    ((or (list 'or :null x)
+         (list 'or x :null))
+     (values x nil))
+    (otherwise
+     (values col-type t))))
+
 (defgeneric table-column-name (column)
   (:method ((column table-column-class))
     (unlispify (symbol-name-literally (c2mop:slot-definition-name column)))))
 
 (defgeneric table-column-info (column driver-type)
   (:method (column (driver-type (eql :sqlite3)))
-    (let ((col-type (table-column-type column))
-          auto-increment
-          (not-null (slot-value column 'not-null)))
-      (when (or (eq col-type :serial)
-                (eq col-type :bigserial))
-        (setf col-type :integer
-              auto-increment t
-              not-null t))
-      (when auto-increment
-        (unless (primary-key-p column)
-          (warn "SQLite3 supports AUTOINCREMENT for PRIMARY KEYs. Ignoring :auto-increment.")
-          (setf auto-increment nil))
-        (unless (eq col-type :integer)
-          (warn "SQLite3 supports AUTOINCREMENT only for INTEGER columns. Ignoring :auto-increment.")
-          (setf auto-increment nil)))
+    (let (auto-increment)
+      (multiple-value-bind (col-type not-null)
+          (parse-col-type (table-column-type column))
+        (when (or (eq col-type :serial)
+                  (eq col-type :bigserial))
+          (setf col-type :integer
+                auto-increment t
+                not-null t))
+        (when auto-increment
+          (unless (primary-key-p column)
+            (warn "SQLite3 supports AUTOINCREMENT for PRIMARY KEYs. Ignoring :auto-increment.")
+            (setf auto-increment nil))
+          (unless (eq col-type :integer)
+            (warn "SQLite3 supports AUTOINCREMENT only for INTEGER columns. Ignoring :auto-increment.")
+            (setf auto-increment nil)))
 
-      `(,(table-column-name column)
-        :type ,col-type
-        :auto-increment ,auto-increment
-        :primary-key ,(primary-key-p column)
-        :not-null ,(or not-null
-                       (primary-key-p column)))))
+        `(,(table-column-name column)
+          :type ,col-type
+          :auto-increment ,auto-increment
+          :primary-key ,(primary-key-p column)
+          :not-null ,(or not-null
+                         (primary-key-p column))))))
   (:method (column (driver-type (eql :mysql)))
-    (let ((col-type (table-column-type column))
-          auto-increment
-          (not-null (slot-value column 'not-null)))
-      (cond
-        ((eq col-type :bigserial)
-         (setf col-type '(:bigint () :unsigned)
-               auto-increment t
-               not-null t))
-        ((eq col-type :serial)
-         (setf col-type '(:int () :unsigned)
-               auto-increment t
-               not-null t)))
-      `(,(table-column-name column)
-        :type ,col-type
-        :auto-increment ,auto-increment
-        :primary-key ,(primary-key-p column)
-        :not-null ,(or not-null
-                       (primary-key-p column)))))
+    (let (auto-increment)
+      (multiple-value-bind (col-type not-null)
+          (parse-col-type (table-column-type column))
+        (cond
+          ((eq col-type :bigserial)
+           (setf col-type '(:bigint () :unsigned)
+                 auto-increment t
+                 not-null t))
+          ((eq col-type :serial)
+           (setf col-type '(:int () :unsigned)
+                 auto-increment t
+                 not-null t)))
+        `(,(table-column-name column)
+          :type ,col-type
+          :auto-increment ,auto-increment
+          :primary-key ,(primary-key-p column)
+          :not-null ,(or not-null
+                         (primary-key-p column))))))
   (:method (column (driver-type (eql :postgres)))
-    (let ((col-type (table-column-type column))
-          auto-increment
-          (not-null (slot-value column 'not-null)))
-      (cond
-        ((eq col-type :bigserial)
-         (setf auto-increment t
-               not-null t))
-        ((eq col-type :serial)
-         (setf auto-increment t
-               not-null t)))
-      `(,(table-column-name column)
-        :type ,col-type
-        :auto-increment ,auto-increment
-        :primary-key ,(primary-key-p column)
-        :not-null ,(or not-null
-                       (primary-key-p column))))))
+    (let (auto-increment)
+      (multiple-value-bind (col-type not-null)
+          (parse-col-type (table-column-type column))
+        (cond
+          ((eq col-type :bigserial)
+           (setf auto-increment t
+                 not-null t))
+          ((eq col-type :serial)
+           (setf auto-increment t
+                 not-null t)))
+        `(,(table-column-name column)
+          :type ,col-type
+          :auto-increment ,auto-increment
+          :primary-key ,(primary-key-p column)
+          :not-null ,(or not-null
+                         (primary-key-p column)))))))
 
 (defgeneric table-column-info-for-create-table (column driver-type)
   (:documentation "Similar to table-column-info except the return value is for sxql:make-create-table.")

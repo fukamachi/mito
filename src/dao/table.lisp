@@ -54,7 +54,9 @@
     (symbol (typep (find-class col-type nil) 'dao-table-class))
     (cons
      (optima:ematch col-type
-       ((cons (keyword) _)
+       ((or (list 'or :null (or (keyword) (cons (keyword) _)))
+            (list 'or (or (keyword) (cons (keyword) _)) :null)
+            (cons (keyword) _))
         t)))))
 
 (defmethod initialize-instance :after ((class dao-table-column-class) &rest initargs)
@@ -110,7 +112,13 @@
 
   ;; Add relational column slots (ex. user-id)
   (loop for column in (getf initargs :direct-slots)
-        for col-type = (getf column :col-type)
+        for (col-type . not-null) = (let ((col-type (getf column :col-type)))
+                                      (optima:match col-type
+                                        ((or (list 'or :null x)
+                                             (list 'or x :null))
+                                         (cons x t))
+                                        (otherwise
+                                         (cons col-type nil))))
         when (and (symbolp col-type)
                   (not (null col-type))
                   (not (keywordp col-type)))
@@ -118,11 +126,11 @@
                      `(:ghost t ,@(cddr column)))
              (let* ((name (getf column :name))
                     ;; FIXME: find-class returns NIL if the class is this same class
-                    (rel-class (find-class (getf column :col-type)))
+                    (rel-class (find-class col-type))
                     (pk-names (table-primary-key rel-class)))
                (flet ((rel-column-name (pk-name)
                         (intern
-                         (format nil "~A-~A" (getf column :col-type) pk-name)
+                         (format nil "~A-~A" col-type pk-name)
                          (symbol-package name))))
                  (dolist (pk-name pk-names)
                    (let ((rel-column-name (rel-column-name pk-name))
@@ -131,7 +139,7 @@
                              `((:name ,rel-column-name
                                 :initargs (,(intern (symbol-name rel-column-name) :keyword))
                                 ;; Defer retrieving the relational column type until table-column-info
-                                :col-type nil
+                                :col-type ,(getf column :col-type)
                                 :rel-key ,pk
                                 :rel-key-fn
                                 ,(lambda (obj)

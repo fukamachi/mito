@@ -17,9 +17,8 @@
 (defclass tweets ()
   ((id :col-type :serial
        :primary-key t)
-   (status :col-type :text)
-   (user :col-type (:varchar 64)
-         :not-null t))
+   (status :col-type (or :text :null))
+   (user :col-type (:varchar 64)))
   (:metaclass dao-table-class)
   (:unique-keys (id user)))
 
