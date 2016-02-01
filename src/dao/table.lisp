@@ -91,36 +91,46 @@
           do (rplacd (cdr column)
                      `(:ghost t ,@(cddr column)))
              (let* ((name (getf column :name))
+                    ;; FIXME: find-class returns NIL if the class is this same class
                     (rel-class (find-class (getf column :col-type)))
-                    (pk-name (first (table-primary-key rel-class)))
-                    (rel-column-name (intern
-                                      (format nil "~A-~A" (getf column :col-type) pk-name)
-                                      (symbol-package name)))
-                    (pk (get-slot-by-slot-name rel-class pk-name)))
-               (rplacd (last (getf initargs :direct-slots))
-                       `((:name ,rel-column-name
-                          :initargs (,(intern (symbol-name rel-column-name) :keyword))
-                          ;; Defer retrieving the relational column type until table-column-info
-                          :col-type nil
-                          :rel-key ,pk
-                          :rel-key-fn
-                          ,(lambda (obj)
-                             (and (slot-boundp obj name)
-                                  (slot-value (slot-value obj name) pk-name))))))
+                    (pk-names (table-primary-key rel-class)))
+               (flet ((rel-column-name (pk-name)
+                        (intern
+                         (format nil "~A-~A" (getf column :col-type) pk-name)
+                         (symbol-package name))))
+                 (dolist (pk-name pk-names)
+                   (let ((rel-column-name (rel-column-name pk-name))
+                         (pk (get-slot-by-slot-name rel-class pk-name)))
+                     (rplacd (last (getf initargs :direct-slots))
+                             `((:name ,rel-column-name
+                                :initargs (,(intern (symbol-name rel-column-name) :keyword))
+                                ;; Defer retrieving the relational column type until table-column-info
+                                :col-type nil
+                                :rel-key ,pk
+                                :rel-key-fn
+                                ,(lambda (obj)
+                                   (and (slot-boundp obj name)
+                                        (slot-value (slot-value obj name) pk-name))))))))
 
-               (dolist (reader (getf column :readers))
-                 (setf (fdefinition reader)
-                       (lambda (object)
-                         (if (slot-boundp object name)
-                             (slot-value object name)
-                             (apply #'make-dao-instance rel-class
-                                    (first
-                                     (mito.db:retrieve-by-sql
-                                      (sxql:select :*
-                                        (sxql:from (sxql:make-sql-symbol (table-name rel-class)))
-                                        (sxql:where (:= (sxql:make-sql-symbol (table-column-name pk))
-                                                        (slot-value object rel-column-name)))
-                                        (sxql:limit 1)))))))))
+                 (dolist (reader (getf column :readers))
+                   (setf (fdefinition reader)
+                         (lambda (object)
+                           (if (slot-boundp object name)
+                               (slot-value object name)
+                               (apply #'make-dao-instance rel-class
+                                      (first
+                                       (mito.db:retrieve-by-sql
+                                        (sxql:select :*
+                                          (sxql:from (sxql:make-sql-symbol (table-name rel-class)))
+                                          (sxql:where
+                                           `(:and
+                                             ,@(mapcar (lambda (pk-name)
+                                                         `(:= ,(sxql:make-sql-symbol
+                                                                (table-column-name
+                                                                 (get-slot-by-slot-name rel-class pk-name)))
+                                                              ,(slot-value object (rel-column-name pk-name))))
+                                                       (table-primary-key rel-class))))
+                                          (sxql:limit 1))))))))))
                (setf (getf column :readers) '())))
 
   (unless (contains-class-or-subclasses 'dao-class direct-superclasses)
