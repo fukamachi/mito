@@ -35,8 +35,7 @@
                 #:migrate-table
                 #:migration-expressions)
   (:import-from #:mito.logger
-                #:enable-sql-logger
-                #:disable-sql-logger
+                #:logger-stream
                 #:with-sql-logging)
   (:import-from #:mito.util
                 #:lispify
@@ -64,8 +63,7 @@
            #:inflate
            #:deflate
 
-           #:enable-sql-logger
-           #:disable-sql-logger
+           #:logger-stream
 
            #:*auto-migration-mode*
            #:migrate-table

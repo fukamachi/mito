@@ -3,11 +3,26 @@
   (:use #:cl)
   (:import-from #:alexandria
                 #:delete-from-plist)
-  (:export #:enable-sql-logger
-           #:disable-sql-logger
+  (:export #:logger-stream
            #:with-sql-logging
            #:trace-sql))
 (in-package :mito.logger)
+
+(defvar *mito-logger-stream* '*standard-output*)
+
+(defun logger-stream ()
+  (etypecase *mito-logger-stream*
+    (symbol (symbol-value *mito-logger-stream*))
+    (stream *mito-logger-stream*)
+    (null (make-broadcast-stream))
+    ((eql t) *standard-output*)))
+
+(defun (setf logger-stream) (stream)
+  (setf *mito-logger-stream* stream))
+
+(defmacro with-sql-logging (&body body)
+  `(let ((*mito-logger-stream* *standard-output*))
+     ,@body))
 
 (defun get-prev-stack ()
   (labels ((stack-call (stack)
@@ -41,21 +56,10 @@
           finally (return (when prev-stack
                             (stack-call prev-stack))))))
 
-(defun enable-sql-logger ()
-  (vom:config :mito.logger :debug))
-
-(defun disable-sql-logger ()
-  (setf vom::*config*
-        (delete-from-plist vom::*config* :mito.logger))
-  (getf vom::*config* t))
-
-(defmacro with-sql-logging (&body body)
-  `(let ((vom::*config* (append '(:mito.logger :debug) vom::*config*)))
-     ,@body))
-
 (defun trace-sql (sql params &optional results)
-  (vom:debug "~A (~{~S~^, ~}) [~D row~:P]~:[~;~:* | ~S~]"
-             sql
-             params
-             (length results)
-             (get-prev-stack)))
+  (format (logger-stream)
+          "~&;; ~A (~{~S~^, ~}) [~D row~:P]~:[~;~:* | ~S~]~%"
+          sql
+          params
+          (length results)
+          (get-prev-stack)))

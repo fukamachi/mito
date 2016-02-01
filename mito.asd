@@ -22,8 +22,7 @@
                :closer-mop
                :dissect
                :alexandria
-               :split-sequence
-               :vom)
+               :split-sequence)
   :components ((:module "src"
                 :components
                 ((:file "mito" :depends-on ("class" "dao" "db" "connection" "migration" "error" "logger" "util"))
