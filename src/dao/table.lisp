@@ -8,6 +8,7 @@
                 #:table-class
                 #:table-name
                 #:table-column-name
+                #:table-column-slots
                 #:table-primary-key
                 #:create-table-sxql)
   (:import-from #:mito.dao.column
@@ -26,6 +27,14 @@
            #:make-dao-instance
            #:table-definition))
 (in-package :mito.dao.table)
+
+(defun get-slot-by-slot-name (class slot-name)
+  (find slot-name
+        (table-column-slots (if (typep class 'symbol)
+                                (find-class class)
+                                class))
+        :test #'eq
+        :key #'c2mop:slot-definition-name))
 
 (defclass dao-class () ())
 
@@ -66,7 +75,7 @@
                   (loop for (k v) on initargs by #'cddr
                         for column = (find-if (lambda (initargs)
                                                 (find k initargs :test #'eq))
-                                              (c2mop:class-direct-slots class)
+                                              (table-column-slots class)
                                               :key #'c2mop:slot-definition-initargs)
                         when column
                           append (list k

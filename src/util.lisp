@@ -7,8 +7,7 @@
            #:unlispify
            #:symbol-name-literally
            #:class-inherit-p
-           #:contains-class-or-subclasses
-           #:get-slot-by-slot-name))
+           #:contains-class-or-subclasses))
 (in-package :mito.util)
 
 (defun group-by-plist (plists &key key (test #'equal))
@@ -111,11 +110,3 @@ Note this can be applied for a list of string-designators."
                       (or (eq target-class class)
                           (class-inherit-p target-class class)))))
              target-classes)))
-
-(defun get-slot-by-slot-name (class slot-name)
-  (find slot-name
-        (c2mop:class-direct-slots (if (typep class 'symbol)
-                                      (find-class class)
-                                      class))
-        :test #'eq
-        :key #'c2mop:slot-definition-name))

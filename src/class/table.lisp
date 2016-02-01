@@ -12,6 +12,8 @@
                 #:ensure-list)
   (:export #:table-class
            #:table-name
+           #:table-column-slots
+           #:table-direct-column-slots
            #:table-primary-key
            #:table-serial-key
            #:table-indices-info
@@ -82,10 +84,22 @@
           (c2mop:slot-definition-name slot)
           nil))))
 
+(defun table-direct-column-slots (class)
+  (remove-if-not (lambda (slot)
+                   (typep slot 'table-column-class))
+                 (c2mop:class-direct-slots class)))
+
+(defun table-column-slots (class)
+  (nconc (table-direct-column-slots class)
+         (mapcan #'table-column-slots
+                 (remove-if-not (lambda (class)
+                                  (typep class 'table-class))
+                                (c2mop:class-direct-superclasses class)))))
+
 (defgeneric database-column-slots (class)
   (:method ((class table-class))
     (remove-if #'ghost-slot-p
-               (c2mop:class-direct-slots class))))
+               (table-column-slots class))))
 
 (defgeneric table-indices-info (class driver-type)
   (:method (class driver-type)

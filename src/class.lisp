@@ -13,6 +13,8 @@
            #:table-class
            #:table-column-class
            #:table-column-name
+           #:table-column-slots
+           #:table-direct-column-slots
            #:table-name
            #:table-primary-key
            #:table-serial-key
