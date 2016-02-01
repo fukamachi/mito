@@ -21,8 +21,7 @@
                :cl-ppcre
                :closer-mop
                :dissect
-               :alexandria
-               :split-sequence)
+               :alexandria)
   :components ((:module "src"
                 :components
                 ((:file "mito" :depends-on ("class" "dao" "db" "connection" "migration" "error" "logger" "util"))
