@@ -17,6 +17,7 @@
 (defclass table-column-class (c2mop:standard-direct-slot-definition)
   ((col-type :type (or symbol cons null)
              :initarg :col-type
+             :initform nil
              :accessor table-column-type)
    (primary-key :type boolean
                 :initarg :primary-key

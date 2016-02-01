@@ -11,6 +11,7 @@
 (define-condition mito-error (error) ())
 
 (define-condition invalid-definition (mito-error) ())
+
 (define-condition col-type-required (invalid-definition)
   ((slot :initarg :slot))
   (:report (lambda (condition stream)

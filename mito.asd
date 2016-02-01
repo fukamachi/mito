@@ -21,6 +21,7 @@
                :cl-ppcre
                :closer-mop
                :dissect
+               :optima
                :alexandria)
   :components ((:module "src"
                 :components

@@ -1,16 +1,19 @@
 (in-package :cl-user)
 (defpackage mito.dao.table
   (:use #:cl
-        #:mito.util)
+        #:mito.util
+        #:mito.error)
   (:import-from #:mito.connection
                 #:driver-type)
   (:import-from #:mito.class
                 #:table-class
                 #:table-name
                 #:table-column-name
+                #:table-column-type
                 #:table-column-slots
                 #:table-primary-key
-                #:create-table-sxql)
+                #:create-table-sxql
+                #:ghost-slot-p)
   (:import-from #:mito.dao.column
                 #:dao-table-column-class
                 #:dao-table-column-inflate
@@ -44,6 +47,20 @@
 
 (defmethod c2mop:direct-slot-definition-class ((class table-class) &key)
   'dao-table-column-class)
+
+(defun check-col-type (col-type)
+  (etypecase col-type
+    ((or null keyword) t)
+    (symbol (typep (find-class col-type nil) 'dao-table-class))
+    (cons
+     (optima:ematch col-type
+       ((cons (keyword) _)
+        t)))))
+
+(defmethod initialize-instance :after ((class dao-table-column-class) &rest initargs)
+  (declare (ignore initargs))
+  (unless (ghost-slot-p class)
+    (check-col-type (table-column-type class))))
 
 (defparameter *oid-slot-definition*
   '(:name id :col-type :bigserial :primary-key t :readers (object-id)))
