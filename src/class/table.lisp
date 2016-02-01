@@ -114,8 +114,7 @@
          (mapcar (lambda (key)
                    ;; FIXME: it'll raise an error if the index name is too long
                    (list (format nil "unique_~{~A~^_~}"
-                                 (mapcar #'string-downcase
-                                         (ensure-list key)))
+                                 (unlispify-keys (ensure-list key)))
                          :unique-key t
                          :primary-key nil
                          :columns (ensure-list (unlispify-keys key))))
@@ -125,8 +124,8 @@
                   (not (eq driver-type :sqlite3)))
          (mapcar (lambda (key)
                    ;; FIXME: it'll raise an error if the index name is too long
-                   (list (format nil "KEY_~{~A~^_~}"
-                                 (ensure-list key))
+                   (list (format nil "key_~{~A~^_~}"
+                                 (unlispify-keys (ensure-list key)))
                          :unique-key nil
                          :primary-key nil
                          :columns (ensure-list (unlispify-keys key))))
