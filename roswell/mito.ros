@@ -130,8 +130,10 @@ Options:
       (format *error-output* "~&--type is required.~%")
       (uiop:quit -1))
 
-    (when systems
-      (ql:quickload systems))
+    (dolist (system systems)
+      (format t "~&Loading ~S...~%" system)
+      (ql:quickload system :silent t))
+    (write-char #\Newline)
     (handler-case
         (with-connection (handler-case (let ((*standard-output* (make-broadcast-stream)))
                                          (apply #'dbi:connect connect-args))
