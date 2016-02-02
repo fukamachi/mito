@@ -6,3 +6,4 @@
 (in-package :mito.migration)
 
 (cl-reexport:reexport-from :mito.migration.table)
+(cl-reexport:reexport-from :mito.migration.versions)
