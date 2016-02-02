@@ -1,12 +1,3 @@
-#|
-  This file is a part of mito project.
-  Copyright (c) 2015 Eitaro Fukamachi (e.arrows@gmail.com)
-|#
-
-#|
-  Author: Eitaro Fukamachi (e.arrows@gmail.com)
-|#
-
 (in-package :cl-user)
 (defpackage mito-asd
   (:use :cl :asdf))
@@ -16,44 +7,10 @@
   :version "0.1"
   :author "Eitaro Fukamachi"
   :license "LLGPL"
-  :depends-on (:dbi
-               :sxql
-               :cl-ppcre
-               :closer-mop
-               :dissect
-               :optima
-               :alexandria)
-  :components ((:module "src"
-                :components
-                ((:file "mito" :depends-on ("class" "dao" "db" "connection" "migration" "error" "logger" "util"))
-                 (:file "dao" :depends-on ("dao-components"))
-                 (:module "dao-components"
-                  :pathname "dao"
-                  :depends-on ("class" "connection" "db")
-                  :components
-                  ((:file "table" :depends-on ("column"))
-                   (:file "column")))
-                 (:file "class" :depends-on ("class-components"))
-                 (:module "class-components"
-                  :pathname "class"
-                  :depends-on ("error" "util")
-                  :components
-                  ((:file "table" :depends-on ("column"))
-                   (:file "column")))
-                 (:file "connection" :depends-on ("error"))
-                 (:file "migration" :depends-on ("connection" "class" "db" "dao" "type" "logger" "util"))
-                 (:file "type" :depends-on ("db"))
-                 (:file "db" :depends-on ("db-drivers" "connection" "class" "util"))
-                 (:module "db-drivers"
-                  :pathname "db"
-                  :depends-on ("logger" "util")
-                  :components
-                  ((:file "mysql")
-                   (:file "postgres")
-                   (:file "sqlite3")))
-                 (:file "logger")
-                 (:file "error")
-                 (:file "util"))))
+  :depends-on (:mito-core
+               :mito-migration
+               :cl-reexport)
+  :components ((:file "src/mito"))
   :description "Abstraction layer for DB schema"
   :long-description
   #.(with-open-file (stream (merge-pathnames
