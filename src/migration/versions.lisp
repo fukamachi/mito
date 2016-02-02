@@ -18,7 +18,8 @@
                 #:retrieve-by-sql
                 #:table-exists-p)
   (:export #:all-migration-expressions
-           #:current-migration-version))
+           #:current-migration-version
+           #:update-migration-version))
 (in-package :mito.migration.versions)
 
 (defun initialize-migrations-table ()
@@ -43,9 +44,14 @@
 
 (defun current-migration-version ()
   (initialize-migrations-table)
-  (getf (retrieve-by-sql
-         (sxql:select :version
-           (sxql:from :schema_migrations)
-           (sxql:order-by (:desc :version))
-           (sxql:limit 1)))
+  (getf (first (retrieve-by-sql
+                (sxql:select :version
+                  (sxql:from :schema_migrations)
+                  (sxql:order-by (:desc :version))
+                  (sxql:limit 1))))
         :version))
+
+(defun update-migration-version (version)
+  (execute-sql
+   (sxql:insert-into :schema_migrations
+     (sxql:set= :version version))))

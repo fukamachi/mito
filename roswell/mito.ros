@@ -1,0 +1,171 @@
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+(ql:quickload '(:mito-migration :dbi :sxql :alexandria) :silent t)
+
+(defpackage :ros.script.roswell/mito.3663426439
+  (:use #:cl
+        #:mito.migration)
+  (:import-from #:mito.core
+                #:*connection*
+                #:with-connection
+                #:logger-stream
+                #:execute-sql)
+  (:import-from #:dbi
+                #:with-transaction
+                #:connect)
+  (:import-from #:sxql
+                #:yield)
+  (:import-from #:alexandria
+                #:nconcf))
+(in-package :ros.script.roswell/mito.3663426439)
+
+(defparameter *default-migration-directory*
+  (merge-pathnames #P"db/migrations/" *default-pathname-defaults*))
+
+(defmacro case-equal (keyform &body cases)
+  (let ((g-keyform (gensym "KEYFORM")))
+    `(let ((,g-keyform ,keyform))
+       (cond
+         ,@(loop for (case . body) in cases
+                 if (eq case 'otherwise)
+                   collect `(t ,@body)
+                 else
+                   collect `((find ,g-keyform ',(if (listp case)
+                                                    case
+                                                    (list case))
+                                   :test #'equal)
+                             ,@body))))))
+
+(defun parse-args (args)
+  (let ((connect-args '())
+        driver-type
+        (directory *default-migration-directory*)
+        (systems '()))
+    (loop for option = (pop args)
+          while option
+          do (case-equal option
+               (("-t" "--type")
+                (let ((driver (pop args)))
+                  (setf driver-type
+                        (if driver
+                            (intern (string-upcase driver) :keyword)
+                            nil))))
+               (("-d" "--database")
+                (nconcf connect-args (list :database-name (pop args))))
+               (("-u" "--username")
+                (nconcf connect-args (list :username (pop args))))
+               (("-p" "--password")
+                (nconcf connect-args (list :password (pop args))))
+               (("-s" "--system")
+                (push (pop args) systems))
+               (("-D" "--directory")
+                (setf directory (uiop:ensure-directory-pathname (pop args))))))
+    (values (cons driver-type connect-args) directory (nreverse systems))))
+
+(defun print-usage ()
+  (format *error-output* "~&Usage: mito command [option...]
+
+Commands:
+    generate-migrations
+    migrate
+
+Options:
+    -t, --type DRIVER-TYPE          DBI driver type (one of \"mysql\", \"postgres\" or \"sqlite3\")
+    -d, --database DATABASE-NAME    Database name to use
+    -u, --username USERNAME         Username for RDBMS
+    -p, --password PASSWORD         Password for RDBMS
+    -s, --system SYSTEM             ASDF system to load (several -s's allowed)
+    -D, --directory DIRECTORY       Directory path to keep migration SQL files (default: \"~A\")
+"
+          *default-migration-directory*))
+
+(defun generate-version ()
+  (multiple-value-bind (sec min hour day mon year)
+      (decode-universal-time (get-universal-time) 0)
+    (format nil "~4,'0D~2,'0D~2,'0D~2,'0D~2,'0D~2,'0D"
+            year mon day hour min sec)))
+
+(defun read-one-sql (stream)
+  (let ((sql
+          (string-trim '(#\Space #\Tab #\Newline #\LineFeed)
+                       (with-output-to-string (s)
+                         (loop for char = (read-char stream nil nil)
+                               while char
+                               until (char= char #\;)
+                               do (write-char char s))))))
+    (if (= (length sql) 0)
+        nil
+        sql)))
+
+(defun migration-file-version (file)
+  (let* ((name (pathname-name file))
+         (pos (position #\_ name))
+         (version
+           (if pos
+               (subseq name 0 pos)
+               name)))
+    (when (and (= (length version) 14)
+               (every #'digit-char-p version))
+      version)))
+
+(defun main (&optional command &rest argv)
+  (unless (find command '("generate-migrations" "migrate") :test #'string=)
+    (print-usage)
+    (uiop:quit -1))
+
+  (multiple-value-bind (connect-args directory systems)
+      (parse-args argv)
+    (when systems
+      (ql:quickload systems))
+    (with-connection (handler-case (let ((*standard-output* (make-broadcast-stream)))
+                                     (apply #'dbi:connect connect-args))
+                       (error (e)
+                         (format *error-output* "~&Failed to connect to the database:~%  ~A~%" e)
+                         (uiop:quit -1)))
+      (setf (logger-stream) nil)
+      (case-equal command
+        ("generate-migrations"
+         (let ((destination (make-pathname :name (generate-version)
+                                           :type "sql"
+                                           :defaults directory))
+               (expressions (mito.migration:all-migration-expressions)))
+           (if expressions
+               (progn
+                 (ensure-directories-exist directory)
+                 (with-open-file (out destination
+                                      :direction :output
+                                      :if-does-not-exist :create)
+                   (map nil
+                        (lambda (ex)
+                          (format out "~&~A;~%" (sxql:yield ex)))
+                        expressions))
+                 (format t "~&Successfully generated: ~A~%" destination))
+               (format t "~&Nothing to migrate.~%"))))
+        ("migrate"
+         (let* ((current-version (mito.migration:current-migration-version))
+                (sql-files (sort (uiop:directory-files directory "*.sql")
+                                 #'string<
+                                 :key #'pathname-name))
+                (sql-files
+                  (if current-version
+                      (remove-if-not (lambda (version)
+                                       (and version
+                                            (string< current-version version)))
+                                     sql-files
+                                     :key #'migration-file-version)
+                      sql-files)))
+           (if sql-files
+               (dbi:with-transaction *connection*
+                 (dolist (file sql-files)
+                   (format t "~&Applying '~A'...~%" file)
+                   (with-open-file (in file)
+                     (loop for sql = (read-one-sql in)
+                           while sql
+                           do (format t "~&-> ~A;~%" sql)
+                              (execute-sql sql))))
+                 (let ((version (migration-file-version (first (last sql-files)))))
+                   (mito.migration:update-migration-version version)
+                   (format t "~&Successfully updated to the version ~S.~%" version)))
+               (format t "~&Version ~S is up to date.~%" current-version))))))))
