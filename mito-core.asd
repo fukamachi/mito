@@ -13,6 +13,7 @@
                :closer-mop
                :dissect
                :optima
+               :cl-reexport
                :alexandria)
   :components ((:file "src/core" :depends-on ("core-components"))
                (:module "core-components"
@@ -21,7 +22,7 @@
                 ((:file "dao" :depends-on ("dao-components"))
                  (:module "dao-components"
                   :pathname "dao"
-                  :depends-on ("class" "connection" "db")
+                  :depends-on ("connection" "class" "db" "logger" "util")
                   :components
                   ((:file "table" :depends-on ("column"))
                    (:file "column")))
