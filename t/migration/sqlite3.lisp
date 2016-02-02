@@ -29,7 +29,7 @@
     (:metaclass dao-table-class))
   (execute-sql (table-definition 'tweets))
 
-  (is (mito.migration::migration-expressions (find-class 'tweets) :sqlite3)
+  (is (migration-expressions (find-class 'tweets) :sqlite3)
       nil
       "No migration at first")
 
@@ -39,7 +39,7 @@
     (:metaclass dao-table-class)
     (:table-name "tweets"))
 
-  (is (mito.migration::migration-expressions (find-class 'tweets) :sqlite3)
+  (is (migration-expressions (find-class 'tweets) :sqlite3)
       nil
       "No migration at first"))
 
@@ -50,7 +50,7 @@
     (:metaclass dao-table-class)
     (:auto-pk nil))
 
-  (ok (mito.migration::migration-expressions (find-class 'tweets) :sqlite3)))
+  (ok (migration-expressions (find-class 'tweets) :sqlite3)))
 
 (subtest "redefinition (with explicit primary key)"
   (defclass tweets ()
@@ -63,11 +63,11 @@
            :accessor tweet-user))
     (:metaclass dao-table-class))
 
-  (ok (mito.migration::migration-expressions (find-class 'tweets) :sqlite3))
+  (ok (migration-expressions (find-class 'tweets) :sqlite3))
 
   (migrate-table (find-class 'tweets))
 
-  (is (mito.migration::migration-expressions (find-class 'tweets) :sqlite3)
+  (is (migration-expressions (find-class 'tweets) :sqlite3)
       nil
       "No migration after migrating"))
 
@@ -81,11 +81,11 @@
      (created-at :col-type (:char 8)))
     (:metaclass dao-table-class))
 
-  (ok (mito.migration::migration-expressions (find-class 'tweets) :sqlite3))
+  (ok (migration-expressions (find-class 'tweets) :sqlite3))
 
   (migrate-table (find-class 'tweets))
 
-  (is (mito.migration::migration-expressions (find-class 'tweets) :sqlite3)
+  (is (migration-expressions (find-class 'tweets) :sqlite3)
       nil
       "No migration after migrating"))
 
@@ -99,11 +99,11 @@
      (created-at :col-type (:char 8)))
     (:metaclass dao-table-class))
 
-  (ok (mito.migration::migration-expressions (find-class 'tweets) :sqlite3))
+  (ok (migration-expressions (find-class 'tweets) :sqlite3))
 
   (migrate-table (find-class 'tweets))
 
-  (is (mito.migration::migration-expressions (find-class 'tweets) :sqlite3)
+  (is (migration-expressions (find-class 'tweets) :sqlite3)
       nil
       "No migration after migrating"))
 
@@ -117,7 +117,7 @@
      (created-at :col-type (:char 8)))
     (:metaclass dao-table-class))
 
-  (is (mito.migration::migration-expressions (find-class 'tweets) :sqlite3)
+  (is (migration-expressions (find-class 'tweets) :sqlite3)
       nil
       "BIGSERIAL is same as SERIAL on SQLite3"))
 
@@ -132,11 +132,11 @@
     (:metaclass dao-table-class)
     (:unique-keys (user created-at)))
 
-  (ok (mito.migration::migration-expressions (find-class 'tweets) :sqlite3))
+  (ok (migration-expressions (find-class 'tweets) :sqlite3))
 
   (migrate-table (find-class 'tweets))
 
-  (is (mito.migration::migration-expressions (find-class 'tweets) :sqlite3)
+  (is (migration-expressions (find-class 'tweets) :sqlite3)
       nil
       "No migration after migrating"))
 
@@ -151,11 +151,11 @@
     (:metaclass dao-table-class)
     (:unique-keys (id user created-at)))
 
-  (ok (mito.migration::migration-expressions (find-class 'tweets) :sqlite3))
+  (ok (migration-expressions (find-class 'tweets) :sqlite3))
 
   (migrate-table (find-class 'tweets))
 
-  (is (mito.migration::migration-expressions (find-class 'tweets) :sqlite3)
+  (is (migration-expressions (find-class 'tweets) :sqlite3)
       nil
       "No migration after migrating"))
 
@@ -170,11 +170,11 @@
     (:metaclass dao-table-class)
     (:keys (user created-at)))
 
-  (ok (mito.migration::migration-expressions (find-class 'tweets) :sqlite3))
+  (ok (migration-expressions (find-class 'tweets) :sqlite3))
 
   (migrate-table (find-class 'tweets))
 
-  (is (mito.migration::migration-expressions (find-class 'tweets) :sqlite3)
+  (is (migration-expressions (find-class 'tweets) :sqlite3)
       nil
       "No migration after migrating"))
 

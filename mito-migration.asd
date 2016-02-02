@@ -9,5 +9,11 @@
   :license "LLGPL"
   :depends-on (:mito-core
                :sxql
+               :cl-reexport
                :alexandria)
-  :components ((:file "src/migration")))
+  :components ((:file "src/migration" :depends-on ("migration-components"))
+               (:module "migration-components"
+                :pathname "src/migration"
+                :components
+                ((:file "table" :depends-on ("sxql"))
+                 (:file "sxql")))))
