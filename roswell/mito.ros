@@ -42,7 +42,8 @@ exec ros -Q -- $0 "$@"
   (let ((connect-args '())
         driver-type
         (directory *default-migration-directory*)
-        (systems '()))
+        (systems '())
+        dry-run)
     (loop for option = (pop args)
           while option
           do (case-equal option
@@ -61,8 +62,10 @@ exec ros -Q -- $0 "$@"
                (("-s" "--system")
                 (push (pop args) systems))
                (("-D" "--directory")
-                (setf directory (uiop:ensure-directory-pathname (pop args))))))
-    (values (cons driver-type connect-args) directory (nreverse systems))))
+                (setf directory (uiop:ensure-directory-pathname (pop args))))
+               ("--dry-run"
+                (setf dry-run t))))
+    (values (cons driver-type connect-args) directory (nreverse systems) dry-run)))
 
 (defun print-usage ()
   (format *error-output* "~&Usage: mito command [option...]
@@ -78,6 +81,7 @@ Options:
     -p, --password PASSWORD         Password for RDBMS
     -s, --system SYSTEM             ASDF system to load (several -s's allowed)
     -D, --directory DIRECTORY       Directory path to keep migration SQL files (default: \"~A\")
+    --dry-run                       List SQL expressions to migrate
 "
           *default-migration-directory*))
 
@@ -115,7 +119,7 @@ Options:
     (print-usage)
     (uiop:quit -1))
 
-  (multiple-value-bind (connect-args directory systems)
+  (multiple-value-bind (connect-args directory systems dry-run)
       (parse-args argv)
     (when systems
       (ql:quickload systems))
@@ -133,14 +137,15 @@ Options:
                (expressions (mito.migration:all-migration-expressions)))
            (if expressions
                (progn
-                 (ensure-directories-exist directory)
-                 (with-open-file (out destination
-                                      :direction :output
-                                      :if-does-not-exist :create)
-                   (map nil
-                        (lambda (ex)
-                          (format out "~&~A;~%" (sxql:yield ex)))
-                        expressions))
+                 (unless dry-run
+                   (ensure-directories-exist directory)
+                   (with-open-file (out destination
+                                        :direction :output
+                                        :if-does-not-exist :create)
+                     (map nil
+                          (lambda (ex)
+                            (format out "~&~A;~%" (sxql:yield ex)))
+                          expressions)))
                  (format t "~&Successfully generated: ~A~%" destination))
                (format t "~&Nothing to migrate.~%"))))
         ("migrate"
@@ -164,7 +169,8 @@ Options:
                      (loop for sql = (read-one-sql in)
                            while sql
                            do (format t "~&-> ~A;~%" sql)
-                              (execute-sql sql))))
+                              (unless dry-run
+                                (execute-sql sql)))))
                  (let ((version (migration-file-version (first (last sql-files)))))
                    (mito.migration:update-migration-version version)
                    (format t "~&Successfully updated to the version ~S.~%" version)))
