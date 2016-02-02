@@ -36,7 +36,8 @@
                #:ensure-table-exists))))
 (in-package :mito.dao)
 
-(cl-reexport:reexport-from :mito.dao.table)
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (cl-reexport:reexport-from :mito.dao.table))
 
 (defun make-set-clause (obj)
   (apply #'sxql:make-clause :set=
