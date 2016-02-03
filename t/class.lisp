@@ -32,7 +32,7 @@
                      (user :col-type :integer)
                      (created-at :col-type :datetime))
                     (:metaclass table-class)
-                    (:primary-key user created-at))
+                    (:primary-keys user created-at))
                   "CREATE TABLE tweet (status TEXT NOT NULL, user INTEGER NOT NULL, created_at DATETIME NOT NULL, PRIMARY KEY (user, created_at))"
                   "PRIMARY KEY")
   (is-table-class :mysql
@@ -85,7 +85,7 @@
                      (user :col-type :integer)
                      (created-at :col-type :datetime))
                     (:metaclass table-class)
-                    (:primary-key user created-at))
+                    (:primary-keys user created-at))
                   "CREATE TABLE tweet (status TEXT NOT NULL, user INTEGER NOT NULL, created_at DATETIME NOT NULL, PRIMARY KEY (user, created_at))"
                   "PRIMARY KEY")
   (is-table-class :postgres
@@ -139,7 +139,7 @@
                      (user :col-type :integer)
                      (created-at :col-type :datetime))
                     (:metaclass table-class)
-                    (:primary-key user created-at))
+                    (:primary-keys user created-at))
                   "CREATE TABLE tweet (status TEXT NOT NULL, user INTEGER NOT NULL, created_at DATETIME NOT NULL, PRIMARY KEY (user, created_at))"
                   "PRIMARY KEY")
   (is-table-class :sqlite3
