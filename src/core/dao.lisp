@@ -92,7 +92,8 @@
          (sxql:where
           `(:and ,@(mapcar (lambda (key)
                              `(:= ,(unlispify key) ,(slot-value obj key)))
-                           primary-keys))))))))
+                           primary-keys))))))
+    (values)))
 
 (defgeneric delete-dao (obj)
   (:method ((obj dao-class))
@@ -108,7 +109,8 @@
               `(:and ,@(mapcar (lambda (key)
                                  `(:= ,(unlispify key) ,(slot-value obj key)))
                                primary-keys)))))
-        (setf (dao-synced obj) nil)))))
+        (setf (dao-synced obj) nil)))
+    (values)))
 
 (defgeneric save-dao (obj)
   (:method ((obj dao-class))
@@ -117,7 +119,7 @@
         (insert-dao obj))))
 
 (defgeneric select-dao (class &rest expressions)
-  (:method :before (class &rest expressions)
+  (:method :before ((class dao-table-class) &rest expressions)
     (declare (ignore class expressions))
     (check-connected))
   (:method ((class symbol) &rest expressions)
@@ -134,9 +136,11 @@
               (retrieve-by-sql select-sql)))))
 
 (defgeneric find-dao (class pk-values)
-  (:method :before (class pk-values)
+  (:method :before ((class dao-table-class) pk-values)
     (declare (ignore class pk-values))
     (check-connected))
+  (:method ((class symbol) pk-values)
+    (find-dao (find-class class) pk-values))
   (:method ((class dao-table-class) pk-values)
     (assert (not (null pk-values)))
     (let ((primary-keys (table-primary-keys class)))
