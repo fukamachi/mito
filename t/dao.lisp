@@ -34,7 +34,8 @@
                   (defclass tweet ()
                     ((status :col-type :text)
                      (user :col-type :integer))
-                    (:metaclass dao-table-class))
+                    (:metaclass dao-table-class)
+                    (:record-timestamps nil))
                   "CREATE TABLE tweet (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT NOT NULL, user INTEGER NOT NULL)"
                   "auto-pk")
 
@@ -44,7 +45,8 @@
                          :primary-key t)
                      (status :col-type :text)
                      (user :col-type :integer))
-                    (:metaclass dao-table-class))
+                    (:metaclass dao-table-class)
+                    (:record-timestamps nil))
                   "CREATE TABLE tweet (id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT NOT NULL, user INTEGER NOT NULL)"
                   "add original PK")
 
@@ -52,7 +54,8 @@
                   (defclass tweet ()
                     ((status :col-type :text)
                      (user :col-type :integer))
-                    (:metaclass dao-table-class))
+                    (:metaclass dao-table-class)
+                    (:record-timestamps nil))
                   "CREATE TABLE tweet (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT NOT NULL, user INTEGER NOT NULL)"
                   "redefinition w/o PK")
 
@@ -61,7 +64,8 @@
                     ((status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass dao-table-class)
-                    (:auto-pk nil))
+                    (:auto-pk nil)
+                    (:record-timestamps nil))
                   "CREATE TABLE tweet (status TEXT NOT NULL, user INTEGER NOT NULL)"
                   "auto-pk is nil"))
 
@@ -77,7 +81,8 @@
          :primary-key t)
      (name :col-type :text
            :initarg :name))
-    (:metaclass dao-table-class))
+    (:metaclass dao-table-class)
+    (:record-timestamps nil))
 
   (defclass tweet ()
     ((status :col-type :text
@@ -86,7 +91,8 @@
      (user :col-type user
            :initarg :user
            :accessor tweet-user))
-    (:metaclass dao-table-class))
+    (:metaclass dao-table-class)
+    (:record-timestamps nil))
 
   (is (sxql:yield (table-definition 'tweet))
       "CREATE TABLE tweet (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT NOT NULL, user_id INT UNSIGNED NOT NULL)")

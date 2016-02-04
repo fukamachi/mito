@@ -77,8 +77,7 @@
          :primary-key t
          :reader tweet-id)
      (user :col-type (:varchar 64)
-           :accessor tweet-user)
-     (created-at :col-type (:char 8)))
+           :accessor tweet-user))
     (:metaclass dao-table-class))
 
   (ok (migration-expressions (find-class 'tweets) :sqlite3))
@@ -95,8 +94,7 @@
          :primary-key t
          :reader tweet-id)
      (user :col-type (:varchar 128)
-           :accessor tweet-user)
-     (created-at :col-type (:char 8)))
+           :accessor tweet-user))
     (:metaclass dao-table-class))
 
   (ok (migration-expressions (find-class 'tweets) :sqlite3))
@@ -113,8 +111,7 @@
          :primary-key t
          :reader tweet-id)
      (user :col-type (:varchar 128)
-           :accessor tweet-user)
-     (created-at :col-type (:char 8)))
+           :accessor tweet-user))
     (:metaclass dao-table-class))
 
   (is (migration-expressions (find-class 'tweets) :sqlite3)
@@ -127,10 +124,9 @@
          :primary-key t
          :reader tweet-id)
      (user :col-type (:varchar 128)
-           :accessor tweet-user)
-     (created-at :col-type (:char 8)))
+           :accessor tweet-user))
     (:metaclass dao-table-class)
-    (:unique-keys (user created-at)))
+    (:unique-keys user))
 
   (ok (migration-expressions (find-class 'tweets) :sqlite3))
 
@@ -146,10 +142,9 @@
          :primary-key t
          :reader tweet-id)
      (user :col-type (:varchar 128)
-           :accessor tweet-user)
-     (created-at :col-type (:char 8)))
+           :accessor tweet-user))
     (:metaclass dao-table-class)
-    (:unique-keys (id user created-at)))
+    (:unique-keys (id user)))
 
   (ok (migration-expressions (find-class 'tweets) :sqlite3))
 
@@ -165,10 +160,9 @@
          :primary-key t
          :reader tweet-id)
      (user :col-type (:varchar 128)
-           :accessor tweet-user)
-     (created-at :col-type (:char 8)))
+           :accessor tweet-user))
     (:metaclass dao-table-class)
-    (:keys (user created-at)))
+    (:keys user))
 
   (ok (migration-expressions (find-class 'tweets) :sqlite3))
 

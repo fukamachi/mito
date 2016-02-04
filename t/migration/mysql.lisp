@@ -19,7 +19,8 @@
   (defclass tweets ()
     ((user :col-type (:varchar 128)
            :accessor tweet-user))
-    (:metaclass dao-table-class))
+    (:metaclass dao-table-class)
+    (:record-timestamps nil))
   (execute-sql (table-definition 'tweets))
 
   (is (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
@@ -30,7 +31,8 @@
     ((user :col-type (:varchar 128)
            :accessor tweet-user))
     (:metaclass dao-table-class)
-    (:table-name "tweets"))
+    (:table-name "tweets")
+    (:record-timestamps nil))
 
   (is (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
       '(nil nil nil nil nil)
@@ -41,7 +43,8 @@
     ((user :col-type (:varchar 128)
            :accessor tweet-user))
     (:metaclass dao-table-class)
-    (:auto-pk nil))
+    (:auto-pk nil)
+    (:record-timestamps nil))
 
   (destructuring-bind (add-columns
                        drop-columns
@@ -69,7 +72,8 @@
              :accessor tweet-status)
      (user :col-type (:varchar 128)
            :accessor tweet-user))
-    (:metaclass dao-table-class))
+    (:metaclass dao-table-class)
+    (:record-timestamps nil))
 
   (destructuring-bind (add-columns
                        drop-columns
@@ -102,7 +106,8 @@
      (user :col-type (:varchar 64)
            :accessor tweet-user)
      (created-at :col-type (:char 8)))
-    (:metaclass dao-table-class))
+    (:metaclass dao-table-class)
+    (:record-timestamps nil))
 
   (destructuring-bind (add-columns
                        drop-columns
@@ -132,7 +137,8 @@
      (user :col-type (:varchar 128)
            :accessor tweet-user)
      (created-at :col-type (:char 8)))
-    (:metaclass dao-table-class))
+    (:metaclass dao-table-class)
+    (:record-timestamps nil))
 
   (destructuring-bind (add-columns
                        drop-columns
@@ -161,7 +167,8 @@
      (user :col-type (:varchar 128)
            :accessor tweet-user)
      (created-at :col-type (:char 8)))
-    (:metaclass dao-table-class))
+    (:metaclass dao-table-class)
+    (:record-timestamps nil))
 
   (destructuring-bind (add-columns
                        drop-columns
@@ -192,7 +199,8 @@
            :accessor tweet-user)
      (created-at :col-type (:char 8)))
     (:metaclass dao-table-class)
-    (:unique-keys (user created-at)))
+    (:unique-keys (user created-at))
+    (:record-timestamps nil))
 
   (destructuring-bind (add-columns
                        drop-columns
@@ -222,7 +230,8 @@
            :accessor tweet-user)
      (created-at :col-type (:char 8)))
     (:metaclass dao-table-class)
-    (:unique-keys (tweet-id user created-at)))
+    (:unique-keys (tweet-id user created-at))
+    (:record-timestamps nil))
 
   (destructuring-bind (add-columns
                        drop-columns
@@ -253,7 +262,8 @@
            :accessor tweet-user)
      (created-at :col-type (:char 8)))
     (:metaclass dao-table-class)
-    (:keys (user created-at)))
+    (:keys (user created-at))
+    (:record-timestamps nil))
 
   (destructuring-bind (add-columns
                        drop-columns

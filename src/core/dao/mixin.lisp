@@ -28,10 +28,10 @@
   (:metaclass dao-table-mixin))
 
 (defclass record-timestamps-mixin ()
-  ((created-at :col-type (or :datetime :null)
+  ((created-at :col-type (or :timestamp :null)
                :initarg :created-at
                :accessor object-created-at)
-   (updated-at :col-type (or :datetime :null)
+   (updated-at :col-type (or :timestamp :null)
                :initarg :updated-at
                :accessor object-updated-at))
   (:metaclass dao-table-mixin))

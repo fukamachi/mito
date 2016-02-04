@@ -48,7 +48,9 @@
 
 (defclass dao-table-class (table-class)
   ((auto-pk :initarg :auto-pk
-            :initform '(t))))
+            :initform '(t))
+   (record-timestamps :initarg :record-timestamps
+                      :initform '(t))))
 
 (defmethod c2mop:direct-slot-definition-class ((class dao-table-class) &key)
   'dao-table-column-class)
@@ -71,6 +73,9 @@
 
 (defun initargs-enables-auto-pk (initargs)
   (first (or (getf initargs :auto-pk) '(t))))
+
+(defun initargs-enables-record-timestamps (initargs)
+  (first (or (getf initargs :record-timestamps) '(t))))
 
 (defun initargs-contains-primary-key (initargs)
   (or (getf initargs :primary-key)
@@ -158,6 +163,10 @@
                                           (sxql:limit 1))))))))))
                (setf (getf column :readers) '())))
 
+  (when (and (initargs-enables-record-timestamps initargs)
+             (not (contains-class-or-subclasses 'record-timestamps-mixin direct-superclasses)))
+    (push (find-class 'record-timestamps-mixin) (getf initargs :direct-superclasses)))
+
   (unless (contains-class-or-subclasses 'dao-class direct-superclasses)
     (push (find-class 'dao-class) (getf initargs :direct-superclasses)))
 
@@ -170,6 +179,11 @@
 
 (defmethod reinitialize-instance :around ((class dao-table-class) &rest initargs
                                                                     &key direct-superclasses &allow-other-keys)
+
+  (when (and (initargs-enables-record-timestamps initargs)
+             (not (contains-class-or-subclasses 'record-timestamps-mixin direct-superclasses)))
+    (push (find-class 'record-timestamps-mixin) (getf initargs :direct-superclasses)))
+
   (when (and (initargs-enables-auto-pk initargs)
              (not (initargs-contains-primary-key initargs))
              (not (contains-class-or-subclasses 'auto-pk-mixin direct-superclasses)))
