@@ -99,7 +99,7 @@ col-type ::= { keyword |
               (keyword . args) |
               (or keyword :null) |
               (or :null keyword) }
-class-option ::= {:primary-keys symbol*} |
+class-option ::= {:primary-key symbol*} |
                  {:unique-keys {symbol | (symbol*)}*} |
                  {:keys {symbol | (symbol*)}*} |
                  {:table-name table-name}

@@ -82,8 +82,8 @@
 (defgeneric update-dao (obj)
   (:method ((obj dao-class))
     (check-connected)
-    (let ((primary-keys (table-primary-keys (class-of obj))))
-      (unless primary-keys
+    (let ((primary-key (table-primary-key (class-of obj))))
+      (unless primary-key
         (error 'no-primary-keys :table (table-name (class-of obj))))
 
       (execute-sql
@@ -92,14 +92,14 @@
          (sxql:where
           `(:and ,@(mapcar (lambda (key)
                              `(:= ,(unlispify key) ,(slot-value obj key)))
-                           primary-keys))))))
+                           primary-key))))))
     (values)))
 
 (defgeneric delete-dao (obj)
   (:method ((obj dao-class))
     (check-connected)
-    (let ((primary-keys (table-primary-keys (class-of obj))))
-      (unless primary-keys
+    (let ((primary-key (table-primary-key (class-of obj))))
+      (unless primary-key
         (error 'no-primary-keys :table (table-name (class-of obj))))
 
       (prog1
@@ -108,7 +108,7 @@
              (sxql:where
               `(:and ,@(mapcar (lambda (key)
                                  `(:= ,(unlispify key) ,(slot-value obj key)))
-                               primary-keys)))))
+                               primary-key)))))
         (setf (dao-synced obj) nil)))
     (values)))
 
@@ -143,8 +143,8 @@
     (find-dao (find-class class) pk-values))
   (:method ((class dao-table-class) pk-values)
     (assert (not (null pk-values)))
-    (let ((primary-keys (table-primary-keys class)))
-      (unless primary-keys
+    (let ((primary-key (table-primary-key class)))
+      (unless primary-key
         (error 'no-primary-keys :table (table-name class)))
 
       (let ((sql
@@ -152,7 +152,7 @@
                 (sxql:from (sxql:make-sql-symbol (table-name class)))
                 (sxql:where `(:and ,@(mapcar (lambda (key val)
                                                `(:= ,(unlispify key) ,val))
-                                             primary-keys
+                                             primary-key
                                              (ensure-list pk-values))))
                 (sxql:limit 1))))
         (apply #'make-dao-instance class (first (retrieve-by-sql sql)))))))

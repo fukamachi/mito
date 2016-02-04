@@ -11,7 +11,7 @@
                 #:table-column-name
                 #:table-column-type
                 #:table-column-slots
-                #:table-primary-keys
+                #:table-primary-key
                 #:create-table-sxql
                 #:ghost-slot-p)
   (:import-from #:mito.dao.column
@@ -76,7 +76,7 @@
   (first (or (getf initargs :auto-pk) '(t))))
 
 (defun initargs-contains-primary-key (initargs)
-  (or (getf initargs :primary-keys)
+  (or (getf initargs :primary-key)
       (find-if (lambda (slot)
                  (getf slot :primary-key))
                (getf initargs :direct-slots))))
@@ -127,7 +127,7 @@
              (let* ((name (getf column :name))
                     ;; FIXME: find-class returns NIL if the class is this same class
                     (rel-class (find-class col-type))
-                    (pk-names (table-primary-keys rel-class)))
+                    (pk-names (table-primary-key rel-class)))
                (flet ((rel-column-name (pk-name)
                         (intern
                          (format nil "~A-~A" col-type pk-name)
@@ -163,7 +163,7 @@
                                                                 (table-column-name
                                                                  (get-slot-by-slot-name rel-class pk-name)))
                                                               ,(slot-value object (rel-column-name pk-name))))
-                                                       (table-primary-keys rel-class))))
+                                                       (table-primary-key rel-class))))
                                           (sxql:limit 1))))))))))
                (setf (getf column :readers) '())))
 

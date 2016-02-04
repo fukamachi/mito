@@ -16,7 +16,7 @@
            #:table-column-slots
            #:table-direct-column-slots
            #:table-name
-           #:table-primary-keys
+           #:table-primary-key
            #:table-serial-key
            #:database-column-slots
            #:table-column-info
