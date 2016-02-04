@@ -19,7 +19,8 @@
                 #:dao-table-column-inflate
                 #:dao-table-column-deflate)
   (:import-from #:mito.dao.mixin
-                #:auto-pk-mixin)
+                #:auto-pk-mixin
+                #:record-timestamps-mixin)
   (:export #:dao-class
            #:dao-table-class
 
@@ -84,7 +85,7 @@
   (assert (and class
                (typep class 'dao-table-class)))
 
-  (let* ((obj (make-instance class))
+  (let* ((obj (allocate-instance class))
          (obj
            (apply #'make-instance class
                   (loop for (k v) on initargs by #'cddr
@@ -184,20 +185,30 @@
   (apply #'call-next-method class name keys))
 
 (defgeneric inflate (object slot-name value)
-  (:method ((object dao-class) slot-name value)
+  (:method (object slot-name value)
     (let* ((slot (get-slot-by-slot-name (class-of object) slot-name))
            (inflate (dao-table-column-inflate slot)))
       (if inflate
           (funcall inflate value)
-          value))))
+          value)))
+  (:method ((object record-timestamps-mixin) (slot-name (eql 'mito.dao.mixin::created-at)) value)
+    (local-time:universal-to-timestamp value))
+  (:method ((object record-timestamps-mixin) (slot-name (eql 'mito.dao.mixin::updated-at)) value)
+    (local-time:universal-to-timestamp value)))
 
 (defgeneric deflate (object slot-name value)
-  (:method ((object dao-class) slot-name value)
+  (:method (object slot-name value)
     (let* ((slot (get-slot-by-slot-name (class-of object) slot-name))
            (deflate (dao-table-column-deflate slot)))
       (if deflate
           (funcall deflate value)
-          value))))
+          value)))
+  (:method ((object record-timestamps-mixin) (slot-name (eql 'mito.dao.mixin::created-at)) value)
+    (local-time:format-timestring nil value
+                                  :timezone local-time:+gmt-zone+))
+  (:method ((object record-timestamps-mixin) (slot-name (eql 'mito.dao.mixin::updated-at)) value)
+    (local-time:format-timestring nil value
+                                  :timezone local-time:+gmt-zone+)))
 
 (defun table-definition (class &key if-not-exists)
   (when (symbolp class)

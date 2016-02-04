@@ -14,6 +14,7 @@
                :dissect
                :optima
                :cl-reexport
+               :local-time
                :alexandria)
   :components ((:file "src/core" :depends-on ("core-components"))
                (:module "core-components"
