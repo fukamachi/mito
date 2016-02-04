@@ -23,7 +23,7 @@
     (:metaclass dao-table-class))
 
   (is (sxql:yield (table-definition 'tweet))
-      "CREATE TABLE tweet (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, created_at DATETIME, updated_at DATETIME, status VARCHAR(140) NOT NULL)")
+      "CREATE TABLE tweet (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status VARCHAR(140) NOT NULL, created_at DATETIME, updated_at DATETIME)")
 
   (mito:execute-sql "DROP TABLE IF EXISTS tweet")
   (mito:ensure-table-exists 'tweet)

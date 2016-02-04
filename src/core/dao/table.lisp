@@ -158,13 +158,13 @@
                                           (sxql:limit 1))))))))))
                (setf (getf column :readers) '())))
 
+  (unless (contains-class-or-subclasses 'dao-class direct-superclasses)
+    (push (find-class 'dao-class) (getf initargs :direct-superclasses)))
+
   (when (and (initargs-enables-auto-pk initargs)
              (not (initargs-contains-primary-key initargs))
              (not (contains-class-or-subclasses 'auto-pk-mixin direct-superclasses)))
     (push (find-class 'auto-pk-mixin) (getf initargs :direct-superclasses)))
-
-  (unless (contains-class-or-subclasses 'dao-class direct-superclasses)
-    (push (find-class 'dao-class) (getf initargs :direct-superclasses)))
 
   (apply #'call-next-method class initargs))
 
