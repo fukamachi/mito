@@ -12,7 +12,6 @@
            #:check-connected
            #:connect-toplevel
            #:disconnect-toplevel
-           #:with-connection
            #:connection-quote-character
            #:with-quote-char))
 (in-package :mito.connection)
@@ -41,10 +40,6 @@
   (when (connected-p)
     (dbi:disconnect *connection*)
     (makunbound '*connection*)))
-
-(defmacro with-connection (conn &body body)
-  `(let ((*connection* ,conn))
-     ,@body))
 
 (defun connection-quote-character (conn)
   (ecase (connection-driver-type conn)

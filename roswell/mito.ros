@@ -9,7 +9,6 @@ exec ros -Q -- $0 "$@"
         #:mito.migration)
   (:import-from #:mito.core
                 #:*connection*
-                #:with-connection
                 #:logger-stream
                 #:execute-sql)
   (:import-from #:dbi
@@ -135,14 +134,14 @@ Options:
       (ql:quickload system :silent t))
     (write-char #\Newline)
     (handler-case
-        (with-connection (handler-case (let ((*standard-output* (make-broadcast-stream)))
-                                         (apply #'dbi:connect connect-args))
-                           (ql:system-not-found ()
-                             (format *error-output* "~&Unknown driver type: ~A~%" (first connect-args))
-                             (uiop:quit -1))
-                           (error (e)
-                             (format *error-output* "~&Failed to connect to the database:~%  ~A~%" e)
-                             (uiop:quit -1)))
+        (let ((*connection* (handler-case (let ((*standard-output* (make-broadcast-stream)))
+                                            (apply #'dbi:connect connect-args))
+                              (ql:system-not-found ()
+                                (format *error-output* "~&Unknown driver type: ~A~%" (first connect-args))
+                                (uiop:quit -1))
+                              (error (e)
+                                (format *error-output* "~&Failed to connect to the database:~%  ~A~%" e)
+                                (uiop:quit -1)))))
           (setf (logger-stream) nil)
           (case-equal command
             ("generate-migrations"

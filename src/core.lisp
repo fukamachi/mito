@@ -8,8 +8,7 @@
 (cl-reexport:reexport-from :mito.connection
                            :include '(#:*connection*
                                       #:connect-toplevel
-                                      #:disconnect-toplevel
-                                      #:with-connection))
+                                      #:disconnect-toplevel))
 (cl-reexport:reexport-from :mito.dao
                            :include '(#:dao-class
                                       #:dao-table-class
