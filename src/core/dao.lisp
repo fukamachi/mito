@@ -37,6 +37,7 @@
 (in-package :mito.dao)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
+  (cl-reexport:reexport-from :mito.dao.mixin)
   (cl-reexport:reexport-from :mito.dao.table))
 
 (defun make-set-clause (obj)

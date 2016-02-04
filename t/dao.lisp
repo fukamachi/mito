@@ -17,8 +17,7 @@
   (defclass tweet () ()
     (:metaclass dao-table-class))
 
-  (is (c2mop:class-direct-superclasses (find-class 'tweet))
-      (list (find-class 'dao-class))
+  (ok (find (find-class 'dao-class) (c2mop:class-direct-superclasses (find-class 'tweet)))
       "dao-table-class inherits dao-table implicitly")
 
   (defclass my-dao-class (dao-class) ())
@@ -26,9 +25,10 @@
   (defclass tweet (my-dao-class) ()
     (:metaclass dao-table-class))
 
-  (is (c2mop:class-direct-superclasses (find-class 'tweet))
-      (list (find-class 'my-dao-class))
+  (ok (not (find (find-class 'dao-class) (c2mop:class-direct-superclasses (find-class 'tweet))))
       "Not inherit dao-class directly")
+  (ok (find (find-class 'my-dao-class) (c2mop:class-direct-superclasses (find-class 'tweet)))
+      "Inherit my-dao-class")
 
   (is-table-class :mysql
                   (defclass tweet ()

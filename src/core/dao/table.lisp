@@ -18,10 +18,11 @@
                 #:dao-table-column-class
                 #:dao-table-column-inflate
                 #:dao-table-column-deflate)
+  (:import-from #:mito.dao.mixin
+                #:auto-pk-mixin)
   (:export #:dao-class
            #:dao-table-class
 
-           #:object-id
            #:dao-synced
 
            #:inflate
@@ -39,13 +40,16 @@
         :test #'eq
         :key #'c2mop:slot-definition-name))
 
-(defclass dao-class () ())
+(defclass dao-class ()
+  ((synced :type boolean
+           :initform nil
+           :accessor dao-synced)))
 
 (defclass dao-table-class (table-class)
   ((auto-pk :initarg :auto-pk
             :initform '(t))))
 
-(defmethod c2mop:direct-slot-definition-class ((class table-class) &key)
+(defmethod c2mop:direct-slot-definition-class ((class dao-table-class) &key)
   'dao-table-column-class)
 
 (defun check-col-type (col-type)
@@ -63,14 +67,6 @@
   (declare (ignore initargs))
   (unless (ghost-slot-p class)
     (check-col-type (table-column-type class))))
-
-(defparameter *oid-slot-definition*
-  '(:name id :col-type :bigserial :primary-key t :readers (object-id)))
-
-(declaim (ftype (function (t) *) dao-synced))
-(declaim (ftype (function (t t) *) (setf dao-synced)))
-(defparameter *synced-slot-definition*
-  `(:name %synced :type boolean :initform nil :initfunction ,(lambda () nil) :readers (dao-synced) :writers ((setf dao-synced)) :ghost t))
 
 (defun initargs-enables-auto-pk (initargs)
   (first (or (getf initargs :auto-pk) '(t))))
@@ -104,12 +100,6 @@
 
 (defmethod initialize-instance :around ((class dao-table-class) &rest initargs
                                         &key direct-superclasses &allow-other-keys)
-  (unless (or (not (initargs-enables-auto-pk initargs))
-              (initargs-contains-primary-key initargs))
-    (push *oid-slot-definition* (getf initargs :direct-slots)))
-
-  (push *synced-slot-definition* (getf initargs :direct-slots))
-
   ;; Add relational column slots (ex. user-id)
   (loop for column in (getf initargs :direct-slots)
         for (col-type . not-null) = (let ((col-type (getf column :col-type)))
@@ -167,21 +157,22 @@
                                           (sxql:limit 1))))))))))
                (setf (getf column :readers) '())))
 
+  (when (and (initargs-enables-auto-pk initargs)
+             (not (initargs-contains-primary-key initargs))
+             (not (contains-class-or-subclasses 'auto-pk-mixin direct-superclasses)))
+    (push (find-class 'auto-pk-mixin) (getf initargs :direct-superclasses)))
+
   (unless (contains-class-or-subclasses 'dao-class direct-superclasses)
-    (setf (getf initargs :direct-superclasses)
-          (cons (find-class 'dao-class) direct-superclasses)))
+    (push (find-class 'dao-class) (getf initargs :direct-superclasses)))
+
   (apply #'call-next-method class initargs))
 
-(defmethod reinitialize-instance :around ((class dao-table-class) &rest initargs)
-  (if (or (not (initargs-enables-auto-pk initargs))
-          (initargs-contains-primary-key initargs))
-      (setf (getf initargs :direct-slots)
-            (remove 'id (getf initargs :direct-slots)
-                    :key #'car
-                    :test #'eq))
-      (push *oid-slot-definition* (getf initargs :direct-slots)))
-
-  (push *synced-slot-definition* (getf initargs :direct-slots))
+(defmethod reinitialize-instance :around ((class dao-table-class) &rest initargs
+                                                                    &key direct-superclasses &allow-other-keys)
+  (when (and (initargs-enables-auto-pk initargs)
+             (not (initargs-contains-primary-key initargs))
+             (not (contains-class-or-subclasses 'auto-pk-mixin direct-superclasses)))
+    (push (find-class 'auto-pk-mixin) (getf initargs :direct-superclasses)))
 
   (apply #'call-next-method class initargs))
 

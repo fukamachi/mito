@@ -90,11 +90,11 @@
                  (c2mop:class-direct-slots class)))
 
 (defun table-column-slots (class)
-  (nconc (table-direct-column-slots class)
-         (mapcan #'table-column-slots
+  (nconc (mapcan #'table-column-slots
                  (remove-if-not (lambda (class)
                                   (typep class 'table-class))
-                                (c2mop:class-direct-superclasses class)))))
+                                (c2mop:class-direct-superclasses class)))
+         (table-direct-column-slots class)))
 
 (defgeneric database-column-slots (class)
   (:method ((class table-class))
