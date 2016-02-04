@@ -14,6 +14,8 @@ Mito is yet another object relational mapper and it aims to be a successor of [I
 
 This software is still ALPHA quality. The APIs will be likely to change.
 
+Should work fine with MySQL, PostgreSQL and SQLite3 on SBCL/Clozure CL.
+
 ## Usage
 
 ```common-lisp
@@ -44,7 +46,7 @@ This software is still ALPHA quality. The APIs will be likely to change.
 ;=> #<MITO.DAO.TABLE:DAO-TABLE-CLASS COMMON-LISP-USER::TWEET>
 
 (mito:table-definition 'tweet)
-;=> #<SXQL-STATEMENT: CREATE TABLE tweet (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT NOT NULL, user_id BIGINT UNSIGNED NOT NULL)>
+;=> #<SXQL-STATEMENT: CREATE TABLE tweet (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT NOT NULL, user_id BIGINT UNSIGNED NOT NULL, created_at TIMESTAMP, updated_at TIMESTAMP)>
 ```
 
 ### Connecting to DB
@@ -104,19 +106,19 @@ class-option ::= {:primary-key symbol*} |
                  {:keys {symbol | (symbol*)}*} |
                  {:table-name table-name}
                  {:auto-pk boolean}
+                 {:record-timestamps boolean}
 ```
 
-Note the class automatically adds a primary key named `id` if there's no primary keys.
+Note the class automatically adds some slots -- a primary key named `id` if there's no primary keys, `created_at` and `updated_at` for recording timestamps. To disable these behaviors, specify `:auto-pk nil` or `:record-timestamps nil` to defclass forms.
 
 ```common-lisp
-(c2mop:class-direct-slots (find-class 'user))
-;=> (#<MITO.DAO.COLUMN:DAO-TABLE-COLUMN-CLASS MITO.DAO.TABLE::%SYNCED>
-;    #<MITO.DAO.COLUMN:DAO-TABLE-COLUMN-CLASS MITO.DAO.TABLE::ID>
+(mito.class:table-column-slots (find-class 'user))
+;=> (#<MITO.DAO.COLUMN:DAO-TABLE-COLUMN-CLASS MITO.DAO.MIXIN::ID>
 ;    #<MITO.DAO.COLUMN:DAO-TABLE-COLUMN-CLASS COMMON-LISP-USER::NAME>
-;    #<MITO.DAO.COLUMN:DAO-TABLE-COLUMN-CLASS COMMON-LISP-USER::EMAIL>)
+;    #<MITO.DAO.COLUMN:DAO-TABLE-COLUMN-CLASS COMMON-LISP-USER::EMAIL>
+;    #<MITO.DAO.COLUMN:DAO-TABLE-COLUMN-CLASS MITO.DAO.MIXIN::CREATED-AT>
+;    #<MITO.DAO.COLUMN:DAO-TABLE-COLUMN-CLASS MITO.DAO.MIXIN::UPDATED-AT>)
 ```
-
-To prevent this behavior, add `:auto-pk nil` to the class options.
 
 The class inherits `mito:dao-class` implicitly.
 
@@ -134,10 +136,10 @@ This may be useful when you define methods which can be applied for all table cl
 
 ```common-lisp
 (mito:table-definition 'user)
-;=> #<SXQL-STATEMENT: CREATE TABLE user (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(64) NOT NULL, email VARCHAR(128))>
+;=> #<SXQL-STATEMENT: CREATE TABLE user (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(64) NOT NULL, email VARCHAR(128), created_at TIMESTAMP, updated_at TIMESTAMP)>
 
 (sxql:yield *)
-;=> "CREATE TABLE user (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(64) NOT NULL, email VARCHAR(128))"
+;=> "CREATE TABLE user (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(64) NOT NULL, email VARCHAR(128), created_at TIMESTAMP, updated_at TIMESTAMP)"
 ;   NIL
 ```
 
@@ -157,7 +159,7 @@ This may be useful when you define methods which can be applied for all table cl
 ;=> USER
 
 (mito:insert-dao me)
-;-> ;; INSERT INTO `user` (`name`, `email`) VALUES (?, ?) ("Eitaro Fukamachi", "e.arrows@gmail.com") [0 rows] | MITO.DAO:INSERT-DAO
+;-> ;; INSERT INTO `user` (`name`, `email`, `created_at`, `updated_at`) VALUES (?, ?, ?, ?) ("Eitaro Fukamachi", "e.arrows@gmail.com", "2016-02-04T19:55:16.365543Z", "2016-02-04T19:55:16.365543Z") [0 rows] | MITO.DAO:INSERT-DAO
 ;=> #<USER {10053C4453}>
 
 ;; Same as above
@@ -177,7 +179,7 @@ This may be useful when you define methods which can be applied for all table cl
 ;=> "nitro_idiot"
 
 (mito:save-dao me)
-;-> ;; UPDATE `user` SET `id` = ?, `name` = ?, `email` = ? WHERE (`id` = ?) (1, "nitro_idiot", "e.arrows@gmail.com", 2) [0 rows] | MITO.DB:EXECUTE-SQL
+;-> ;; UPDATE `user` SET `id` = ?, `name` = ?, `email` = ?, `created_at` = ?, `updated_at` = ? WHERE (`id` = ?) (2, "nitro_idiot", "e.arrows@gmail.com", "2016-02-04T19:56:11.408927Z", "2016-02-04T19:56:19.006020Z", 2) [0 rows] | MITO.DAO:UPDATE-DAO
 
 ;; Deleting
 (mito:delete-dao me)
@@ -185,6 +187,8 @@ This may be useful when you define methods which can be applied for all table cl
 ```
 
 ### Relation
+
+### Inflation/Deflation
 
 ### Migrations
 
