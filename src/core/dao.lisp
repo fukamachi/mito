@@ -33,6 +33,7 @@
                #:save-dao
                #:select-dao
                #:find-dao
+               #:retrieve-dao
                #:recreate-table
                #:ensure-table-exists))))
 (in-package :mito.dao)
@@ -140,18 +141,20 @@
                     (sxql:from (sxql:make-sql-symbol (table-name ,class)))
                     ,@clauses)))))))
 
-(defgeneric find-dao (class &rest fields-and-values)
-  (:method :before ((class dao-table-class) &rest fields-and-values)
-    (declare (ignore class fields-and-values))
-    (check-connected))
-  (:method ((class symbol) &rest fields-and-values)
-    (apply #'find-dao (find-class class) fields-and-values))
-  (:method ((class dao-table-class) &rest fields-and-values)
-    (select-dao class
-      (sxql:where `(:and
-                    ,@(loop for (field value) on fields-and-values by #'cddr
-                            collect `(:= ,field ,value))))
-      (sxql:limit 1))))
+(defun where-and (fields-and-values)
+  (sxql:where `(:and
+                ,@(loop for (field value) on fields-and-values by #'cddr
+                        collect `(:= ,field ,value)))))
+
+(defun find-dao (class &rest fields-and-values)
+  (first
+   (select-dao class
+     (where-and fields-and-values)
+     (sxql:limit 1))))
+
+(defun retrieve-dao (class &rest fields-and-values)
+  (select-dao class
+    (where-and fields-and-values)))
 
 (defun ensure-table-exists (class)
   (with-sql-logging
