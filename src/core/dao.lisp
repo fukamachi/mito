@@ -147,15 +147,11 @@
   (:method ((class symbol) &rest fields-and-values)
     (apply #'find-dao (find-class class) fields-and-values))
   (:method ((class dao-table-class) &rest fields-and-values)
-    (let* ((sxql:*sql-symbol-conversion* #'unlispify)
-           (sql
-             (sxql:select :*
-               (sxql:from (sxql:make-sql-symbol (table-name class)))
-               (sxql:where `(:and
-                             ,@(loop for (field value) on fields-and-values by #'cddr
-                                     collect `(:= ,field ,value))))
-               (sxql:limit 1))))
-      (apply #'make-dao-instance class (first (retrieve-by-sql sql))))))
+    (select-dao class
+      (sxql:where `(:and
+                    ,@(loop for (field value) on fields-and-values by #'cddr
+                            collect `(:= ,field ,value))))
+      (sxql:limit 1))))
 
 (defun ensure-table-exists (class)
   (with-sql-logging
