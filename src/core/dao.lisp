@@ -24,7 +24,8 @@
       (:import-from #:dbi
                     #:with-transaction)
       (:import-from #:alexandria
-                    #:ensure-list)
+                    #:ensure-list
+                    #:once-only)
       (:export #:insert-dao
                #:update-dao
                #:create-dao
@@ -126,22 +127,18 @@
         (update-dao obj)
         (insert-dao obj))))
 
-(defgeneric select-dao (class &rest expressions)
-  (:method :before ((class dao-table-class) &rest expressions)
-    (declare (ignore class expressions))
-    (check-connected))
-  (:method ((class symbol) &rest expressions)
-    (apply #'select-dao (find-class class) expressions))
-  (:method ((class dao-table-class) &rest expressions)
-    (let ((select-sql
-            (sxql:select :*
-              (sxql:from (sxql:make-sql-symbol (table-name class))))))
-      (dolist (ex expressions)
-        (sxql:add-child select-sql ex))
-
-      (mapcar (lambda (result)
-                (apply #'make-dao-instance class result))
-              (retrieve-by-sql select-sql)))))
+(defmacro select-dao (class &body clauses)
+  (once-only (class)
+    `(progn
+       (when (symbolp ,class)
+         (setf ,class (find-class ,class)))
+       (let ((sxql:*sql-symbol-conversion* #'unlispify))
+         (mapcar (lambda (result)
+                   (apply #'make-dao-instance ,class result))
+                 (retrieve-by-sql
+                  (sxql:select :*
+                    (sxql:from (sxql:make-sql-symbol (table-name ,class)))
+                    ,@clauses)))))))
 
 (defgeneric find-dao (class &rest fields-and-values)
   (:method :before ((class dao-table-class) &rest fields-and-values)
