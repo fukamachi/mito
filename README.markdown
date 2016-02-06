@@ -170,7 +170,7 @@ This may be useful when you define methods which can be applied for all table cl
 ;=> 1
 
 ;; Retrieving from the DB
-(mito:find-dao 'user 1)
+(mito:find-dao 'user :id 1)
 ;-> ;; SELECT * FROM `user` WHERE (`id` = ?) LIMIT 1 (1) [1 row] | MITO.DB:RETRIEVE-BY-SQL
 ;=> #<USER {10077C6073}>
 

@@ -143,27 +143,22 @@
                 (apply #'make-dao-instance class result))
               (retrieve-by-sql select-sql)))))
 
-(defgeneric find-dao (class pk-values)
-  (:method :before ((class dao-table-class) pk-values)
-    (declare (ignore class pk-values))
+(defgeneric find-dao (class &rest fields-and-values)
+  (:method :before ((class dao-table-class) &rest fields-and-values)
+    (declare (ignore class fields-and-values))
     (check-connected))
-  (:method ((class symbol) pk-values)
-    (find-dao (find-class class) pk-values))
-  (:method ((class dao-table-class) pk-values)
-    (assert (not (null pk-values)))
-    (let ((primary-key (table-primary-key class)))
-      (unless primary-key
-        (error 'no-primary-keys :table (table-name class)))
-
-      (let ((sql
-              (sxql:select :*
-                (sxql:from (sxql:make-sql-symbol (table-name class)))
-                (sxql:where `(:and ,@(mapcar (lambda (key val)
-                                               `(:= ,(unlispify key) ,val))
-                                             primary-key
-                                             (ensure-list pk-values))))
-                (sxql:limit 1))))
-        (apply #'make-dao-instance class (first (retrieve-by-sql sql)))))))
+  (:method ((class symbol) &rest fields-and-values)
+    (apply #'find-dao (find-class class) fields-and-values))
+  (:method ((class dao-table-class) &rest fields-and-values)
+    (let* ((sxql:*sql-symbol-conversion* #'unlispify)
+           (sql
+             (sxql:select :*
+               (sxql:from (sxql:make-sql-symbol (table-name class)))
+               (sxql:where `(:and
+                             ,@(loop for (field value) on fields-and-values by #'cddr
+                                     collect `(:= ,field ,value))))
+               (sxql:limit 1))))
+      (apply #'make-dao-instance class (first (retrieve-by-sql sql))))))
 
 (defun ensure-table-exists (class)
   (with-sql-logging

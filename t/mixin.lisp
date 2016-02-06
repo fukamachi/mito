@@ -30,7 +30,7 @@
 
   (let ((obj (mito:create-dao 'tweet :status "Hi")))
     (is (object-id obj) 1)
-    (let ((obj (mito:find-dao 'tweet 1)))
+    (let ((obj (mito:find-dao 'tweet :id 1)))
       (is-type (object-created-at obj) 'local-time:timestamp)
       (is-type (object-updated-at obj) 'local-time:timestamp)
       (is (object-created-at obj)
