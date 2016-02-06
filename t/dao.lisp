@@ -103,6 +103,8 @@
   (let ((user (mito:create-dao 'user :name "Eitaro")))
     (mito:create-dao 'tweet :status "Hello" :user user))
 
+  (is (mito:count-dao 'tweet) 1)
+
   (let ((tweets (mito:select-dao 'tweet)))
     (is (length tweets) 1)
     (is-type (first tweets) 'tweet)

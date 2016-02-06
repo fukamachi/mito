@@ -25,7 +25,8 @@
                     #:with-transaction)
       (:import-from #:alexandria
                     #:ensure-list
-                    #:once-only)
+                    #:once-only
+                    #:with-gensyms)
       (:export #:insert-dao
                #:update-dao
                #:create-dao
@@ -34,6 +35,7 @@
                #:select-dao
                #:find-dao
                #:retrieve-dao
+               #:count-dao
                #:recreate-table
                #:ensure-table-exists))))
 (in-package :mito.dao)
@@ -129,22 +131,27 @@
         (insert-dao obj))))
 
 (defmacro select-dao (class &body clauses)
-  (once-only (class)
-    `(progn
-       (when (symbolp ,class)
-         (setf ,class (find-class ,class)))
-       (let ((sxql:*sql-symbol-conversion* #'unlispify))
-         (mapcar (lambda (result)
-                   (apply #'make-dao-instance ,class result))
-                 (retrieve-by-sql
+  (with-gensyms (sql clause result)
+    (once-only (class)
+      `(progn
+         (when (symbolp ,class)
+           (setf ,class (find-class ,class)))
+         (let* ((sxql:*sql-symbol-conversion* #'unlispify)
+                (,sql
                   (sxql:select :*
-                    (sxql:from (sxql:make-sql-symbol (table-name ,class)))
-                    ,@clauses)))))))
+                    (sxql:from (sxql:make-sql-symbol (table-name ,class))))))
+           (dolist (,clause (list ,@clauses))
+             (when ,clause
+               (add-child ,sql ,clause)))
+           (mapcar (lambda (,result)
+                     (apply #'make-dao-instance ,class ,result))
+                   (retrieve-by-sql ,sql)))))))
 
 (defun where-and (fields-and-values)
-  (sxql:where `(:and
-                ,@(loop for (field value) on fields-and-values by #'cddr
-                        collect `(:= ,field ,value)))))
+  (when fields-and-values
+    (sxql:where `(:and
+                  ,@(loop for (field value) on fields-and-values by #'cddr
+                          collect `(:= ,field ,value))))))
 
 (defun find-dao (class &rest fields-and-values)
   (first
@@ -155,6 +162,18 @@
 (defun retrieve-dao (class &rest fields-and-values)
   (select-dao class
     (where-and fields-and-values)))
+
+(defun count-dao (class &rest fields-and-values)
+  (when (symbolp class)
+    (setf class (find-class class)))
+  (let ((sql (sxql:select ((:as (:count :*) :count))
+               (sxql:from (sxql:make-sql-symbol (table-name class))))))
+    (when fields-and-values
+      (add-child sql
+                 (where-and fields-and-values)))
+    (getf (first
+           (retrieve-by-sql sql))
+          :count)))
 
 (defun ensure-table-exists (class)
   (with-sql-logging
