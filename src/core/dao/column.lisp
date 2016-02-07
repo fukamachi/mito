@@ -9,6 +9,8 @@
   (:export #:dao-table-column-class
            #:dao-table-column-inflate
            #:dao-table-column-deflate
+           #:dao-table-column-foreign-class
+           #:dao-table-column-rel-column-name
            #:dao-table-column-rel-key
            #:dao-table-column-rel-key-fn))
 (in-package :mito.dao.column)
@@ -22,6 +24,12 @@
             :initarg :deflate
             :initform nil
             :reader dao-table-column-deflate)
+   (foreign-class :initarg :foreign-class
+                  :initform nil
+                  :reader dao-table-column-foreign-class)
+   (rel-column-name :initarg :rel-column-name
+                    :initform nil
+                    :reader dao-table-column-rel-column-name)
    (rel-key :initarg :rel-key
             :initform nil
             :reader dao-table-column-rel-key)

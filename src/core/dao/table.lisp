@@ -84,8 +84,7 @@
                (getf initargs :direct-slots))))
 
 (defun make-dao-instance (class &rest initargs)
-  (when (symbolp class)
-    (setf class (find-class class)))
+  (setf class (ensure-class class))
 
   (assert (and class
                (typep class 'dao-table-class)))
@@ -136,6 +135,8 @@
                                 :initargs (,(intern (symbol-name rel-column-name) :keyword))
                                 ;; Defer retrieving the relational column type until table-column-info
                                 :col-type ,(getf column :col-type)
+                                :rel-column-name ,(getf column :name)
+                                :foreign-class ,rel-class
                                 :rel-key ,pk
                                 :rel-key-fn
                                 ,(lambda (obj)
@@ -225,8 +226,7 @@
                                   :timezone local-time:+gmt-zone+)))
 
 (defun table-definition (class &key if-not-exists)
-  (when (symbolp class)
-    (setf class (find-class class)))
+  (setf class (ensure-class class))
   (check-type class table-class)
   (create-table-sxql class (driver-type)
                      :if-not-exists if-not-exists))

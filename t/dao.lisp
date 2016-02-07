@@ -78,6 +78,7 @@
 
   (defclass user ()
     ((id :col-type :serial
+         :initarg :id
          :primary-key t)
      (name :col-type :text
            :initarg :name))
@@ -102,13 +103,25 @@
   (mito:ensure-table-exists 'tweet)
   (let ((user (mito:create-dao 'user :name "Eitaro")))
     (mito:create-dao 'tweet :status "Hello" :user user))
+  (let ((user (mito:create-dao 'user :name "Yoshimi")))
+    (mito:create-dao 'tweet :status "こんにちは" :user user))
 
-  (is (mito:count-dao 'tweet) 1)
+  (is (mito:count-dao 'tweet) 2)
 
   (let ((tweets (mito:select-dao 'tweet)))
-    (is (length tweets) 1)
+    (is (length tweets) 2)
     (is-type (first tweets) 'tweet)
     (is-type (tweet-user (first tweets)) 'user))
+
+  (ok (every (lambda (tweet)
+               (not (slot-boundp tweet 'user)))
+             (mito:select-dao 'tweet))
+      "foreign slots are not loaded")
+  (ok (every (lambda (tweet)
+               (slot-boundp tweet 'user))
+             (mito:select-dao 'tweet
+               (mito:includes 'user)))
+      "foreign slots are loaded eagerly with 'includes'.")
 
   (disconnect-toplevel))
 

@@ -25,6 +25,7 @@
                                       #:delete-dao
                                       #:save-dao
                                       #:select-dao
+                                      #:includes
                                       #:find-dao
                                       #:retrieve-dao
                                       #:count-dao

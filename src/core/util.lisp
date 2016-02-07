@@ -7,7 +7,8 @@
            #:unlispify
            #:symbol-name-literally
            #:class-inherit-p
-           #:contains-class-or-subclasses))
+           #:contains-class-or-subclasses
+           #:ensure-class))
 (in-package :mito.util)
 
 (defun group-by-plist (plists &key key (test #'equal))
@@ -110,3 +111,8 @@ Note this can be applied for a list of string-designators."
                       (or (eq target-class class)
                           (class-inherit-p target-class class)))))
              target-classes)))
+
+(defun ensure-class (class-or-class-name)
+  (etypecase class-or-class-name
+    (symbol (find-class class-or-class-name))
+    (standard-class class-or-class-name)))

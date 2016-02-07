@@ -190,6 +190,23 @@ This may be useful when you define methods which can be applied for all table cl
 
 ### Inflation/Deflation
 
+### Eager loading
+
+```common-lisp
+(use-package '(:mito :sxql))
+
+(select-dao 'tweet
+  (includes 'user)
+  (where (:= :id 1)))
+;-> ;; SELECT * FROM `tweet` WHERE (`id` = ?) (1) [1 row] | MITO.DB:RETRIEVE-BY-SQL
+;-> ;; SELECT * FROM `user` WHERE (`id` IN (?)) (1) [1 row] | MITO.DB:RETRIEVE-BY-SQL
+;=> (#<TWEET {1003513EC3}>)
+
+;; No additional SQLs aren't executed.
+(tweet-user (first *))
+;=> #<USER {100361E813}>
+```
+
 ### Migrations
 
 ## Installation
