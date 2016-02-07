@@ -19,7 +19,9 @@
                 #:table-exists-p)
   (:export #:all-migration-expressions
            #:current-migration-version
-           #:update-migration-version))
+           #:update-migration-version
+           #:generate-migrations
+           #:migrate))
 (in-package :mito.migration.versions)
 
 (defun initialize-migrations-table ()
@@ -55,3 +57,80 @@
   (execute-sql
    (sxql:insert-into :schema_migrations
      (sxql:set= :version version))))
+
+(defun generate-version ()
+  (multiple-value-bind (sec min hour day mon year)
+      (decode-universal-time (get-universal-time) 0)
+    (format nil "~4,'0D~2,'0D~2,'0D~2,'0D~2,'0D~2,'0D"
+            year mon day hour min sec)))
+
+(defun generate-migrations (directory &key dry-run)
+  (let ((destination (make-pathname :name (generate-version)
+                                    :type "sql"
+                                    :defaults directory))
+        (expressions (all-migration-expressions)))
+    (if expressions
+        (progn
+          (unless dry-run
+            (ensure-directories-exist directory)
+            (with-open-file (out destination
+                                 :direction :output
+                                 :if-does-not-exist :create)
+              (map nil
+                   (lambda (ex)
+                     (format out "~&~A;~%" (sxql:yield ex)))
+                   expressions)))
+          (format t "~&Successfully generated: ~A~%" destination)
+          destination)
+        (format t "~&Nothing to migrate.~%"))))
+
+(defun migration-file-version (file)
+  (let* ((name (pathname-name file))
+         (pos (position #\_ name))
+         (version
+           (if pos
+               (subseq name 0 pos)
+               name)))
+    (when (and (= (length version) 14)
+               (every #'digit-char-p version))
+      version)))
+
+(defun read-one-sql (stream)
+  (let ((sql
+          (string-trim '(#\Space #\Tab #\Newline #\LineFeed)
+                       (with-output-to-string (s)
+                         (loop for char = (read-char stream nil nil)
+                               while char
+                               until (char= char #\;)
+                               do (write-char char s))))))
+    (if (= (length sql) 0)
+        nil
+        sql)))
+
+(defun migrate (directory &key dry-run)
+  (let* ((current-version (current-migration-version))
+         (sql-files (sort (uiop:directory-files directory "*.sql")
+                          #'string<
+                          :key #'pathname-name))
+         (sql-files
+           (if current-version
+               (remove-if-not (lambda (version)
+                                (and version
+                                     (string< current-version version)))
+                              sql-files
+                              :key #'migration-file-version)
+               sql-files)))
+    (if sql-files
+        (dbi:with-transaction *connection*
+          (dolist (file sql-files)
+            (format t "~&Applying '~A'...~%" file)
+            (with-open-file (in file)
+              (loop for sql = (read-one-sql in)
+                    while sql
+                    do (format t "~&-> ~A;~%" sql)
+                       (unless dry-run
+                         (execute-sql sql)))))
+          (let ((version (migration-file-version (first (last sql-files)))))
+            (update-migration-version version)
+            (format t "~&Successfully updated to the version ~S.~%" version)))
+        (format t "~&Version ~S is up to date.~%" current-version))))
