@@ -78,7 +78,6 @@
 
   (defclass user ()
     ((id :col-type :serial
-         :initarg :id
          :primary-key t)
      (name :col-type :text
            :initarg :name))

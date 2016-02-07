@@ -38,6 +38,15 @@
                :initform nil
                :reader dao-table-column-rel-key-fn)))
 
+(defmethod initialize-instance :around ((object dao-table-column-class) &rest rest-initargs &key name initargs ghost &allow-other-keys)
+  (when (and (not ghost)
+             (null initargs))
+    ;; Add initargs if no ones are defined for a database slot.
+    (setf (getf rest-initargs :initargs)
+          (list (intern (symbol-name name) :keyword))))
+
+  (apply #'call-next-method object rest-initargs))
+
 (defmethod table-column-info ((column dao-table-column-class) driver-type)
   (if (dao-table-column-rel-key column)
       (let ((column-info (call-next-method))
