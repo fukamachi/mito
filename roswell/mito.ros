@@ -22,7 +22,7 @@ exec ros -Q -- $0 "$@"
 (in-package :ros.script.roswell/mito.3663426439)
 
 (defparameter *default-migration-directory*
-  (merge-pathnames #P"db/migrations/" *default-pathname-defaults*))
+  (merge-pathnames #P"db/" *default-pathname-defaults*))
 
 (defmacro case-equal (keyform &body cases)
   (let ((g-keyform (gensym "KEYFORM")))
