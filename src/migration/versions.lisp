@@ -10,7 +10,8 @@
                 #:table-definition)
   (:import-from #:mito.connection
                 #:*connection*
-                #:check-connected)
+                #:check-connected
+                #:with-quote-char)
   (:import-from #:mito.class
                 #:table-name)
   (:import-from #:mito.db
@@ -79,10 +80,11 @@
             (with-open-file (out destination
                                  :direction :output
                                  :if-does-not-exist :create)
-              (map nil
-                   (lambda (ex)
-                     (format out "~&~A;~%" (sxql:yield ex)))
-                   expressions)))
+              (with-quote-char
+                (map nil
+                     (lambda (ex)
+                       (format out "~&~A;~%" (sxql:yield ex)))
+                     expressions))))
           (format t "~&Successfully generated: ~A~%" destination)
           destination)
         (format t "~&Nothing to migrate.~%"))))
@@ -145,8 +147,9 @@
             (loop for class in (all-dao-classes)
                   do (format out "~2&~A~%" (table-definition class)))
             (let ((sxql:*use-placeholder* nil))
-              (format out "~2&~A~%"
-                      (sxql:yield (schema-migrations-table-definition)))
+              (with-quote-char
+                (format out "~2&~A~%"
+                        (sxql:yield (schema-migrations-table-definition))))
               (format out "~&INSERT INTO schema_migrations (version) VALUES ('~A');~%"
                       current-version)))
           (format t "~&Version ~S is up to date.~%" current-version)))))
