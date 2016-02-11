@@ -142,17 +142,16 @@
                               :key #'migration-file-version)
                sql-files)))
     (if sql-files
-        (progn
-          (dbi:with-transaction *connection*
-            (dolist (file sql-files)
-              (format t "~&Applying '~A'...~%" file)
-              (with-open-file (in file)
-                (loop for sql = (read-one-sql in)
-                      while sql
-                      do (format t "~&-> ~A;~%" sql)
-                         (unless dry-run
-                           (execute-sql sql)))))
-            (let ((version (migration-file-version (first (last sql-files)))))
-              (update-migration-version version)
-              (format t "~&Successfully updated to the version ~S.~%" version)))
-          (format t "~&Version ~S is up to date.~%" current-version)))))
+        (dbi:with-transaction *connection*
+          (dolist (file sql-files)
+            (format t "~&Applying '~A'...~%" file)
+            (with-open-file (in file)
+              (loop for sql = (read-one-sql in)
+                    while sql
+                    do (format t "~&-> ~A;~%" sql)
+                       (unless dry-run
+                         (execute-sql sql)))))
+          (let ((version (migration-file-version (first (last sql-files)))))
+            (update-migration-version version)
+            (format t "~&Successfully updated to the version ~S.~%" version)))
+        (format t "~&Version ~S is up to date.~%" current-version))))
