@@ -16,7 +16,6 @@
                 #:execute
                 #:fetch-all)
   (:import-from #:sxql
-                #:*quote-character*
                 #:yield)
   (:import-from #:sxql.sql-type
                 #:sql-statement)
@@ -30,10 +29,11 @@
 
 (defun last-insert-id (conn table-name serial-key-name)
   (check-type serial-key-name string)
-  (ecase (dbi:connection-driver-type conn)
-    (:mysql    (mito.db.mysql:last-insert-id conn table-name serial-key-name))
-    (:postgres (mito.db.postgres:last-insert-id conn table-name serial-key-name))
-    (:sqlite3  (mito.db.sqlite3:last-insert-id conn table-name))))
+  (with-quote-char
+    (ecase (dbi:connection-driver-type conn)
+      (:mysql    (mito.db.mysql:last-insert-id conn table-name serial-key-name))
+      (:postgres (mito.db.postgres:last-insert-id conn table-name serial-key-name))
+      (:sqlite3  (mito.db.sqlite3:last-insert-id conn table-name)))))
 
 (defun table-indices (conn table-name)
   (sort
