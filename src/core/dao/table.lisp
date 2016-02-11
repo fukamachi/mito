@@ -92,14 +92,17 @@
   (let* ((obj (allocate-instance class))
          (obj
            (apply #'make-instance class
+                  :allow-other-keys t
                   (loop for (k v) on initargs by #'cddr
                         for column = (find-if (lambda (initargs)
                                                 (find k initargs :test #'eq))
                                               (table-column-slots class)
                                               :key #'c2mop:slot-definition-initargs)
-                        when column
+                        if column
                           append (list k
-                                       (inflate obj (c2mop:slot-definition-name column) v))))))
+                                       (inflate obj (c2mop:slot-definition-name column) v))
+                        else
+                          append (list k v)))))
     (setf (dao-synced obj) t)
     obj))
 
