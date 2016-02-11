@@ -69,10 +69,12 @@
 
 (defun generate-migrations (directory &key dry-run)
   (let* ((directory (merge-pathnames #P"migrations/" directory))
-         (destination (make-pathname :name (generate-version)
+         (version (generate-version))
+         (destination (make-pathname :name version
                                      :type "sql"
                                      :defaults directory))
-         (expressions (all-migration-expressions)))
+         (expressions (all-migration-expressions))
+         (schema.sql (merge-pathnames #P"schema.sql" directory)))
     (if expressions
         (progn
           (unless dry-run
@@ -84,7 +86,18 @@
                 (map nil
                      (lambda (ex)
                        (format out "~&~A;~%" (sxql:yield ex)))
-                     expressions))))
+                     expressions)))
+            (with-open-file (out schema.sql
+                                 :direction :output
+                                 :if-exists :supersede)
+              (loop for class in (all-dao-classes)
+                    do (format out "~2&~A~%" (table-definition class)))
+              (let ((sxql:*use-placeholder* nil))
+                (with-quote-char
+                  (format out "~2&~A~%"
+                          (sxql:yield (schema-migrations-table-definition))))
+                (format out "~&INSERT INTO schema_migrations (version) VALUES ('~A');~%"
+                        version))))
           (format t "~&Successfully generated: ~A~%" destination)
           destination)
         (format t "~&Nothing to migrate.~%"))))
@@ -113,8 +126,7 @@
         sql)))
 
 (defun migrate (directory &key dry-run)
-  (let* ((schema.sql (merge-pathnames #P"schema.sql" directory))
-         (current-version (current-migration-version))
+  (let* ((current-version (current-migration-version))
          (sql-files (sort (uiop:directory-files (merge-pathnames #P"migrations/" directory)
                                                 "*.sql")
                           #'string<
@@ -141,15 +153,4 @@
             (let ((version (migration-file-version (first (last sql-files)))))
               (update-migration-version version)
               (format t "~&Successfully updated to the version ~S.~%" version)))
-          (with-open-file (out schema.sql
-                               :direction :output
-                               :if-exists :supersede)
-            (loop for class in (all-dao-classes)
-                  do (format out "~2&~A~%" (table-definition class)))
-            (let ((sxql:*use-placeholder* nil))
-              (with-quote-char
-                (format out "~2&~A~%"
-                        (sxql:yield (schema-migrations-table-definition))))
-              (format out "~&INSERT INTO schema_migrations (version) VALUES ('~A');~%"
-                      current-version)))
           (format t "~&Version ~S is up to date.~%" current-version)))))
