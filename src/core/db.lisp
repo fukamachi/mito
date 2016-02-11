@@ -4,6 +4,7 @@
   (:import-from #:mito.connection
                 #:*connection*
                 #:with-quote-char
+                #:connection-quote-character
                 #:check-connected)
   (:import-from #:mito.logger
                 #:trace-sql)
@@ -16,6 +17,7 @@
                 #:execute
                 #:fetch-all)
   (:import-from #:sxql
+                #:*quote-character*
                 #:yield)
   (:import-from #:sxql.sql-type
                 #:sql-statement)
@@ -29,7 +31,7 @@
 
 (defun last-insert-id (conn table-name serial-key-name)
   (check-type serial-key-name string)
-  (with-quote-char
+  (let ((sxql:*quote-character* (connection-quote-character conn)))
     (ecase (dbi:connection-driver-type conn)
       (:mysql    (mito.db.mysql:last-insert-id conn table-name serial-key-name))
       (:postgres (mito.db.postgres:last-insert-id conn table-name serial-key-name))
