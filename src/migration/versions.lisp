@@ -18,6 +18,8 @@
                 #:execute-sql
                 #:retrieve-by-sql
                 #:table-exists-p)
+  (:import-from #:alexandria
+                #:compose)
   (:export #:all-migration-expressions
            #:current-migration-version
            #:update-migration-version
@@ -68,13 +70,13 @@
             year mon day hour min sec)))
 
 (defun generate-migrations (directory &key dry-run)
-  (let* ((directory (merge-pathnames #P"migrations/" directory))
+  (let* ((schema.sql (merge-pathnames #P"schema.sql" directory))
+         (directory (merge-pathnames #P"migrations/" directory))
          (version (generate-version))
          (destination (make-pathname :name version
                                      :type "sql"
                                      :defaults directory))
-         (expressions (all-migration-expressions))
-         (schema.sql (merge-pathnames #P"schema.sql" directory)))
+         (expressions (all-migration-expressions)))
     (if expressions
         (progn
           (unless dry-run
@@ -90,10 +92,10 @@
             (with-open-file (out schema.sql
                                  :direction :output
                                  :if-exists :supersede)
-              (loop for class in (all-dao-classes)
-                    do (format out "~2&~A~%" (table-definition class)))
               (let ((sxql:*use-placeholder* nil))
                 (with-quote-char
+                  (format out "~{~A~%~^~%~}"
+                          (mapcar (compose #'sxql:yield #'table-definition) (all-dao-classes)))
                   (format out "~2&~A~%"
                           (sxql:yield (schema-migrations-table-definition))))
                 (format out "~&INSERT INTO schema_migrations (version) VALUES ('~A');~%"
