@@ -76,7 +76,10 @@
           (list-diff db-indices table-indices
                      :key #'cdr
                      :test #'equalp
-                     :sort-fn (constantly t))
+                     :sort-fn
+                     (lambda (a b)
+                       (string< (prin1-to-string (cdr a))
+                                (prin1-to-string (cdr b)))))
         (declare (ignore indices-intersection))
         ;; TODO: take care of the order of columns
         (list
