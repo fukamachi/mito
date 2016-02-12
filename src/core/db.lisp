@@ -120,7 +120,9 @@
                    collect
                    (loop for (k v) on result by #'cddr
                          collect (lispify k)
-                         collect v))))
+                         collect (if (eq v :null)
+                                     nil
+                                     v)))))
 
       (trace-sql sql binds results)
       results))
