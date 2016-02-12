@@ -69,10 +69,16 @@
   (multiple-value-bind (sql binds)
       (sxql:yield
        (ecase (dbi:connection-driver-type conn)
-         ((:mysql :postgres)
+         (:mysql
           (sxql:select :1
             (sxql:from :information_schema.tables)
             (sxql:where (:and (:= :table_schema (dbi:connection-database-name conn))
+                              (:= :table_name table-name)))
+            (sxql:limit 1)))
+         (:postgres
+          (sxql:select :1
+            (sxql:from :information_schema.tables)
+            (sxql:where (:and (:= :table_schema "public")
                               (:= :table_name table-name)))
             (sxql:limit 1)))
          (:sqlite3
