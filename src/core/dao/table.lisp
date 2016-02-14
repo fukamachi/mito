@@ -16,6 +16,7 @@
                 #:ghost-slot-p)
   (:import-from #:mito.dao.column
                 #:dao-table-column-class
+                #:dao-table-column-foreign-class
                 #:dao-table-column-inflate
                 #:dao-table-column-deflate)
   (:import-from #:mito.dao.mixin
@@ -167,6 +168,30 @@
                (setf (getf column :readers) '())))
   initargs)
 
+(defun expand-relational-keys (class slot-name)
+  (let ((keys (slot-value class slot-name))
+        (direct-slots (c2mop:class-direct-slots class)))
+    (labels ((expand-key (key)
+               (let ((slot (find key direct-slots
+                                 :key #'c2mop:slot-definition-name
+                                 :test #'eq)))
+                 (if (ghost-slot-p slot)
+                     (mapcar #'c2mop:slot-definition-name
+                             (remove-if-not (lambda (ds)
+                                              (eq (dao-table-column-foreign-class ds)
+                                                  (find-class (table-column-type slot))))
+                                            direct-slots))
+                     (list key))))
+             (expand-keys (keys)
+               (loop for key in keys
+                     append (expand-key key))))
+      (setf (slot-value class slot-name)
+            (loop for key in keys
+                  if (listp key)
+                    collect (expand-keys key)
+                  else
+                    append (expand-key key))))))
+
 (defmethod initialize-instance :around ((class dao-table-class) &rest initargs
                                         &key direct-superclasses &allow-other-keys)
   (setf initargs (initialize-initargs initargs))
@@ -183,7 +208,11 @@
              (not (contains-class-or-subclasses 'auto-pk-mixin direct-superclasses)))
     (push (find-class 'auto-pk-mixin) (getf initargs :direct-superclasses)))
 
-  (apply #'call-next-method class initargs))
+  (let ((class (apply #'call-next-method class initargs)))
+    (expand-relational-keys class 'mito.class.table::primary-key)
+    (expand-relational-keys class 'mito.class.table::unique-keys)
+    (expand-relational-keys class 'mito.class.table::keys)
+    class))
 
 (defmethod reinitialize-instance :around ((class dao-table-class) &rest initargs
                                                                     &key direct-superclasses &allow-other-keys)
@@ -198,7 +227,11 @@
              (not (contains-class-or-subclasses 'auto-pk-mixin direct-superclasses)))
     (push (find-class 'auto-pk-mixin) (getf initargs :direct-superclasses)))
 
-  (apply #'call-next-method class initargs))
+  (let ((class (apply #'call-next-method class initargs)))
+    (expand-relational-keys class 'mito.class.table::primary-key)
+    (expand-relational-keys class 'mito.class.table::unique-keys)
+    (expand-relational-keys class 'mito.class.table::keys)
+    class))
 
 (defmethod c2mop:ensure-class-using-class :around ((class dao-table-class) name &rest keys
                                                    &key direct-superclasses &allow-other-keys)
