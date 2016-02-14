@@ -108,7 +108,7 @@
 
 (defun initialize-initargs (initargs)
   ;; Add relational column slots (ex. user-id)
-  (loop for column in (getf initargs :direct-slots)
+  (loop for column in (copy-seq (getf initargs :direct-slots)) ;; Prevent infinite-loop
         for (col-type . not-null) = (let ((col-type (getf column :col-type)))
                                       (optima:match col-type
                                         ((or (list 'or :null x)
