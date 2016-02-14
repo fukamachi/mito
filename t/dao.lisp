@@ -96,8 +96,8 @@
 
   (is (sxql:yield (table-definition 'tweet))
       "CREATE TABLE tweet (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT NOT NULL, user_id INT UNSIGNED NOT NULL)")
-  (mito:execute-sql "DROP TABLE IF EXISTS user")
   (mito:execute-sql "DROP TABLE IF EXISTS tweet")
+  (mito:execute-sql "DROP TABLE IF EXISTS user")
   (mito:ensure-table-exists 'user)
   (mito:ensure-table-exists 'tweet)
   (let ((user (mito:create-dao 'user :name "Eitaro")))

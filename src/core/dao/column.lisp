@@ -49,10 +49,25 @@
 
 (defmethod table-column-info ((column dao-table-column-class) driver-type)
   (if (dao-table-column-rel-key column)
-      (let ((column-info (call-next-method))
-            (rel-column-info (table-column-info (dao-table-column-rel-key column) driver-type)))
+      (let* ((column-info (call-next-method))
+             (rel-column-info (table-column-info (dao-table-column-rel-key column) driver-type))
+             (new-col-type (getf (cdr rel-column-info) :type)))
         (setf (getf (cdr column-info) :type)
-              (getf (cdr rel-column-info) :type))
+              (ecase driver-type
+                (:mysql
+                 (case new-col-type
+                   (:bigserial :bigint)
+                   (:serial '(:int () :unsigned))
+                   (otherwise new-col-type)))
+                (:postgres
+                 (case new-col-type
+                   (:bigserial :bigint)
+                   (:serial :int)
+                   (otherwise new-col-type)))
+                (:sqlite3
+                 (case new-col-type
+                   ((:bigserial :serial) :integer)
+                   (otherwise new-col-type)))))
         (setf (getf (cdr column-info) :not-null)
               (optima:match (table-column-type column)
                 ((or (list 'or :null _)
