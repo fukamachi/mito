@@ -141,7 +141,8 @@
                                                 (progn
                                                   ;; delete the existing sequence
                                                   (push
-                                                   (sxql:make-statement :drop-sequence seq)
+                                                   (sxql:make-statement :drop-sequence
+                                                                        (sxql:make-sql-symbol seq))
                                                    alter-sequences)
                                                   (sxql:make-clause :drop-default)))))
                                          (otherwise
