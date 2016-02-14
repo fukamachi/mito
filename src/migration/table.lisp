@@ -115,7 +115,8 @@
              nil)
          ;; change columns
          (if columns-intersection
-             (loop with alter-sequences = '()
+             (loop with before-alter-sequences = '()
+                   with after-alter-sequences = '()
                    for db-column in columns-intersection
                    for table-column = (find (car db-column) table-columns :test #'string= :key #'car)
                    unless (equalp db-column table-column)
@@ -136,15 +137,15 @@
                                                   ;; create a new sequence
                                                   (push
                                                    (sxql:make-statement :create-sequence seq)
-                                                   alter-sequences)
+                                                   before-alter-sequences)
                                                   (sxql:make-clause :set-default `(:nextval ,seq)))
                                                 (progn
                                                   ;; delete the existing sequence
-                                                  (sxql:make-clause :drop-default)
                                                   (push
                                                    (sxql:make-statement :drop-sequence
                                                                         (sxql:make-sql-symbol seq))
-                                                   alter-sequences)))))
+                                                   after-alter-sequences)
+                                                  (sxql:make-clause :drop-default)))))
                                          (otherwise
                                           (sxql:make-clause :alter-column
                                                             (sxql:make-sql-symbol (car table-column))
@@ -160,10 +161,11 @@
                    finally
                       (return
                         (nconc
-                         (nreverse alter-sequences)
+                         (nreverse before-alter-sequences)
                          (and clauses
                               (list (apply #'sxql:make-statement :alter-table (sxql:make-sql-symbol table-name)
-                                           clauses))))))
+                                           clauses)))
+                         (nreverse after-alter-sequences))))
              nil)
          ;; add indices
          (if indices-to-add
