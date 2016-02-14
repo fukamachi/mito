@@ -106,8 +106,7 @@
     (setf (dao-synced obj) t)
     obj))
 
-(defmethod initialize-instance :around ((class dao-table-class) &rest initargs
-                                        &key direct-superclasses &allow-other-keys)
+(defun initialize-initargs (initargs)
   ;; Add relational column slots (ex. user-id)
   (loop for column in (getf initargs :direct-slots)
         for (col-type . not-null) = (let ((col-type (getf column :col-type)))
@@ -166,6 +165,11 @@
                                                        (table-primary-key rel-class))))
                                           (sxql:limit 1))))))))))
                (setf (getf column :readers) '())))
+  initargs)
+
+(defmethod initialize-instance :around ((class dao-table-class) &rest initargs
+                                        &key direct-superclasses &allow-other-keys)
+  (setf initargs (initialize-initargs initargs))
 
   (when (and (initargs-enables-record-timestamps initargs)
              (not (contains-class-or-subclasses 'record-timestamps-mixin direct-superclasses)))
@@ -183,6 +187,7 @@
 
 (defmethod reinitialize-instance :around ((class dao-table-class) &rest initargs
                                                                     &key direct-superclasses &allow-other-keys)
+  (setf initargs (initialize-initargs initargs))
 
   (when (and (initargs-enables-record-timestamps initargs)
              (not (contains-class-or-subclasses 'record-timestamps-mixin direct-superclasses)))
