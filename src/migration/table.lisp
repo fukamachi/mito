@@ -140,11 +140,11 @@
                                                   (sxql:make-clause :set-default `(:nextval ,seq)))
                                                 (progn
                                                   ;; delete the existing sequence
+                                                  (sxql:make-clause :drop-default)
                                                   (push
                                                    (sxql:make-statement :drop-sequence
                                                                         (sxql:make-sql-symbol seq))
-                                                   alter-sequences)
-                                                  (sxql:make-clause :drop-default)))))
+                                                   alter-sequences)))))
                                          (otherwise
                                           (sxql:make-clause :alter-column
                                                             (sxql:make-sql-symbol (car table-column))
