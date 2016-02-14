@@ -23,13 +23,6 @@
 (defmethod make-clause ((clause-name (eql :set-default)) &rest args)
   (make-set-default (detect-and-convert (first args))))
 
-(defstruct (drop-default (:include sql-clause)))
-(defmethod yield ((clause drop-default))
-  "DROP DEFAULT")
-(defmethod make-clause ((clause-name (eql :drop-default)) &rest args)
-  (declare (ignore args))
-  (make-drop-default))
-
 (defstruct (create-sequence (:include sql-statement (name "CREATE SEQUENCE"))
                             (:constructor make-create-sequence (sequence-name)))
   sequence-name)

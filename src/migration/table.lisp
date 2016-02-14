@@ -145,7 +145,9 @@
                                                    (sxql:make-statement :drop-sequence
                                                                         (sxql:make-sql-symbol seq))
                                                    after-alter-sequences)
-                                                  (sxql:make-clause :drop-default)))))
+                                                  (sxql:make-clause :alter-column
+                                                                    (sxql:make-sql-symbol (car table-column))
+                                                                    :drop-default t)))))
                                          (otherwise
                                           (sxql:make-clause :alter-column
                                                             (sxql:make-sql-symbol (car table-column))
