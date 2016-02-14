@@ -36,28 +36,41 @@
             0))))
 
 (defun column-definitions (conn table-name)
-  ;; FIXME: quote
-  (flet ((column-auto-increment-p (column)
-           (and (= (getf column :|pk|) 1)
-                (string-equal (getf column :|type|) "INTEGER"))))
-    (loop for column in (table-info conn table-name)
+  (labels ((column-primary-key-p (column)
+             (not (= (getf column :|pk|) 0)))
+           (column-auto-increment-p (column)
+             (and (column-primary-key-p column)
+                  (string-equal (getf column :|type|) "INTEGER"))))
+    (loop with has-composite-pk = nil
+          for column in (table-info conn table-name)
+          if (= (getf column :|pk|) 2)
+            do (setf has-composite-pk t)
           collect (list (getf column :|name|)
                         :type (getf column :|type|)
                         :auto-increment (column-auto-increment-p column)
-                        :primary-key (= (getf column :|pk|) 1)
-                        :not-null (or (= (getf column :|pk|) 1)
-                                      (not (= (getf column :|notnull|) 0)))))))
+                        :primary-key (column-primary-key-p column)
+                        :not-null (or (column-primary-key-p column)
+                                      (not (= (getf column :|notnull|) 0))))
+            into definitions
+          finally
+             (return
+               (if has-composite-pk
+                   (mapc (lambda (def)
+                           (setf (getf (cdr def) :auto-increment) nil)
+                           (setf (getf (cdr def) :primary-key) nil))
+                         definitions)
+                   definitions)))))
 
 (defun table-primary-keys (conn table-name)
   (mapcar #'(lambda (column) (getf column :|name|))
-          (remove-if-not (lambda (column)
-                           (= (getf column :|pk|) 1))
-                         (table-info conn table-name))))
+          (remove-if (lambda (column)
+                       (= (getf column :|pk|) 0))
+                     (table-info conn table-name))))
 
 (defun table-indices (conn table-name)
   (let ((primary-keys (table-primary-keys conn table-name))
         (query (dbi:execute
-                (dbi:prepare conn (format nil "PRAGMA index_list(~A)" table-name)))))
+                (dbi:prepare conn (format nil "PRAGMA index_list(\"~A\")" table-name)))))
     (append
      (loop for index = (dbi:fetch query)
            while index
@@ -65,7 +78,7 @@
            (let* ((columns (mapcar
                             (lambda (info) (getf info :|name|))
                             (dbi:fetch-all
-                             (dbi:execute (dbi:prepare conn (format nil "PRAGMA index_info('~A')"
+                             (dbi:execute (dbi:prepare conn (format nil "PRAGMA index_info(\"~A\")"
                                                                     (getf index :|name|)))))))
                   (unique-key (= (getf index :|unique|) 1))
                   (primary-key (and unique-key

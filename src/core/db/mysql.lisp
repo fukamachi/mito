@@ -58,14 +58,22 @@
                             :test #'string=))))
 
 (defun column-definitions (conn table-name)
-  ;; FIXME: quote
   (let* ((sql (format nil "SHOW FULL FIELDS FROM `~A`" table-name))
-         (query (dbi:execute (dbi:prepare conn sql))))
-    (loop for column = (dbi:fetch query)
-          while column
-          collect (list (getf column :|Field|)
-                        :type (getf column :|Type|)
-                        :auto-increment (string= (getf column :|Extra|) "auto_increment")
-                        :primary-key (string= (getf column :|Key|) "PRI")
-                        :not-null (or (string= (getf column :|Key|) "PRI")
-                                      (string= (getf column :|Null|) "NO"))))))
+         (query (dbi:execute (dbi:prepare conn sql)))
+         (definitions
+           (loop for column = (dbi:fetch query)
+                 while column
+                 collect (list (getf column :|Field|)
+                               :type (getf column :|Type|)
+                               :auto-increment (string= (getf column :|Extra|) "auto_increment")
+                               :primary-key (string= (getf column :|Key|) "PRI")
+                               :not-null (or (string= (getf column :|Key|) "PRI")
+                                             (string= (getf column :|Null|) "NO"))))))
+    ;; Set :primary-key NIL if there's a composite primary key.
+    (if (< 1 (count-if (lambda (def)
+                         (getf (cdr def) :primary-key))
+                       definitions))
+        (mapc (lambda (def)
+                (setf (getf (cdr def) :primary-key) nil))
+              definitions)
+        definitions)))

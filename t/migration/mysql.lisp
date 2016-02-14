@@ -285,6 +285,27 @@
       '(nil nil nil nil nil)
       "No migration after migrating"))
 
+(subtest "composite primary keys"
+  (defclass tag ()
+    ((name :col-type (:varchar 10)
+           :initarg :name))
+    (:metaclass dao-table-class))
+  (ensure-table-exists 'tag)
+  (defclass tweets-tag ()
+    ((tweet :col-type tweets
+            :initarg :tweet)
+     (tag :col-type tag
+          :initarg :tag))
+    (:metaclass dao-table-class)
+    (:record-timestamps nil)
+    (:auto-pk nil)
+    (:primary-key tweet tag))
+  (ensure-table-exists 'tweets-tag)
+
+  (is (mito.migration.table::migration-expressions-for-others (find-class 'tweets-tag) :mysql)
+      '(nil nil nil nil nil)
+      "No migration after migrating"))
+
 (finalize)
 
 (disconnect-toplevel)

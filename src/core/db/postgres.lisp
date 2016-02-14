@@ -59,21 +59,30 @@
                         ~%    AND f.attnum > 0~
                         ~%    AND f.atttypid != 0~
                         ~%ORDER BY f.attnum, p.contype" table-name))
-         (query (dbi:execute (dbi:prepare conn sql))))
-    (delete-duplicates
-     (loop for column = (dbi:fetch query)
-           while column
-           collect (list (getf column :|name|)
-                         :type (getf column :|type|)
-                         :auto-increment (not (null (member (getf column :|name|)
-                                                            serial-keys
-                                                            :test #'string=)))
-                         :primary-key (getf column :|primary|)
-                         :not-null (or (getf column :|primary|)
-                                       (getf column :|notnull|))))
-     :key #'car
-     :test #'string=
-     :from-end t)))
+         (query (dbi:execute (dbi:prepare conn sql)))
+         (definitions
+           (delete-duplicates
+            (loop for column = (dbi:fetch query)
+                  while column
+                  collect (list (getf column :|name|)
+                                :type (getf column :|type|)
+                                :auto-increment (not (null (member (getf column :|name|)
+                                                                   serial-keys
+                                                                   :test #'string=)))
+                                :primary-key (getf column :|primary|)
+                                :not-null (or (getf column :|primary|)
+                                              (getf column :|notnull|))))
+            :key #'car
+            :test #'string=
+            :from-end t)))
+    ;; Set :primary-key NIL if there's a composite primary key.
+    (if (< 1 (count-if (lambda (def)
+                         (getf (cdr def) :primary-key))
+                       definitions))
+        (mapc (lambda (def)
+                (setf (getf (cdr def) :primary-key) nil))
+              definitions)
+        definitions)))
 
 (defun table-indices (conn table-name)
   (let ((columns (mapcar #'car (column-definitions conn table-name)))
