@@ -89,22 +89,23 @@
                    (typep slot 'table-column-class))
                  (c2mop:class-direct-slots class)))
 
-(defun table-column-slots (class)
-  (labels ((main (class &optional main-slots)
-             (let ((main-slots-appended nil))
-               (loop for superclass in (c2mop:class-direct-superclasses class)
-                     if (eq (class-of superclass) (find-class 'standard-class))
-                       append (if (eq superclass (find-class 'standard-object))
-                                  (table-direct-column-slots class)
-                                  (progn
-                                    (setf main-slots-appended t)
-                                    (append (table-direct-column-slots class)
-                                            main-slots)))
-                     else
-                       append (main superclass
-                                    (append (table-direct-column-slots class)
-                                            main-slots))))))
+(defun map-all-superclasses (fn class)
+  (labels ((main (class &optional main-objects)
+             (loop for superclass in (c2mop:class-direct-superclasses class)
+                   if (eq (class-of superclass) (find-class 'standard-class))
+                     append (if (eq superclass (find-class 'standard-object))
+                                (funcall fn class)
+                                (append (funcall fn class)
+                                        main-objects))
+                   else
+                     append (main superclass
+                                  (append (funcall fn class)
+                                          main-objects)))))
     (main class)))
+
+(defun table-column-slots (class)
+  (map-all-superclasses #'table-direct-column-slots
+                        class))
 
 (defgeneric database-column-slots (class)
   (:method ((class table-class))
@@ -135,25 +136,31 @@
                     :primary-key t
                     :columns (unlispify-keys (list (table-column-name primary-key-slot)))))))
 
-         (when (slot-value class 'unique-keys)
-           (mapcar (lambda (key)
-                     ;; FIXME: it'll raise an error if the index name is too long
-                     (list (format nil "unique_~A_~{~A~^_~}"
-                                   table-name
-                                   (unlispify-keys (ensure-list key)))
-                           :unique-key t
-                           :primary-key nil
-                           :columns (ensure-list (unlispify-keys key))))
-                   (slot-value class 'unique-keys)))
+         (let ((unique-keys (map-all-superclasses (lambda (class)
+                                                    (slot-value class 'unique-keys))
+                                                  class)))
+           (when unique-keys
+             (mapcar (lambda (key)
+                       ;; FIXME: it'll raise an error if the index name is too long
+                       (list (format nil "unique_~A_~{~A~^_~}"
+                                     table-name
+                                     (unlispify-keys (ensure-list key)))
+                             :unique-key t
+                             :primary-key nil
+                             :columns (ensure-list (unlispify-keys key))))
+                     unique-keys)))
          ;; Ignore :keys when using SQLite3
-         (when (and (slot-value class 'keys)
-                    (not (eq driver-type :sqlite3)))
-           (mapcar (lambda (key)
-                     ;; FIXME: it'll raise an error if the index name is too long
-                     (list (format nil "key_~A_~{~A~^_~}"
-                                   table-name
-                                   (unlispify-keys (ensure-list key)))
-                           :unique-key nil
-                           :primary-key nil
-                           :columns (ensure-list (unlispify-keys key))))
-                   (slot-value class 'keys))))))))
+         (unless (eq driver-type :sqlite3)
+           (let ((keys (map-all-superclasses (lambda (class)
+                                               (slot-value class 'keys))
+                                             class)))
+             (when keys
+               (mapcar (lambda (key)
+                         ;; FIXME: it'll raise an error if the index name is too long
+                         (list (format nil "key_~A_~{~A~^_~}"
+                                       table-name
+                                       (unlispify-keys (ensure-list key)))
+                               :unique-key nil
+                               :primary-key nil
+                               :columns (ensure-list (unlispify-keys key))))
+                       keys)))))))))
