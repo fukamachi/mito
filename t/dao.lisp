@@ -141,6 +141,12 @@
                (mito:includes 'user)))
       "foreign slots are loaded eagerly with 'includes'.")
 
+  (let ((user (mito:find-dao 'user)))
+    (ok user)
+    (is-type (mito:find-dao 'tweet :user user)
+             'tweet
+             "Can find an object by a foreign object"))
+
   (disconnect-toplevel))
 
 (finalize)

@@ -281,3 +281,11 @@
 (defun find-parent-column (table slot)
   (gethash (c2mop:slot-definition-name slot)
            (slot-value table 'parent-column-map)))
+
+(defun find-child-columns (table slot)
+  (let (results)
+    (maphash (lambda (child parent)
+               (when (eq parent (c2mop:slot-definition-name slot))
+                 (push child results)))
+             (slot-value table 'parent-column-map))
+    results))

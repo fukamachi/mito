@@ -9,12 +9,14 @@
                     #:dao-table-column-foreign-class
                     #:dao-table-column-foreign-slot)
       (:import-from #:mito.dao.table
-                    #:find-parent-column)
+                    #:find-parent-column
+                    #:find-child-columns)
       (:import-from #:mito.connection
                     #:*connection*
                     #:check-connected)
       (:import-from #:mito.class
-                    #:database-column-slots)
+                    #:database-column-slots
+                    #:ghost-slot-p)
       (:import-from #:mito.db
                     #:last-insert-id
                     #:execute-sql
@@ -49,6 +51,14 @@
   (cl-reexport:reexport-from :mito.dao.mixin)
   (cl-reexport:reexport-from :mito.dao.table))
 
+(defun foreign-value (obj slot)
+  (let* ((class (class-of obj))
+         (foreign-slot (dao-table-column-foreign-slot slot))
+         (rel-column-name (find-parent-column class slot)))
+    (and (slot-boundp obj rel-column-name)
+         (slot-value (slot-value obj rel-column-name)
+                     (c2mop:slot-definition-name foreign-slot)))))
+
 (defun make-set-clause (obj)
   (let ((class (class-of obj)))
     (apply #'sxql:make-clause :set=
@@ -57,14 +67,8 @@
               (let ((slot-name (c2mop:slot-definition-name slot)))
                 (cond
                   ((dao-table-column-foreign-class slot)
-                   (let* ((rel-column-name (find-parent-column class slot))
-                          (foreign-slot (dao-table-column-foreign-slot slot))
-                          (val
-                            (and (slot-boundp obj rel-column-name)
-                                 (slot-value (slot-value obj rel-column-name)
-                                             (c2mop:slot-definition-name foreign-slot)))))
-                     (list (sxql:make-sql-symbol (table-column-name slot))
-                           val)))
+                   (list (sxql:make-sql-symbol (table-column-name slot))
+                         (foreign-value obj slot)))
                   ((not (slot-boundp obj slot-name))
                    nil)
                   (t
@@ -196,21 +200,39 @@
                  (include-foreign-objects ,foreign-class ,results))
                ,results)))))))
 
-(defun where-and (fields-and-values)
+(defun where-and (fields-and-values class)
   (when fields-and-values
-    (sxql:where `(:and
-                  ,@(loop for (field value) on fields-and-values by #'cddr
-                          collect `(:= ,field ,value))))))
+    (let ((op (loop for (field value) on fields-and-values by #'cddr
+                    for slot = (find-slot-by-name class field :test #'string=)
+                    unless slot
+                      do (error "Class ~S does not have a slot named ~S" class field)
+                    if (ghost-slot-p slot)
+                      append (let ((children (mapcar (lambda (slot-name)
+                                                       (find-slot-by-name class slot-name :test #'string=))
+                                                     (find-child-columns class slot))))
+                               (when children
+                                 `((:and ,@(loop for child in children
+                                                 collect
+                                                 `(:= ,(intern (string (c2mop:slot-definition-name child)) :keyword)
+                                                      ,(slot-value value
+                                                                   (c2mop:slot-definition-name
+                                                                    (dao-table-column-foreign-slot child)))))))))
+                    else
+                      collect `(:= ,field ,value))))
+      (when op
+        (sxql:where `(:and ,@op))))))
 
 (defun find-dao (class &rest fields-and-values)
+  (setf class (ensure-class class))
   (first
    (select-dao class
-     (where-and fields-and-values)
+     (where-and fields-and-values class)
      (sxql:limit 1))))
 
 (defun retrieve-dao (class &rest fields-and-values)
+  (setf class (ensure-class class))
   (select-dao class
-    (where-and fields-and-values)))
+    (where-and fields-and-values class)))
 
 (defun count-dao (class &rest fields-and-values)
   (setf class (ensure-class class))
@@ -218,7 +240,7 @@
                (sxql:from (sxql:make-sql-symbol (table-name class))))))
     (when fields-and-values
       (add-child sql
-                 (where-and fields-and-values)))
+                 (where-and fields-and-values class)))
     (getf (first
            (retrieve-by-sql sql))
           :count)))
