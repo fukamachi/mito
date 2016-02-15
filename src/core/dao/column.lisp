@@ -35,13 +35,7 @@
    (references :type references
                :initarg :references
                :initform nil
-               :reader dao-table-column-references)
-   (foreign-class :initarg :foreign-class
-                  :initform nil
-                  :reader dao-table-column-foreign-class)
-   (foreign-slot :initarg :foreign-slot
-                 :initform nil
-                 :reader dao-table-column-foreign-slot)))
+               :reader dao-table-column-references)))
 
 (defgeneric dao-table-column-foreign-class (column)
   (:method ((column dao-table-column-class))
