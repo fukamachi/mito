@@ -286,6 +286,13 @@
       "No migration after migrating"))
 
 (subtest "composite primary keys"
+  (when (find-class 'tag nil)
+    (setf (find-class 'tag) nil))
+  (execute-sql "DROP TABLE IF EXISTS tag")
+  (when (find-class 'tweets-tag nil)
+    (setf (find-class 'tweets-tag) nil))
+  (execute-sql "DROP TABLE IF EXISTS tweets_tag")
+
   (defclass tag ()
     ((name :col-type (:varchar 10)
            :initarg :name))

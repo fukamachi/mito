@@ -128,7 +128,7 @@
                     (pk-names (table-primary-key rel-class)))
                (flet ((rel-column-name (pk-name)
                         (intern
-                         (format nil "~A-~A" col-type pk-name)
+                         (format nil "~A-~A" name pk-name)
                          (symbol-package name))))
                  (dolist (pk-name pk-names)
                    (let ((rel-column-name (rel-column-name pk-name))
