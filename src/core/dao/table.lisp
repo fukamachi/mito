@@ -51,7 +51,8 @@
   ((auto-pk :initarg :auto-pk
             :initform '(t))
    (record-timestamps :initarg :record-timestamps
-                      :initform '(t))))
+                      :initform '(t))
+   (parent-column-map)))
 
 (defmethod c2mop:direct-slot-definition-class ((class dao-table-class) &key)
   'dao-table-column-class)
@@ -108,65 +109,62 @@
     obj))
 
 (defun initialize-initargs (initargs)
-  ;; Add relational column slots (ex. user-id)
-  (loop for column in (copy-seq (getf initargs :direct-slots)) ;; Prevent infinite-loop
-        for (col-type . not-null) = (let ((col-type (getf column :col-type)))
-                                      (optima:match col-type
-                                        ((or (list 'or :null x)
-                                             (list 'or x :null))
-                                         (cons x t))
-                                        (otherwise
-                                         (cons col-type nil))))
-        when (and (symbolp col-type)
-                  (not (null col-type))
-                  (not (keywordp col-type)))
-          do (rplacd (cdr column)
-                     `(:ghost t ,@(cddr column)))
-             (let* ((name (getf column :name))
-                    ;; FIXME: find-class returns NIL if the class is this same class
-                    (rel-class (find-class col-type))
-                    (pk-names (table-primary-key rel-class)))
-               (flet ((rel-column-name (pk-name)
-                        (intern
-                         (format nil "~A-~A" name pk-name)
-                         (symbol-package name))))
-                 (dolist (pk-name pk-names)
-                   (let ((rel-column-name (rel-column-name pk-name))
-                         (pk (get-slot-by-slot-name rel-class pk-name)))
-                     (rplacd (last (getf initargs :direct-slots))
-                             `((:name ,rel-column-name
-                                :initargs (,(intern (symbol-name rel-column-name) :keyword))
-                                ;; Defer retrieving the relational column type until table-column-info
-                                :col-type ,(getf column :col-type)
-                                :rel-column-name ,(getf column :name)
-                                :foreign-class ,rel-class
-                                :rel-key ,pk
-                                :rel-key-fn
-                                ,(lambda (obj)
-                                   (and (slot-boundp obj name)
-                                        (slot-value (slot-value obj name) pk-name))))))))
+  (let ((parent-column-map (make-hash-table :test 'eq)))
+    ;; Add relational column slots (ex. user-id)
+    (loop for column in (copy-seq (getf initargs :direct-slots)) ;; Prevent infinite-loop
+          for (col-type . not-null) = (let ((col-type (getf column :col-type)))
+                                        (optima:match col-type
+                                          ((or (list 'or :null x)
+                                               (list 'or x :null))
+                                           (cons x t))
+                                          (otherwise
+                                           (cons col-type nil))))
+          when (and (symbolp col-type)
+                    (not (null col-type))
+                    (not (keywordp col-type)))
+            do (rplacd (cdr column)
+                       `(:ghost t ,@(cddr column)))
+               (let* ((name (getf column :name))
+                      ;; FIXME: find-class returns NIL if the class is this same class
+                      (rel-class (find-class col-type))
+                      (pk-names (table-primary-key rel-class)))
+                 (flet ((rel-column-name (pk-name)
+                          (intern
+                           (format nil "~A-~A" name pk-name)
+                           (symbol-package name))))
+                   (dolist (pk-name pk-names)
+                     (let ((rel-column-name (rel-column-name pk-name))
+                           (pk (get-slot-by-slot-name rel-class pk-name)))
+                       (setf (gethash rel-column-name parent-column-map) name)
+                       (rplacd (last (getf initargs :direct-slots))
+                               `((:name ,rel-column-name
+                                  :initargs (,(intern (symbol-name rel-column-name) :keyword))
+                                  ;; Defer retrieving the relational column type until table-column-info
+                                  :col-type ,(getf column :col-type)
+                                  :foreign-class ,rel-class
+                                  :foreign-slot ,pk)))))
 
-                 (dolist (reader (getf column :readers))
-                   (setf (fdefinition reader)
-                         (lambda (object)
-                           (if (slot-boundp object name)
-                               (slot-value object name)
-                               (apply #'make-dao-instance rel-class
-                                      (first
-                                       (mito.db:retrieve-by-sql
-                                        (sxql:select :*
-                                          (sxql:from (sxql:make-sql-symbol (table-name rel-class)))
-                                          (sxql:where
-                                           `(:and
-                                             ,@(mapcar (lambda (pk-name)
-                                                         `(:= ,(sxql:make-sql-symbol
-                                                                (table-column-name
-                                                                 (get-slot-by-slot-name rel-class pk-name)))
-                                                              ,(slot-value object (rel-column-name pk-name))))
-                                                       (table-primary-key rel-class))))
-                                          (sxql:limit 1))))))))))
-               (setf (getf column :readers) '())))
-  initargs)
+                   (dolist (reader (getf column :readers))
+                     (setf (fdefinition reader)
+                           (lambda (object)
+                             (if (slot-boundp object name)
+                                 (slot-value object name)
+                                 (apply #'make-dao-instance rel-class
+                                        (first
+                                         (mito.db:retrieve-by-sql
+                                          (sxql:select :*
+                                            (sxql:from (sxql:make-sql-symbol (table-name rel-class)))
+                                            (sxql:where
+                                             `(:and
+                                               ,@(mapcar (lambda (pk-name)
+                                                           `(:= ,(sxql:make-sql-symbol
+                                                                  (table-column-name
+                                                                   (get-slot-by-slot-name rel-class pk-name)))
+                                                                ,(slot-value object (rel-column-name pk-name))))
+                                                         (table-primary-key rel-class))))
+                                            (sxql:limit 1))))))))))
+                 (setf (getf column :readers) '())))
+    (values initargs parent-column-map)))
 
 (defun expand-relational-keys (class slot-name)
   (let ((keys (slot-value class slot-name))
@@ -194,44 +192,48 @@
 
 (defmethod initialize-instance :around ((class dao-table-class) &rest initargs
                                         &key direct-superclasses &allow-other-keys)
-  (setf initargs (initialize-initargs initargs))
+  (multiple-value-bind (initargs parent-column-map)
+      (initialize-initargs initargs)
 
-  (when (and (initargs-enables-record-timestamps initargs)
-             (not (contains-class-or-subclasses 'record-timestamps-mixin direct-superclasses)))
-    (push (find-class 'record-timestamps-mixin) (getf initargs :direct-superclasses)))
+    (when (and (initargs-enables-record-timestamps initargs)
+               (not (contains-class-or-subclasses 'record-timestamps-mixin direct-superclasses)))
+      (push (find-class 'record-timestamps-mixin) (getf initargs :direct-superclasses)))
 
-  (unless (contains-class-or-subclasses 'dao-class direct-superclasses)
-    (push (find-class 'dao-class) (getf initargs :direct-superclasses)))
+    (unless (contains-class-or-subclasses 'dao-class direct-superclasses)
+      (push (find-class 'dao-class) (getf initargs :direct-superclasses)))
 
-  (when (and (initargs-enables-auto-pk initargs)
-             (not (initargs-contains-primary-key initargs))
-             (not (contains-class-or-subclasses 'auto-pk-mixin direct-superclasses)))
-    (push (find-class 'auto-pk-mixin) (getf initargs :direct-superclasses)))
+    (when (and (initargs-enables-auto-pk initargs)
+               (not (initargs-contains-primary-key initargs))
+               (not (contains-class-or-subclasses 'auto-pk-mixin direct-superclasses)))
+      (push (find-class 'auto-pk-mixin) (getf initargs :direct-superclasses)))
 
-  (let ((class (apply #'call-next-method class initargs)))
-    (expand-relational-keys class 'mito.class.table::primary-key)
-    (expand-relational-keys class 'mito.class.table::unique-keys)
-    (expand-relational-keys class 'mito.class.table::keys)
-    class))
+    (let ((class (apply #'call-next-method class initargs)))
+      (expand-relational-keys class 'mito.class.table::primary-key)
+      (expand-relational-keys class 'mito.class.table::unique-keys)
+      (expand-relational-keys class 'mito.class.table::keys)
+      (setf (slot-value class 'parent-column-map) parent-column-map)
+      class)))
 
 (defmethod reinitialize-instance :around ((class dao-table-class) &rest initargs
                                                                     &key direct-superclasses &allow-other-keys)
-  (setf initargs (initialize-initargs initargs))
+  (multiple-value-bind (initargs parent-column-map)
+      (initialize-initargs initargs)
 
-  (when (and (initargs-enables-record-timestamps initargs)
-             (not (contains-class-or-subclasses 'record-timestamps-mixin direct-superclasses)))
-    (push (find-class 'record-timestamps-mixin) (getf initargs :direct-superclasses)))
+    (when (and (initargs-enables-record-timestamps initargs)
+               (not (contains-class-or-subclasses 'record-timestamps-mixin direct-superclasses)))
+      (push (find-class 'record-timestamps-mixin) (getf initargs :direct-superclasses)))
 
-  (when (and (initargs-enables-auto-pk initargs)
-             (not (initargs-contains-primary-key initargs))
-             (not (contains-class-or-subclasses 'auto-pk-mixin direct-superclasses)))
-    (push (find-class 'auto-pk-mixin) (getf initargs :direct-superclasses)))
+    (when (and (initargs-enables-auto-pk initargs)
+               (not (initargs-contains-primary-key initargs))
+               (not (contains-class-or-subclasses 'auto-pk-mixin direct-superclasses)))
+      (push (find-class 'auto-pk-mixin) (getf initargs :direct-superclasses)))
 
-  (let ((class (apply #'call-next-method class initargs)))
-    (expand-relational-keys class 'mito.class.table::primary-key)
-    (expand-relational-keys class 'mito.class.table::unique-keys)
-    (expand-relational-keys class 'mito.class.table::keys)
-    class))
+    (let ((class (apply #'call-next-method class initargs)))
+      (expand-relational-keys class 'mito.class.table::primary-key)
+      (expand-relational-keys class 'mito.class.table::unique-keys)
+      (expand-relational-keys class 'mito.class.table::keys)
+      (setf (slot-value class 'parent-column-map) parent-column-map)
+      class)))
 
 (defmethod c2mop:ensure-class-using-class :around ((class dao-table-class) name &rest keys
                                                    &key direct-superclasses &allow-other-keys)
@@ -271,3 +273,7 @@
   (check-type class table-class)
   (create-table-sxql class (driver-type)
                      :if-not-exists if-not-exists))
+
+(defun find-parent-column (table slot)
+  (gethash (c2mop:slot-definition-name slot)
+           (slot-value table 'parent-column-map)))

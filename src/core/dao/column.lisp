@@ -10,9 +10,7 @@
            #:dao-table-column-inflate
            #:dao-table-column-deflate
            #:dao-table-column-foreign-class
-           #:dao-table-column-rel-column-name
-           #:dao-table-column-rel-key
-           #:dao-table-column-rel-key-fn))
+           #:dao-table-column-foreign-slot))
 (in-package :mito.dao.column)
 
 (defclass dao-table-column-class (table-column-class)
@@ -27,18 +25,13 @@
    (foreign-class :initarg :foreign-class
                   :initform nil
                   :reader dao-table-column-foreign-class)
-   (rel-column-name :initarg :rel-column-name
-                    :initform nil
-                    :reader dao-table-column-rel-column-name)
-   (rel-key :initarg :rel-key
-            :initform nil
-            :reader dao-table-column-rel-key)
-   (rel-key-fn :type (or function null)
-               :initarg :rel-key-fn
-               :initform nil
-               :reader dao-table-column-rel-key-fn)))
+   (foreign-slot :initarg :foreign-slot
+                 :initform nil
+                 :reader dao-table-column-foreign-slot)))
 
-(defmethod initialize-instance :around ((object dao-table-column-class) &rest rest-initargs &key name initargs ghost &allow-other-keys)
+(defmethod initialize-instance :around ((object dao-table-column-class) &rest rest-initargs
+                                        &key name initargs ghost
+                                        &allow-other-keys)
   (when (and (not ghost)
              (not (find (symbol-name name) initargs :test #'string=)))
     ;; Add the default initarg.
@@ -48,9 +41,9 @@
   (apply #'call-next-method object rest-initargs))
 
 (defmethod table-column-info ((column dao-table-column-class) driver-type)
-  (if (dao-table-column-rel-key column)
+  (if (dao-table-column-foreign-slot column)
       (let* ((column-info (call-next-method))
-             (rel-column-info (table-column-info (dao-table-column-rel-key column) driver-type))
+             (rel-column-info (table-column-info (dao-table-column-foreign-slot column) driver-type))
              (new-col-type (getf (cdr rel-column-info) :type)))
         (setf (getf (cdr column-info) :type)
               (ecase driver-type

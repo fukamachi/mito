@@ -7,9 +7,9 @@
             #:mito.class)
       (:import-from #:mito.dao.column
                     #:dao-table-column-foreign-class
-                    #:dao-table-column-rel-key
-                    #:dao-table-column-rel-column-name
-                    #:dao-table-column-rel-key-fn)
+                    #:dao-table-column-foreign-slot)
+      (:import-from #:mito.dao.table
+                    #:find-parent-column)
       (:import-from #:mito.connection
                     #:*connection*
                     #:check-connected)
@@ -50,22 +50,28 @@
   (cl-reexport:reexport-from :mito.dao.table))
 
 (defun make-set-clause (obj)
-  (apply #'sxql:make-clause :set=
-         (mapcan
-          (lambda (slot)
-            (let ((slot-name (c2mop:slot-definition-name slot)))
-              (cond
-                ((dao-table-column-rel-key-fn slot)
-                 (let ((val (funcall (dao-table-column-rel-key-fn slot) obj)))
-                   (list (sxql:make-sql-symbol (table-column-name slot))
-                         val)))
-                ((not (slot-boundp obj slot-name))
-                 nil)
-                (t
-                 (let ((value (slot-value obj slot-name)))
-                   (list (sxql:make-sql-symbol (table-column-name slot))
-                         (deflate obj slot-name value)))))))
-          (database-column-slots (class-of obj)))))
+  (let ((class (class-of obj)))
+    (apply #'sxql:make-clause :set=
+           (mapcan
+            (lambda (slot)
+              (let ((slot-name (c2mop:slot-definition-name slot)))
+                (cond
+                  ((dao-table-column-foreign-class slot)
+                   (let* ((rel-column-name (find-parent-column class slot))
+                          (foreign-slot (dao-table-column-foreign-slot slot))
+                          (val
+                            (and (slot-boundp obj rel-column-name)
+                                 (slot-value (slot-value obj rel-column-name)
+                                             (c2mop:slot-definition-name foreign-slot)))))
+                     (list (sxql:make-sql-symbol (table-column-name slot))
+                           val)))
+                  ((not (slot-boundp obj slot-name))
+                   nil)
+                  (t
+                   (let ((value (slot-value obj slot-name)))
+                     (list (sxql:make-sql-symbol (table-column-name slot))
+                           (deflate obj slot-name value)))))))
+            (database-column-slots class)))))
 
 (defgeneric insert-dao (obj)
   (:method ((obj dao-class))
@@ -140,32 +146,32 @@
             (apply #'make-dao-instance class result))
           (retrieve-by-sql sql)))
 
-(defun include-foreign-objects (class records)
+(defun include-foreign-objects (foreign-class records)
   (when records
-    (let* ((foreign-class (class-of (first records)))
-           (foreign-slots (remove-if-not (lambda (slot)
-                                           (eq (dao-table-column-foreign-class slot)
-                                               class))
-                                         (table-column-slots foreign-class))))
-      (unless foreign-slots
+    (let* ((class (class-of (first records)))
+           (rel-slots (remove-if-not (lambda (slot)
+                                       (eq (dao-table-column-foreign-class slot)
+                                           foreign-class))
+                                     (table-column-slots class))))
+      (unless rel-slots
         (error "~S is not related to ~S" class foreign-class))
-      (when (cdr foreign-slots)
+      (when (cdr rel-slots)
         (error "Cannot use 'includes' with a class which has composite primary keys."))
-      (let* ((rel-slot (dao-table-column-rel-key (first foreign-slots)))
+      (let* ((foreign-slot (dao-table-column-foreign-slot (first rel-slots)))
              (sql
                (sxql:select :*
-                 (sxql:from (sxql:make-sql-symbol (table-name class)))
+                 (sxql:from (sxql:make-sql-symbol (table-name foreign-class)))
                  (sxql:where
-                  (:in (sxql:make-sql-symbol (table-column-name rel-slot))
+                  (:in (sxql:make-sql-symbol (table-column-name foreign-slot))
                        (loop for obj in records
-                             collect (slot-value obj (c2mop:slot-definition-name (first foreign-slots))))))))
+                             collect (slot-value obj (c2mop:slot-definition-name (first rel-slots))))))))
              (results
-               (select-by-sql class sql)))
+               (select-by-sql foreign-class sql)))
         (dolist (obj records)
-          (setf (slot-value obj (dao-table-column-rel-column-name (first foreign-slots)))
+          (setf (slot-value obj (find-parent-column class (first rel-slots)))
                 (find-if (lambda (result)
-                           (equal (slot-value result (c2mop:slot-definition-name rel-slot))
-                                  (slot-value obj (c2mop:slot-definition-name (first foreign-slots)))))
+                           (equal (slot-value result (c2mop:slot-definition-name foreign-slot))
+                                  (slot-value obj (c2mop:slot-definition-name (first rel-slots)))))
                          results)))
         records))))
 
