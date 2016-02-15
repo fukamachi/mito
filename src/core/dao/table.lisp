@@ -18,8 +18,7 @@
   (:import-from #:mito.dao.column
                 #:dao-table-column-class
                 #:dao-table-column-foreign-class
-                #:dao-table-column-inflate
-                #:dao-table-column-deflate)
+                #:dao-table-column-inflate)
   (:import-from #:mito.dao.mixin
                 #:auto-pk-mixin
                 #:record-timestamps-mixin)
@@ -29,9 +28,6 @@
            #:dao-table-class
 
            #:dao-synced
-
-           #:inflate
-           #:deflate
 
            #:make-dao-instance
            #:table-definition
@@ -88,20 +84,19 @@
   (assert (and class
                (typep class 'dao-table-class)))
 
-  (let* ((obj (allocate-instance class))
-         (obj
-           (apply #'make-instance class
-                  :allow-other-keys t
-                  (loop for (k v) on initargs by #'cddr
-                        for column = (find-if (lambda (initargs)
-                                                (find k initargs :test #'eq))
-                                              (table-column-slots class)
-                                              :key #'c2mop:slot-definition-initargs)
-                        if column
-                          append (list k
-                                       (inflate obj (c2mop:slot-definition-name column) v))
-                        else
-                          append (list k v)))))
+  (let ((obj
+          (apply #'make-instance class
+                 :allow-other-keys t
+                 (loop for (k v) on initargs by #'cddr
+                       for column = (find-if (lambda (initargs)
+                                               (find k initargs :test #'eq))
+                                             (table-column-slots class)
+                                             :key #'c2mop:slot-definition-initargs)
+                       if column
+                         append (list k
+                                      (funcall (dao-table-column-inflate column) v))
+                       else
+                         append (list k v)))))
     (setf (dao-synced obj) t)
     obj))
 
@@ -245,32 +240,6 @@
     (setf (getf keys :direct-superclasses)
           (cons (find-class 'dao-class) direct-superclasses)))
   (apply #'call-next-method class name keys))
-
-(defgeneric inflate (object slot-name value)
-  (:method (object slot-name value)
-    (let* ((slot (find-slot-by-name (class-of object) slot-name))
-           (inflate (dao-table-column-inflate slot)))
-      (if inflate
-          (funcall inflate value)
-          value)))
-  (:method ((object record-timestamps-mixin) (slot-name (eql 'mito.dao.mixin::created-at)) value)
-    (local-time:universal-to-timestamp value))
-  (:method ((object record-timestamps-mixin) (slot-name (eql 'mito.dao.mixin::updated-at)) value)
-    (local-time:universal-to-timestamp value)))
-
-(defgeneric deflate (object slot-name value)
-  (:method (object slot-name value)
-    (let* ((slot (find-slot-by-name (class-of object) slot-name))
-           (deflate (dao-table-column-deflate slot)))
-      (if deflate
-          (funcall deflate value)
-          value)))
-  (:method ((object record-timestamps-mixin) (slot-name (eql 'mito.dao.mixin::created-at)) value)
-    (local-time:format-timestring nil value
-                                  :timezone local-time:+gmt-zone+))
-  (:method ((object record-timestamps-mixin) (slot-name (eql 'mito.dao.mixin::updated-at)) value)
-    (local-time:format-timestring nil value
-                                  :timezone local-time:+gmt-zone+)))
 
 (defun table-definition (class &key if-not-exists)
   (setf class (ensure-class class))

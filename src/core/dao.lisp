@@ -6,6 +6,7 @@
             #:sxql
             #:mito.class)
       (:import-from #:mito.dao.column
+                    #:dao-table-column-deflate
                     #:dao-table-column-foreign-class
                     #:dao-table-column-foreign-slot)
       (:import-from #:mito.dao.table
@@ -74,7 +75,7 @@
                   (t
                    (let ((value (slot-value obj slot-name)))
                      (list (sxql:make-sql-symbol (table-column-name slot))
-                           (deflate obj slot-name value)))))))
+                           (funcall (dao-table-column-deflate slot) value)))))))
             (database-column-slots class)))))
 
 (defgeneric insert-dao (obj)

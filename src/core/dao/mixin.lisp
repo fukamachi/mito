@@ -30,8 +30,10 @@
 (defclass record-timestamps-mixin ()
   ((created-at :col-type (or :timestamp :null)
                :initarg :created-at
+               :inflate #'local-time:universal-to-timestamp
                :accessor object-created-at)
    (updated-at :col-type (or :timestamp :null)
                :initarg :updated-at
+               :inflate #'local-time:universal-to-timestamp
                :accessor object-updated-at))
   (:metaclass dao-table-mixin))

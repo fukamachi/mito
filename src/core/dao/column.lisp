@@ -26,11 +26,11 @@
 (defclass dao-table-column-class (table-column-class)
   ((inflate :type (or function null)
             :initarg :inflate
-            :initform nil
+            :initform #'identity
             :reader dao-table-column-inflate)
    (deflate :type (or function null)
             :initarg :deflate
-            :initform nil
+            :initform #'identity
             :reader dao-table-column-deflate)
    (references :type references
                :initarg :references
@@ -62,13 +62,18 @@
                    (class-name foreign-class)))))))
 
 (defmethod initialize-instance :around ((object dao-table-column-class) &rest rest-initargs
-                                        &key name initargs ghost
+                                        &key name initargs ghost inflate deflate
                                         &allow-other-keys)
   (when (and (not ghost)
              (not (find (symbol-name name) initargs :test #'string=)))
     ;; Add the default initarg.
     (push (intern (symbol-name name) :keyword)
           (getf rest-initargs :initargs)))
+
+  (when inflate
+    (setf (getf rest-initargs :inflate) (eval inflate)))
+  (when deflate
+    (setf (getf rest-initargs :deflate) (eval deflate)))
 
   (apply #'call-next-method object rest-initargs))
 

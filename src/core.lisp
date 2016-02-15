@@ -14,8 +14,6 @@
                                       #:dao-table-class
                                       #:object-id
                                       #:dao-synced
-                                      #:inflate
-                                      #:deflate
                                       #:make-dao-instance
                                       #:table-definition
 
