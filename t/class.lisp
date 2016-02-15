@@ -16,7 +16,11 @@
                      (status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass table-class))
-                  "CREATE TABLE tweet (id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT NOT NULL, user INTEGER NOT NULL)")
+                  "CREATE TABLE tweet (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    status TEXT NOT NULL,
+    user INTEGER NOT NULL
+)")
   (is-table-class :mysql
                   (defclass tweet ()
                     ((id :col-type :bigserial
@@ -24,7 +28,11 @@
                      (status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass table-class))
-                  "CREATE TABLE tweet (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT NOT NULL, user INTEGER NOT NULL)"
+                  "CREATE TABLE tweet (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    status TEXT NOT NULL,
+    user INTEGER NOT NULL
+)"
                   "BIGSERIAL")
   (is-table-class :mysql
                   (defclass tweet ()
@@ -33,7 +41,12 @@
                      (created-at :col-type :datetime))
                     (:metaclass table-class)
                     (:primary-key user created-at))
-                  "CREATE TABLE tweet (status TEXT NOT NULL, user INTEGER NOT NULL, created_at DATETIME NOT NULL, PRIMARY KEY (user, created_at))"
+                  "CREATE TABLE tweet (
+    status TEXT NOT NULL,
+    user INTEGER NOT NULL,
+    created_at DATETIME NOT NULL,
+    PRIMARY KEY (user, created_at)
+)"
                   "PRIMARY KEY")
   (is-table-class :mysql
                   (defclass tweet ()
@@ -42,7 +55,12 @@
                      (created-at :col-type :datetime))
                     (:metaclass table-class)
                     (:unique-keys (user created-at)))
-                  "CREATE TABLE tweet (status TEXT NOT NULL, user INTEGER NOT NULL, created_at DATETIME NOT NULL, UNIQUE (user, created_at))"
+                  "CREATE TABLE tweet (
+    status TEXT NOT NULL,
+    user INTEGER NOT NULL,
+    created_at DATETIME NOT NULL,
+    UNIQUE (user, created_at)
+)"
                   "UNIQUE KEY")
   (is-table-class :mysql
                   (defclass tweet ()
@@ -51,7 +69,12 @@
                      (created-at :col-type :datetime))
                     (:metaclass table-class)
                     (:keys (user created-at)))
-                  "CREATE TABLE tweet (status TEXT NOT NULL, user INTEGER NOT NULL, created_at DATETIME NOT NULL, KEY (user, created_at))"
+                  "CREATE TABLE tweet (
+    status TEXT NOT NULL,
+    user INTEGER NOT NULL,
+    created_at DATETIME NOT NULL,
+    KEY (user, created_at)
+)"
                   "KEY")
   (is-table-class :mysql
                   (defclass tweet ()
@@ -59,7 +82,11 @@
                      (user :col-type :integer)
                      (created-at :col-type (or :datetime :null)))
                     (:metaclass table-class))
-                  "CREATE TABLE tweet (status TEXT NOT NULL, user INTEGER NOT NULL, created_at DATETIME)"
+                  "CREATE TABLE tweet (
+    status TEXT NOT NULL,
+    user INTEGER NOT NULL,
+    created_at DATETIME
+)"
                   "NULL"))
 
 (subtest "create-table (PostgreSQL)"
@@ -70,7 +97,11 @@
                      (status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass table-class))
-                  "CREATE TABLE tweet (id SERIAL NOT NULL PRIMARY KEY, status TEXT NOT NULL, user INTEGER NOT NULL)")
+                  "CREATE TABLE tweet (
+    id SERIAL NOT NULL PRIMARY KEY,
+    status TEXT NOT NULL,
+    user INTEGER NOT NULL
+)")
   (is-table-class :postgres
                   (defclass tweet ()
                     ((id :col-type :bigserial
@@ -78,7 +109,11 @@
                      (status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass table-class))
-                  "CREATE TABLE tweet (id BIGSERIAL NOT NULL PRIMARY KEY, status TEXT NOT NULL, user INTEGER NOT NULL)")
+                  "CREATE TABLE tweet (
+    id BIGSERIAL NOT NULL PRIMARY KEY,
+    status TEXT NOT NULL,
+    user INTEGER NOT NULL
+)")
   (is-table-class :postgres
                   (defclass tweet ()
                     ((status :col-type :text)
@@ -86,7 +121,12 @@
                      (created-at :col-type :datetime))
                     (:metaclass table-class)
                     (:primary-key user created-at))
-                  "CREATE TABLE tweet (status TEXT NOT NULL, user INTEGER NOT NULL, created_at DATETIME NOT NULL, PRIMARY KEY (user, created_at))"
+                  "CREATE TABLE tweet (
+    status TEXT NOT NULL,
+    user INTEGER NOT NULL,
+    created_at DATETIME NOT NULL,
+    PRIMARY KEY (user, created_at)
+)"
                   "PRIMARY KEY")
   (is-table-class :postgres
                   (defclass tweet ()
@@ -95,7 +135,12 @@
                      (created-at :col-type :datetime))
                     (:metaclass table-class)
                     (:unique-keys (user created-at)))
-                  "CREATE TABLE tweet (status TEXT NOT NULL, user INTEGER NOT NULL, created_at DATETIME NOT NULL, UNIQUE (user, created_at))"
+                  "CREATE TABLE tweet (
+    status TEXT NOT NULL,
+    user INTEGER NOT NULL,
+    created_at DATETIME NOT NULL,
+    UNIQUE (user, created_at)
+)"
                   "UNIQUE KEY")
   (is-table-class :postgres
                   (defclass tweet ()
@@ -104,7 +149,12 @@
                      (created-at :col-type :datetime))
                     (:metaclass table-class)
                     (:keys (user created-at)))
-                  "CREATE TABLE tweet (status TEXT NOT NULL, user INTEGER NOT NULL, created_at DATETIME NOT NULL, KEY (user, created_at))"
+                  "CREATE TABLE tweet (
+    status TEXT NOT NULL,
+    user INTEGER NOT NULL,
+    created_at DATETIME NOT NULL,
+    KEY (user, created_at)
+)"
                   "KEY")
   (is-table-class :postgres
                   (defclass tweet ()
@@ -112,7 +162,11 @@
                      (user :col-type :integer)
                      (created-at :col-type (or :datetime :null)))
                     (:metaclass table-class))
-                  "CREATE TABLE tweet (status TEXT NOT NULL, user INTEGER NOT NULL, created_at DATETIME)"
+                  "CREATE TABLE tweet (
+    status TEXT NOT NULL,
+    user INTEGER NOT NULL,
+    created_at DATETIME
+)"
                   "NULL"))
 
 (subtest "create-table (SQLite3)"
@@ -123,7 +177,11 @@
                      (status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass table-class))
-                  "CREATE TABLE tweet (id INTEGER PRIMARY KEY AUTOINCREMENT, status TEXT NOT NULL, user INTEGER NOT NULL)")
+                  "CREATE TABLE tweet (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    status TEXT NOT NULL,
+    user INTEGER NOT NULL
+)")
   ;; bigserial
   (is-table-class :sqlite3
                   (defclass tweet ()
@@ -132,7 +190,11 @@
                      (status :col-type :text)
                      (user :col-type :integer))
                     (:metaclass table-class))
-                  "CREATE TABLE tweet (id INTEGER PRIMARY KEY AUTOINCREMENT, status TEXT NOT NULL, user INTEGER NOT NULL)")
+                  "CREATE TABLE tweet (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    status TEXT NOT NULL,
+    user INTEGER NOT NULL
+)")
   (is-table-class :sqlite3
                   (defclass tweet ()
                     ((status :col-type :text)
@@ -140,7 +202,12 @@
                      (created-at :col-type :datetime))
                     (:metaclass table-class)
                     (:primary-key user created-at))
-                  "CREATE TABLE tweet (status TEXT NOT NULL, user INTEGER NOT NULL, created_at DATETIME NOT NULL, PRIMARY KEY (user, created_at))"
+                  "CREATE TABLE tweet (
+    status TEXT NOT NULL,
+    user INTEGER NOT NULL,
+    created_at DATETIME NOT NULL,
+    PRIMARY KEY (user, created_at)
+)"
                   "PRIMARY KEY")
   (is-table-class :sqlite3
                   (defclass tweet ()
@@ -149,7 +216,12 @@
                      (created-at :col-type :datetime))
                     (:metaclass table-class)
                     (:unique-keys (user created-at)))
-                  "CREATE TABLE tweet (status TEXT NOT NULL, user INTEGER NOT NULL, created_at DATETIME NOT NULL, UNIQUE (user, created_at))"
+                  "CREATE TABLE tweet (
+    status TEXT NOT NULL,
+    user INTEGER NOT NULL,
+    created_at DATETIME NOT NULL,
+    UNIQUE (user, created_at)
+)"
                   "UNIQUE KEY")
   (is-table-class :sqlite3
                   (defclass tweet ()
@@ -158,7 +230,11 @@
                      (created-at :col-type :datetime))
                     (:metaclass table-class)
                     (:keys (user created-at)))
-                  "CREATE TABLE tweet (status TEXT NOT NULL, user INTEGER NOT NULL, created_at DATETIME NOT NULL)"
+                  "CREATE TABLE tweet (
+    status TEXT NOT NULL,
+    user INTEGER NOT NULL,
+    created_at DATETIME NOT NULL
+)"
                   "KEY (ignored)")
   (is-table-class :sqlite3
                   (defclass tweet ()
@@ -166,7 +242,11 @@
                      (user :col-type :integer)
                      (created-at :col-type (or :datetime :null)))
                     (:metaclass table-class))
-                  "CREATE TABLE tweet (status TEXT NOT NULL, user INTEGER NOT NULL, created_at DATETIME)"
+                  "CREATE TABLE tweet (
+    status TEXT NOT NULL,
+    user INTEGER NOT NULL,
+    created_at DATETIME
+)"
                   "NULL"))
 
 (finalize)
