@@ -41,10 +41,10 @@
            (column-auto-increment-p (column)
              (and (column-primary-key-p column)
                   (string-equal (getf column :|type|) "INTEGER"))))
-    (loop with has-composite-pk = nil
+    (loop with pk-count = 0
           for column in (table-info conn table-name)
-          if (= (getf column :|pk|) 2)
-            do (setf has-composite-pk t)
+          if (column-primary-key-p column)
+            do (incf pk-count)
           collect (list (getf column :|name|)
                         :type (getf column :|type|)
                         :auto-increment (column-auto-increment-p column)
@@ -54,7 +54,7 @@
             into definitions
           finally
              (return
-               (if has-composite-pk
+               (if (< 1 pk-count)
                    (mapc (lambda (def)
                            (setf (getf (cdr def) :auto-increment) nil)
                            (setf (getf (cdr def) :primary-key) nil))
