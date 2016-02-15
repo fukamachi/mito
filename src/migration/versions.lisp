@@ -47,13 +47,17 @@
                  (loop for c in dep-classes
                        if (new-class-p c)
                          append (depending-classes c)
-                         and collect c))))
+                         and collect c)))
+             (class-subclasses (class)
+               (let ((subclasses (c2mop:class-direct-subclasses class)))
+                 (loop for class in subclasses
+                       append (cons class (class-subclasses class))))))
       (mapcan (lambda (class)
                 (append (depending-classes class)
                         (if (new-class-p class)
                             (list class)
                             '())))
-              (c2mop:class-direct-subclasses (find-class 'dao-class))))))
+              (class-subclasses (find-class 'dao-class))))))
 
 (defun all-migration-expressions ()
   (check-connected)
