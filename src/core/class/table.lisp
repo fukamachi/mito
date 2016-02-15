@@ -113,44 +113,47 @@
 
 (defgeneric table-indices-info (class driver-type)
   (:method (class driver-type)
-    (flet ((unlispify-keys (keys)
-             (if (listp keys)
-                 (mapcar #'string (mapcar #'unlispify keys))
-                 (string (unlispify keys)))))
-      (append
-       (when (slot-value class 'primary-key)
-         (let ((primary-keys (slot-value class 'primary-key)))
-           (list
-            (list "PRIMARY"
-                  :unique-key t
-                  :primary-key t
-                  :columns (unlispify-keys primary-keys)))))
-       ;; See also :primary-key column
-       (let ((primary-key-slot (find-if #'primary-key-p (database-column-slots class))))
-         (when primary-key-slot
-           (list
-            (list "PRIMARY"
-                  :unique-key t
-                  :primary-key t
-                  :columns (unlispify-keys (list (table-column-name primary-key-slot)))))))
+    (let ((table-name (table-name class)))
+      (flet ((unlispify-keys (keys)
+               (if (listp keys)
+                   (mapcar #'string (mapcar #'unlispify keys))
+                   (string (unlispify keys)))))
+        (append
+         (when (slot-value class 'primary-key)
+           (let ((primary-keys (slot-value class 'primary-key)))
+             (list
+              (list (format nil "~A_pkey" table-name)
+                    :unique-key t
+                    :primary-key t
+                    :columns (unlispify-keys primary-keys)))))
+         ;; See also :primary-key column
+         (let ((primary-key-slot (find-if #'primary-key-p (database-column-slots class))))
+           (when primary-key-slot
+             (list
+              (list (format nil "~A_pkey" table-name)
+                    :unique-key t
+                    :primary-key t
+                    :columns (unlispify-keys (list (table-column-name primary-key-slot)))))))
 
-       (when (slot-value class 'unique-keys)
-         (mapcar (lambda (key)
-                   ;; FIXME: it'll raise an error if the index name is too long
-                   (list (format nil "unique_~{~A~^_~}"
-                                 (unlispify-keys (ensure-list key)))
-                         :unique-key t
-                         :primary-key nil
-                         :columns (ensure-list (unlispify-keys key))))
-                 (slot-value class 'unique-keys)))
-       ;; Ignore :keys when using SQLite3
-       (when (and (slot-value class 'keys)
-                  (not (eq driver-type :sqlite3)))
-         (mapcar (lambda (key)
-                   ;; FIXME: it'll raise an error if the index name is too long
-                   (list (format nil "key_~{~A~^_~}"
-                                 (unlispify-keys (ensure-list key)))
-                         :unique-key nil
-                         :primary-key nil
-                         :columns (ensure-list (unlispify-keys key))))
-                 (slot-value class 'keys)))))))
+         (when (slot-value class 'unique-keys)
+           (mapcar (lambda (key)
+                     ;; FIXME: it'll raise an error if the index name is too long
+                     (list (format nil "unique_~A_~{~A~^_~}"
+                                   table-name
+                                   (unlispify-keys (ensure-list key)))
+                           :unique-key t
+                           :primary-key nil
+                           :columns (ensure-list (unlispify-keys key))))
+                   (slot-value class 'unique-keys)))
+         ;; Ignore :keys when using SQLite3
+         (when (and (slot-value class 'keys)
+                    (not (eq driver-type :sqlite3)))
+           (mapcar (lambda (key)
+                     ;; FIXME: it'll raise an error if the index name is too long
+                     (list (format nil "key_~A_~{~A~^_~}"
+                                   table-name
+                                   (unlispify-keys (ensure-list key)))
+                           :unique-key nil
+                           :primary-key nil
+                           :columns (ensure-list (unlispify-keys key))))
+                   (slot-value class 'keys))))))))
