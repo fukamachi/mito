@@ -37,9 +37,23 @@
   (execute-sql (schema-migrations-table-definition)))
 
 (defun all-dao-classes ()
-  (remove-if-not (lambda (class)
-                   (typep class 'dao-table-class))
-                 (c2mop:class-direct-subclasses (find-class 'dao-class))))
+  (let ((hash (make-hash-table :test 'eq)))
+    (labels ((new-class-p (class)
+               (if (gethash class hash)
+                   nil
+                   (setf (gethash class hash) t)))
+             (depending-classes (class)
+               (let ((dep-classes (mito.dao:depending-table-classes class)))
+                 (loop for c in dep-classes
+                       if (new-class-p c)
+                         append (depending-classes c)
+                         and collect c))))
+      (mapcan (lambda (class)
+                (append (depending-classes class)
+                        (if (new-class-p class)
+                            (list class)
+                            '())))
+              (c2mop:class-direct-subclasses (find-class 'dao-class))))))
 
 (defun all-migration-expressions ()
   (check-connected)

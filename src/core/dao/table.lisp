@@ -23,6 +23,8 @@
   (:import-from #:mito.dao.mixin
                 #:auto-pk-mixin
                 #:record-timestamps-mixin)
+  (:import-from #:alexandria
+                #:disjoin)
   (:export #:dao-class
            #:dao-table-class
 
@@ -32,7 +34,9 @@
            #:deflate
 
            #:make-dao-instance
-           #:table-definition))
+           #:table-definition
+
+           #:depending-table-classes))
 (in-package :mito.dao.table)
 
 (defclass dao-class ()
@@ -180,6 +184,15 @@
                     collect (expand-keys key)
                   else
                     append (expand-key key))))))
+
+(defun depending-table-classes (class)
+  (delete-duplicates
+   (remove-if (disjoin (lambda (x) (eq x class))
+                       #'null)
+              (mapcar #'dao-table-column-foreign-class
+                      (table-column-slots class)))
+   :from-end t
+   :test #'eq))
 
 (defmethod initialize-instance :around ((class dao-table-class) &rest initargs
                                         &key direct-superclasses &allow-other-keys)
