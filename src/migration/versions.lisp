@@ -94,9 +94,9 @@
                                  :direction :output
                                  :if-exists :supersede)
               (with-quote-char
-                (format out "~{~A~%~^~%~}"
+                (format out "~{~A;~%~^~%~}"
                         (mapcar (compose #'sxql:yield #'table-definition) (all-dao-classes)))
-                (format out "~2&~A~%"
+                (format out "~2&~A;~%"
                         (sxql:yield (schema-migrations-table-definition))))
               (format out "~&INSERT INTO schema_migrations (version) VALUES ('~A');~%"
                       version)))
