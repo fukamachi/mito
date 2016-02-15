@@ -40,10 +40,10 @@
 
 (defmethod initialize-instance :around ((object dao-table-column-class) &rest rest-initargs &key name initargs ghost &allow-other-keys)
   (when (and (not ghost)
-             (null initargs))
-    ;; Add initargs if no ones are defined for a database slot.
-    (setf (getf rest-initargs :initargs)
-          (list (intern (symbol-name name) :keyword))))
+             (not (find (symbol-name name) initargs :test #'string=)))
+    ;; Add the default initarg.
+    (push (intern (symbol-name name) :keyword)
+          (getf rest-initargs :initargs)))
 
   (apply #'call-next-method object rest-initargs))
 
