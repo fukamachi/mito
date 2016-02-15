@@ -189,8 +189,8 @@
     (:primary-key tweet tag))
   (ensure-table-exists 'tweets-tag)
 
-  (is (mito.migration.table::migration-expressions-for-others (find-class 'tweets-tag) :sqlite3)
-      '(nil nil nil nil nil)
+  (is (migration-expressions (find-class 'tweets-tag) :sqlite3)
+      nil
       "No migration after migrating"))
 
 (finalize)
