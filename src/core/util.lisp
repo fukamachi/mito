@@ -6,7 +6,6 @@
            #:lispify
            #:unlispify
            #:symbol-name-literally
-           #:class-inherit-p
            #:contains-class-or-subclasses
            #:ensure-class))
 (in-package :mito.util)
@@ -93,12 +92,6 @@ Note this can be applied for a list of string-designators."
                     (symbol-package object)))
     (string (substitute #\_ #\- object))))
 
-(defun class-inherit-p (target parent)
-  (not (null
-        (member parent
-                (c2mop:class-direct-superclasses target)
-                :test #'eq))))
-
 (defun contains-class-or-subclasses (class target-classes)
   (let ((class (if (typep class 'class)
                    class
@@ -109,7 +102,7 @@ Note this can be applied for a list of string-designators."
                                        (find-class target-class nil))))
                  (and target-class
                       (or (eq target-class class)
-                          (class-inherit-p target-class class)))))
+                          (subtypep target-class class)))))
              target-classes)))
 
 (defun ensure-class (class-or-class-name)
