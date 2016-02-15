@@ -20,7 +20,9 @@
            #:table-serial-key
            #:database-column-slots
            #:table-column-info
-           #:table-indices-info))
+           #:table-indices-info
+
+           #:find-slot-by-name))
 (in-package :mito.class)
 
 (defgeneric create-table-sxql (class driver-type &key if-not-exists)
@@ -43,3 +45,11 @@
                        (t
                         (list (sxql:index-key (mapcar #'sxql:make-sql-symbol (getf (cdr index) :columns)))))))
                    (table-indices-info class driver-type)))))
+
+(defun find-slot-by-name (class slot-name &key (test #'eq))
+  (find slot-name
+        (table-column-slots (if (typep class 'symbol)
+                                (find-class class)
+                                class))
+        :test test
+        :key #'c2mop:slot-definition-name))

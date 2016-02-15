@@ -13,7 +13,8 @@
                 #:table-column-slots
                 #:table-primary-key
                 #:create-table-sxql
-                #:ghost-slot-p)
+                #:ghost-slot-p
+                #:find-slot-by-name)
   (:import-from #:mito.dao.column
                 #:dao-table-column-class
                 #:dao-table-column-foreign-class
@@ -33,14 +34,6 @@
            #:make-dao-instance
            #:table-definition))
 (in-package :mito.dao.table)
-
-(defun get-slot-by-slot-name (class slot-name)
-  (find slot-name
-        (table-column-slots (if (typep class 'symbol)
-                                (find-class class)
-                                class))
-        :test #'eq
-        :key #'c2mop:slot-definition-name))
 
 (defclass dao-class ()
   ((synced :type boolean
@@ -133,16 +126,14 @@
                            (format nil "~A-~A" name pk-name)
                            (symbol-package name))))
                    (dolist (pk-name pk-names)
-                     (let ((rel-column-name (rel-column-name pk-name))
-                           (pk (get-slot-by-slot-name rel-class pk-name)))
+                     (let ((rel-column-name (rel-column-name pk-name)))
                        (setf (gethash rel-column-name parent-column-map) name)
                        (rplacd (last (getf initargs :direct-slots))
                                `((:name ,rel-column-name
                                   :initargs (,(intern (symbol-name rel-column-name) :keyword))
                                   ;; Defer retrieving the relational column type until table-column-info
                                   :col-type ,(getf column :col-type)
-                                  :foreign-class ,rel-class
-                                  :foreign-slot ,pk)))))
+                                  :references (,(class-name rel-class) ,pk-name))))))
 
                    (dolist (reader (getf column :readers))
                      (setf (fdefinition reader)
@@ -159,7 +150,7 @@
                                                ,@(mapcar (lambda (pk-name)
                                                            `(:= ,(sxql:make-sql-symbol
                                                                   (table-column-name
-                                                                   (get-slot-by-slot-name rel-class pk-name)))
+                                                                   (find-slot-by-name rel-class pk-name)))
                                                                 ,(slot-value object (rel-column-name pk-name))))
                                                          (table-primary-key rel-class))))
                                             (sxql:limit 1))))))))))
@@ -244,7 +235,7 @@
 
 (defgeneric inflate (object slot-name value)
   (:method (object slot-name value)
-    (let* ((slot (get-slot-by-slot-name (class-of object) slot-name))
+    (let* ((slot (find-slot-by-name (class-of object) slot-name))
            (inflate (dao-table-column-inflate slot)))
       (if inflate
           (funcall inflate value)
@@ -256,7 +247,7 @@
 
 (defgeneric deflate (object slot-name value)
   (:method (object slot-name value)
-    (let* ((slot (get-slot-by-slot-name (class-of object) slot-name))
+    (let* ((slot (find-slot-by-name (class-of object) slot-name))
            (deflate (dao-table-column-deflate slot)))
       (if deflate
           (funcall deflate value)

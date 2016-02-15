@@ -56,7 +56,6 @@
   (disconnect-from-testdb conn)
   (connect-to-testdb (connection-driver-type conn)))
 
-
 (defmacro is-table-class (driver class-definition create-table &optional desc)
   (let ((class (gensym "CLASS")))
     `(let ((,class ,class-definition))

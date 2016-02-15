@@ -6,12 +6,22 @@
                 #:table-column-class
                 #:table-column-type
                 #:table-column-info)
+  (:import-from #:mito.class
+                #:table-primary-key
+                #:find-slot-by-name)
+  (:import-from #:alexandria
+                #:ensure-car
+                #:ensure-list
+                #:when-let)
   (:export #:dao-table-column-class
            #:dao-table-column-inflate
            #:dao-table-column-deflate
            #:dao-table-column-foreign-class
            #:dao-table-column-foreign-slot))
 (in-package :mito.dao.column)
+
+(deftype references ()
+  '(or null symbol (cons symbol (or null (cons symbol null)))))
 
 (defclass dao-table-column-class (table-column-class)
   ((inflate :type (or function null)
@@ -22,12 +32,40 @@
             :initarg :deflate
             :initform nil
             :reader dao-table-column-deflate)
+   (references :type references
+               :initarg :references
+               :initform nil
+               :reader dao-table-column-references)
    (foreign-class :initarg :foreign-class
                   :initform nil
                   :reader dao-table-column-foreign-class)
    (foreign-slot :initarg :foreign-slot
                  :initform nil
                  :reader dao-table-column-foreign-slot)))
+
+(defgeneric dao-table-column-foreign-class (column)
+  (:method ((column dao-table-column-class))
+    (when-let (foreign-class-name (ensure-car (dao-table-column-references column)))
+      (find-class foreign-class-name))))
+
+(defgeneric dao-table-column-foreign-slot (column)
+  (:method ((column dao-table-column-class))
+    (when-let (foreign-class (dao-table-column-foreign-class column))
+      (let ((foreign-slot-name (second (ensure-list (dao-table-column-references column)))))
+        (unless foreign-slot-name
+          (let ((pk-names (table-primary-key foreign-class)))
+            (unless pk-names
+              (error "Foreign class ~S has no primary keys and no slot name is specified to :references"
+                     (class-name foreign-class)))
+            (when (cdr pk-names)
+              (error "Foreign class ~S has a composite primary key and failed to detect which to use for :references"
+                     (class-name foreign-class)))
+            (setf foreign-slot-name (first pk-names))))
+        (or (find-slot-by-name foreign-class foreign-slot-name
+                               :test #'string=)
+            (error "No slot named ~S in foreign class ~S"
+                   foreign-slot-name
+                   (class-name foreign-class)))))))
 
 (defmethod initialize-instance :around ((object dao-table-column-class) &rest rest-initargs
                                         &key name initargs ghost
