@@ -140,7 +140,8 @@
                                      (string< current-version version)))
                               sql-files
                               :key #'migration-file-version)
-               sql-files)))
+               (list
+                (merge-pathnames #P"schema.sql" directory)))))
     (if sql-files
         (dbi:with-transaction *connection*
           (dolist (file sql-files)
