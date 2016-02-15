@@ -90,11 +90,21 @@
                  (c2mop:class-direct-slots class)))
 
 (defun table-column-slots (class)
-  (loop for superclass in (c2mop:class-direct-superclasses class)
-        if (typep superclass 'table-class)
-          append (table-column-slots superclass)
-        else
-          append (table-direct-column-slots class)))
+  (labels ((main (class &optional main-slots)
+             (let ((main-slots-appended nil))
+               (loop for superclass in (c2mop:class-direct-superclasses class)
+                     if (eq (class-of superclass) (find-class 'standard-class))
+                       append (if (eq superclass (find-class 'standard-object))
+                                  (table-direct-column-slots class)
+                                  (progn
+                                    (setf main-slots-appended t)
+                                    (append (table-direct-column-slots class)
+                                            main-slots)))
+                     else
+                       append (main superclass
+                                    (append (table-direct-column-slots class)
+                                            main-slots))))))
+    (main class)))
 
 (defgeneric database-column-slots (class)
   (:method ((class table-class))
