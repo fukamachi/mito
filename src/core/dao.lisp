@@ -234,8 +234,9 @@
           (t (sxql:make-op ,op ,x ,y)))))
     ((cons (optima:guard op (keywordp op))
            args)
-     `(apply #'sxql:make-op ,op
-             (mapcar #'expand-op ,op ',args)))
+     `(sxql:make-op ,op
+                    ,@(mapcar (lambda (arg)
+                                (expand-op arg class)) args)))
     (otherwise object)))
 
 (defmacro select-dao (class &body clauses)
