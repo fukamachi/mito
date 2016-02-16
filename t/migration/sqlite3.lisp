@@ -27,7 +27,7 @@
     ((user :col-type (:varchar 128)
            :accessor tweet-user))
     (:metaclass dao-table-class))
-  (execute-sql (table-definition 'tweets))
+  (mapc #'execute-sql (table-definition 'tweets))
 
   (is (migration-expressions (find-class 'tweets) :sqlite3)
       nil

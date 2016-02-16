@@ -8,6 +8,8 @@
                 #:primary-key
                 #:unique-key
                 #:index-key)
+  (:import-from #:alexandria
+                #:appendf)
   (:export #:create-table-sxql
 
            #:table-class
@@ -27,24 +29,38 @@
 
 (defgeneric create-table-sxql (class driver-type &key if-not-exists)
   (:method (class driver-type &key if-not-exists)
-    (apply #'sxql:make-statement
-           :create-table
-           (list (sxql:make-sql-symbol (table-name class))
-                 :if-not-exists if-not-exists)
-           (mapcar (lambda (column)
-                     (table-column-info-for-create-table column driver-type))
-                   (database-column-slots class))
-           (mapcan (lambda (index)
-                     (cond
-                       ((getf (cdr index) :primary-key)
-                        (if (cdr (getf (cdr index) :columns))
-                            (list (sxql:primary-key (mapcar #'sxql:make-sql-symbol (getf (cdr index) :columns))))
-                            nil))
-                       ((getf (cdr index) :unique-key)
-                        (list (sxql:unique-key (mapcar #'sxql:make-sql-symbol (getf (cdr index) :columns)))))
-                       (t
-                        (list (sxql:index-key (mapcar #'sxql:make-sql-symbol (getf (cdr index) :columns)))))))
-                   (table-indices-info class driver-type)))))
+    (let ((add-indices '()))
+      (cons
+       (apply #'sxql:make-statement
+              :create-table
+              (list (sxql:make-sql-symbol (table-name class))
+                    :if-not-exists if-not-exists)
+              (mapcar (lambda (column)
+                        (table-column-info-for-create-table column driver-type))
+                      (database-column-slots class))
+              (mapcan (lambda (index)
+                        (cond
+                          ((getf (cdr index) :primary-key)
+                           (if (cdr (getf (cdr index) :columns))
+                               (list (sxql:primary-key (mapcar #'sxql:make-sql-symbol (getf (cdr index) :columns))))
+                               nil))
+                          ((getf (cdr index) :unique-key)
+                           (list (sxql:unique-key (mapcar #'sxql:make-sql-symbol (getf (cdr index) :columns)))))
+                          (t
+                           (if (eq driver-type :postgres)
+                               (progn
+                                 (appendf add-indices
+                                          (list (sxql:create-index (sxql:make-sql-symbol
+                                                                    (format nil "key_~A_~{~A~^_~}"
+                                                                            (table-name class)
+                                                                            (getf (cdr index) :columns)))
+                                                                   :on
+                                                                   (cons (sxql:make-sql-symbol (table-name class))
+                                                                         (mapcar #'sxql:make-sql-symbol (getf (cdr index) :columns))))))
+                                 nil)
+                               (list (sxql:index-key (mapcar #'sxql:make-sql-symbol (getf (cdr index) :columns))))))))
+                      (table-indices-info class driver-type)))
+       add-indices))))
 
 (defun find-slot-by-name (class slot-name &key (test #'eq))
   (find slot-name

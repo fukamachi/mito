@@ -21,7 +21,7 @@
            :accessor tweet-user))
     (:metaclass dao-table-class)
     (:record-timestamps nil))
-  (execute-sql (table-definition 'tweets))
+  (mapc #'execute-sql (table-definition 'tweets))
 
   (is (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
       '(nil nil nil nil nil)

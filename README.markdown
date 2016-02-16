@@ -34,7 +34,7 @@ Should work fine with MySQL, PostgreSQL and SQLite3 on SBCL/Clozure CL.
 ;=> #<MITO.DAO.TABLE:DAO-TABLE-CLASS COMMON-LISP-USER::USER>
 
 (mito:table-definition 'user)
-;=> #<SXQL-STATEMENT: CREATE TABLE user (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(64) NOT NULL, email VARCHAR(128))>
+;=> (#<SXQL-STATEMENT: CREATE TABLE user (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(64) NOT NULL, email VARCHAR(128))>)
 
 (defclass tweet ()
   ((status :col-type :text
@@ -47,7 +47,7 @@ Should work fine with MySQL, PostgreSQL and SQLite3 on SBCL/Clozure CL.
 ;=> #<MITO.DAO.TABLE:DAO-TABLE-CLASS COMMON-LISP-USER::TWEET>
 
 (mito:table-definition 'tweet)
-;=> #<SXQL-STATEMENT: CREATE TABLE tweet (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT NOT NULL, user_id BIGINT UNSIGNED NOT NULL, created_at TIMESTAMP, updated_at TIMESTAMP)>
+;=> (#<SXQL-STATEMENT: CREATE TABLE tweet (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, status TEXT NOT NULL, user_id BIGINT UNSIGNED NOT NULL, created_at TIMESTAMP, updated_at TIMESTAMP)>)
 ```
 
 ### Connecting to DB
@@ -140,7 +140,7 @@ This may be useful when you define methods which can be applied for all table cl
 
 ```common-lisp
 (mito:table-definition 'user)
-;=> #<SXQL-STATEMENT: CREATE TABLE user (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(64) NOT NULL, email VARCHAR(128), created_at TIMESTAMP, updated_at TIMESTAMP)>
+;=> (#<SXQL-STATEMENT: CREATE TABLE user (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(64) NOT NULL, email VARCHAR(128), created_at TIMESTAMP, updated_at TIMESTAMP)>)
 
 (sxql:yield *)
 ;=> "CREATE TABLE user (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(64) NOT NULL, email VARCHAR(128), created_at TIMESTAMP, updated_at TIMESTAMP)"
@@ -150,7 +150,7 @@ This may be useful when you define methods which can be applied for all table cl
 ### Creating DB tables
 
 ```common-lisp
-(mito:execute-sql (mito:table-definition 'user))
+(mapc #'mito:execute-sql (mito:table-definition 'user))
 
 (mito:ensure-table-exists 'user)
 ```
@@ -216,13 +216,13 @@ To define a relationship, use `:references` at the slot:
 
 ;; The :col-type of USER-ID column is retrieved from the foreign class.
 (table-definition (find-class 'tweet))
-;=> #<SXQL-STATEMENT: CREATE TABLE tweet (
-;       id BIGSERIAL NOT NULL PRIMARY KEY,
-;       status TEXT NOT NULL,
-;       user_id BIGINT NOT NULL,
-;       created_at TIMESTAMP,
-;       updated_at TIMESTAMP
-;   )>
+;=> (#<SXQL-STATEMENT: CREATE TABLE tweet (
+;        id BIGSERIAL NOT NULL PRIMARY KEY,
+;        status TEXT NOT NULL,
+;        user_id BIGINT NOT NULL,
+;        created_at TIMESTAMP,
+;        updated_at TIMESTAMP
+;    )>)
 ```
 
 You can also specify another foreign class at `:col-type` for defining a relationship:
@@ -239,13 +239,13 @@ You can also specify another foreign class at `:col-type` for defining a relatio
   (:metaclass mito:dao-table-class))
 
 (table-definition (find-class 'tweet))
-;=> #<SXQL-STATEMENT: CREATE TABLE tweet (
-;       id BIGSERIAL NOT NULL PRIMARY KEY,
-;       status TEXT NOT NULL,
-;       user_id BIGINT NOT NULL,
-;       created_at TIMESTAMP,
-;       updated_at TIMESTAMP
-;   )>
+;=> (#<SXQL-STATEMENT: CREATE TABLE tweet (
+;        id BIGSERIAL NOT NULL PRIMARY KEY,
+;        status TEXT NOT NULL,
+;        user_id BIGINT NOT NULL,
+;        created_at TIMESTAMP,
+;        updated_at TIMESTAMP
+;    )>)
 
 ;; You can specify :USER arg, instead of :USER-ID.
 (defvar *user* (mito:create-dao 'user :name "Eitaro Fukamachi"))
@@ -401,15 +401,15 @@ A subclass of DAO-CLASS is allowed to be inherited. This may be useful when you 
   (:metaclass mito:dao-table-class))
 
 (mito:table-definition 'temporary-user)
-;=> #<SXQL-STATEMENT: CREATE TABLE temporary_user (
-;       id BIGSERIAL NOT NULL PRIMARY KEY,
-;       name VARCHAR(64) NOT NULL,
-;       email VARCHAR(128) NOT NULL,
-;       registered_at TIMESTAMP NOT NULL,
-;       created_at TIMESTAMP,
-;       updated_at TIMESTAMP,
-;       UNIQUE (email)
-;   )>
+;=> (#<SXQL-STATEMENT: CREATE TABLE temporary_user (
+;        id BIGSERIAL NOT NULL PRIMARY KEY,
+;        name VARCHAR(64) NOT NULL,
+;        email VARCHAR(128) NOT NULL,
+;        registered_at TIMESTAMP NOT NULL,
+;        created_at TIMESTAMP,
+;        updated_at TIMESTAMP,
+;        UNIQUE (email)
+;    )>)
 ```
 
 If you need a 'template' for tables which doesn't related to any database tables, you can use `DAO-TABLE-MIXIN`:
@@ -431,14 +431,14 @@ If you need a 'template' for tables which doesn't related to any database tables
 ;=> #<MITO.DAO.TABLE:DAO-TABLE-CLASS COMMON-LISP-USER::USER>
 
 (mito:table-definition 'user)
-;=> #<SXQL-STATEMENT: CREATE TABLE user (
-;      id BIGSERIAL NOT NULL PRIMARY KEY,
-;      name VARCHAR(64) NOT NULL,
-;      email VARCHAR(128) NOT NULL,
-;      created_at TIMESTAMP,
-;      updated_at TIMESTAMP,
-;      UNIQUE (email)
-;  )>
+;=> (#<SXQL-STATEMENT: CREATE TABLE user (
+;       id BIGSERIAL NOT NULL PRIMARY KEY,
+;       name VARCHAR(64) NOT NULL,
+;       email VARCHAR(128) NOT NULL,
+;       created_at TIMESTAMP,
+;       updated_at TIMESTAMP,
+;       UNIQUE (email)
+;   )>)
 ```
 
 ### Triggers

@@ -215,7 +215,7 @@
                          nil)
                    else
                      collect (sxql:create-index
-                              index-name
+                              (sxql:make-sql-symbol index-name)
                               :unique (getf options :unique-key)
                               :on (list* (sxql:make-sql-symbol table-name)
                                          (mapcar #'sxql:make-sql-symbol (getf options :columns)))))
@@ -275,7 +275,7 @@
        (sxql:alter-table (sxql:make-sql-symbol table-name)
          (sxql:rename-to tmp-table-name))
 
-       (create-table-sxql class :sqlite3)
+       (first (create-table-sxql class :sqlite3))
 
        (let* ((column-names (mapcar #'car
                                     (column-definitions *connection* table-name)))
@@ -309,7 +309,7 @@
              (connected-p))
     (unless (table-exists-p *connection* (table-name class))
       (with-sql-logging
-        (execute-sql (table-definition class))))
+        (mapc #'execute-sql (table-definition class))))
     (migrate-table class)))
 
 (defmethod reinitialize-instance :after ((class dao-table-class) &rest initargs)
@@ -318,5 +318,5 @@
              (connected-p))
     (unless (table-exists-p *connection* (table-name class))
       (with-sql-logging
-        (execute-sql (table-definition class))))
+        (mapc #'execute-sql (table-definition class))))
     (migrate-table class)))

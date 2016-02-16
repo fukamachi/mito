@@ -309,10 +309,10 @@
 
 (defun ensure-table-exists (class)
   (with-sql-logging
-    (execute-sql (table-definition class :if-not-exists t))))
+    (mapc #'execute-sql (table-definition class :if-not-exists t))))
 
 (defun recreate-table (class)
   (setf class (ensure-class class))
   (with-sql-logging
     (execute-sql (sxql:drop-table (sxql:make-sql-symbol (table-name class))))
-    (execute-sql (table-definition class))))
+    (mapc #'execute-sql (table-definition class))))

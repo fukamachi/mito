@@ -60,6 +60,6 @@
   (let ((class (gensym "CLASS")))
     `(let ((,class ,class-definition))
        (prove:is (let ((sxql:*use-placeholder* nil))
-                   (sxql:yield (create-table-sxql ,class ,driver)))
-                 ,create-table
+                   (mapcar #'sxql:yield (create-table-sxql ,class ,driver)))
+                 (alexandria:ensure-list ,create-table)
                  (format nil "~A (~S)~:[~;~:* ~A~]" (class-name ,class) ,driver ,desc)))))

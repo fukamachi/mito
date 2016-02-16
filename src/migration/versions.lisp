@@ -18,8 +18,6 @@
                 #:execute-sql
                 #:retrieve-by-sql
                 #:table-exists-p)
-  (:import-from #:alexandria
-                #:compose)
   (:export #:all-migration-expressions
            #:current-migration-version
            #:update-migration-version
@@ -64,7 +62,7 @@
   (mapcan (lambda (class)
             (if (table-exists-p *connection* (table-name class))
                 (migration-expressions class)
-                (list (table-definition class))))
+                (table-definition class)))
           (all-dao-classes)))
 
 (defun current-migration-version ()
@@ -112,8 +110,10 @@
                                :direction :output
                                :if-exists :supersede)
             (with-quote-char
-              (format out "~{~A;~%~^~%~}"
-                      (mapcar (compose #'sxql:yield #'table-definition) (all-dao-classes)))
+              (format out "~{~{~A;~%~}~^~%~}"
+                      (mapcar (lambda (class)
+                                (mapcar #'sxql:yield (table-definition class)))
+                              (all-dao-classes)))
               (format out "~2&~A;~%"
                       (sxql:yield (schema-migrations-table-definition))))
             (format out "~&INSERT INTO schema_migrations (version) VALUES ('~A');~%"
