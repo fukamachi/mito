@@ -17,7 +17,6 @@
 (defclass table-column-class (c2mop:standard-direct-slot-definition)
   ((col-type :type (or symbol cons null)
              :initarg :col-type
-             :initform nil
              :accessor table-column-type)
    (primary-key :type boolean
                 :initarg :primary-key
@@ -29,12 +28,14 @@
           :accessor ghost-slot-p
           :documentation "Option to specify slots as ghost slots. Ghost slots do not depend on a database.")))
 
-(defmethod initialize-instance :after ((class table-column-class) &rest initargs)
+(defmethod initialize-instance :around ((class table-column-class) &rest initargs)
   (declare (ignore initargs))
-  (when (and (not (slot-boundp class 'col-type))
-             (not (ghost-slot-p class)))
-    (error 'col-type-required
-           :slot class)))
+  (let ((class (call-next-method)))
+    (when (and (not (slot-boundp class 'col-type))
+               (not (ghost-slot-p class)))
+      (error 'col-type-required
+             :slot class))
+    class))
 
 (defun parse-col-type (col-type)
   (optima:match col-type

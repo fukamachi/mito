@@ -61,6 +61,12 @@
                    foreign-slot-name
                    (class-name foreign-class)))))))
 
+(defmethod initialize-instance :after ((class dao-table-column-class) &rest initargs)
+  (declare (ignore initargs))
+  ;; Make :col-type optional when :references is specified
+  (when (slot-value class 'references)
+    (setf (table-column-type class) nil)))
+
 (defmethod initialize-instance :around ((object dao-table-column-class) &rest rest-initargs
                                         &key name initargs ghost inflate deflate
                                         &allow-other-keys)
