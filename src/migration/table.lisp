@@ -29,7 +29,8 @@
   (:import-from #:mito.logger
                 #:with-sql-logging)
   (:import-from #:mito.util
-                #:list-diff)
+                #:list-diff
+                #:ensure-class)
   (:import-from #:alexandria
                 #:ensure-list)
   (:export #:*auto-migration-mode*
@@ -287,6 +288,7 @@
              (sxql:from tmp-table-name))))))))
 
 (defun migration-expressions (class &optional (driver-type (driver-type *connection*)))
+  (setf class (ensure-class class))
   (if (eq driver-type :sqlite3)
       (migration-expressions-for-sqlite3 class)
       (destructuring-bind (add-columns
