@@ -169,7 +169,8 @@
                     while sql
                     do (format t "~&-> ~A;~%" sql)
                        (unless dry-run
-                         (execute-sql sql)))))
+                         (let ((mito.logger::*mito-logger-stream* nil))
+                           (execute-sql sql))))))
           (let ((version (migration-file-version (first (last sql-files)))))
             (update-migration-version version)
             (format t "~&Successfully updated to the version ~S.~%" version)))
