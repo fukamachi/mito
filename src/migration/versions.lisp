@@ -87,7 +87,7 @@
     (format nil "~4,'0D~2,'0D~2,'0D~2,'0D~2,'0D~2,'0D"
             year mon day hour min sec)))
 
-(defun generate-migrations (directory &key dry-run)
+(defun generate-migrations (directory)
   (let* ((schema.sql (merge-pathnames #P"schema.sql" directory))
          (directory (merge-pathnames #P"migrations/" directory))
          (version (generate-version))
@@ -98,19 +98,20 @@
          (sxql:*use-placeholder* nil))
     (if expressions
         (progn
-          (unless dry-run
-            (ensure-directories-exist directory)
-            (with-open-file (out destination
-                                 :direction :output
-                                 :if-does-not-exist :create)
+          (ensure-directories-exist directory)
+          (with-open-file (out destination
+                               :direction :output
+                               :if-does-not-exist :create)
+            (let ((out (make-broadcast-stream *standard-output* out)))
               (with-quote-char
                 (map nil
                      (lambda (ex)
                        (format out "~&~A;~%" (sxql:yield ex)))
-                     expressions)))
-            (with-open-file (out schema.sql
-                                 :direction :output
-                                 :if-exists :supersede)
+                     expressions))))
+          (with-open-file (out schema.sql
+                               :direction :output
+                               :if-exists :supersede)
+            (let ((out (make-broadcast-stream *standard-output* out)))
               (with-quote-char
                 (format out "~{~A;~%~^~%~}"
                         (mapcar (compose #'sxql:yield #'table-definition) (all-dao-classes)))
@@ -120,7 +121,9 @@
                       version)))
           (format t "~&Successfully generated: ~A~%" destination)
           destination)
-        (format t "~&Nothing to migrate.~%"))))
+        (progn
+          (format t "~&Nothing to migrate.~%")
+          nil))))
 
 (defun migration-file-version (file)
   (let* ((name (pathname-name file))
