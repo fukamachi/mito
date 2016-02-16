@@ -153,7 +153,7 @@
                                                 "*.sql")
                           #'string<
                           :key #'pathname-name))
-         (sql-files
+         (sql-files-to-apply
            (if current-version
                (remove-if-not (lambda (version)
                                 (and version
@@ -162,9 +162,9 @@
                               :key #'migration-file-version)
                (list
                 (merge-pathnames #P"schema.sql" directory)))))
-    (if sql-files
+    (if sql-files-to-apply
         (dbi:with-transaction *connection*
-          (dolist (file sql-files)
+          (dolist (file sql-files-to-apply)
             (format t "~&Applying '~A'...~%" file)
             (with-open-file (in file)
               (loop for sql = (read-one-sql in)
