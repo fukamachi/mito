@@ -145,7 +145,13 @@
     (ok user)
     (is-type (mito:find-dao 'tweet :user user)
              'tweet
-             "Can find an object by a foreign object"))
+             "Can find an object by a foreign object")
+    (ok
+     (mito.dao:select-dao 'tweet
+       (mito.dao::where (:= :user user))))
+    (ok
+     (mito.dao:select-dao 'tweet
+       (mito.dao::where (:in :user (list user))))))
 
   (disconnect-toplevel))
 

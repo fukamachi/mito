@@ -17,7 +17,8 @@
                     #:check-connected)
       (:import-from #:mito.class
                     #:database-column-slots
-                    #:ghost-slot-p)
+                    #:ghost-slot-p
+                    #:find-slot-by-name)
       (:import-from #:mito.db
                     #:last-insert-id
                     #:execute-sql
@@ -30,6 +31,9 @@
                     #:ensure-class)
       (:import-from #:dbi
                     #:with-transaction)
+      (:import-from #:optima
+                    #:match
+                    #:guard)
       (:import-from #:alexandria
                     #:ensure-list
                     #:once-only
@@ -180,6 +184,60 @@
                          results)))
         records))))
 
+(defun child-columns (column class)
+  (let ((slot (find-slot-by-name class column :test #'string=)))
+    (and slot
+         (find-child-columns class slot))))
+
+(defun slot-foreign-value (object class slot-name)
+  (slot-value object
+              (c2mop:slot-definition-name
+               (dao-table-column-foreign-slot
+                (find-slot-by-name class slot-name)))))
+
+(defun expand-op (object class)
+  "Expand relational columns if the operator is :=, :!= , :in or :not-in."
+  (optima:match object
+    ((or (cons (guard op (or (eql op :=)
+                             (eql op :!=)))
+               (cons (guard x (keywordp x)) (cons y nil)))
+         (cons (guard op (or (eql op :=)
+                             (eql op :!=)))
+               (cons y
+                     (cons (guard x (keywordp x))
+                           nil))))
+     `(let ((children (child-columns ,x ,class)))
+        (if children
+            (apply #'sxql:make-op
+                   :and
+                   (mapcar (lambda (col)
+                             (sxql:make-op ,op
+                                           (sxql:make-sql-symbol (unlispify (symbol-name-literally col)))
+                                           (slot-foreign-value ,y ,class col)))
+                           children))
+            (sxql:make-op ,op ,x ,y))))
+    ((cons (guard op (or (eql op :in)
+                         (eql op :not-in)))
+           (cons (guard x (keywordp x))
+                 (cons y nil)))
+     `(let ((children (child-columns ,x ,class)))
+        (cond
+          ((and children
+                (cdr children))
+           (error "Cannot specify a relational column which has composite primary keys"))
+          (children
+           (sxql:make-op ,op
+                         (sxql:make-sql-symbol (unlispify (symbol-name-literally (first children))))
+                         (mapcar (lambda (obj)
+                                   (slot-foreign-value obj ,class (first children)))
+                                 ,y)))
+          (t (sxql:make-op ,op ,x ,y)))))
+    ((cons (optima:guard op (keywordp op))
+           args)
+     `(apply #'sxql:make-op ,op
+             (mapcar #'expand-op ,op ',args)))
+    (otherwise object)))
+
 (defmacro select-dao (class &body clauses)
   (with-gensyms (sql clause results include-classes foreign-class)
     (once-only (class)
@@ -190,16 +248,18 @@
                   (sxql:select :*
                     (sxql:from (sxql:make-sql-symbol (table-name ,class)))))
                 (,include-classes '()))
-           (flet ((includes (&rest classes)
-                    (setf ,include-classes (mapcar #'ensure-class classes))
-                    nil))
-             (dolist (,clause (list ,@clauses))
-               (when ,clause
-                 (add-child ,sql ,clause)))
-             (let ((,results (select-by-sql ,class ,sql)))
-               (dolist (,foreign-class ,include-classes)
-                 (include-foreign-objects ,foreign-class ,results))
-               ,results)))))))
+           (macrolet ((where (expression)
+                        `(sxql:make-clause :where ,(expand-op expression ',class))))
+             (flet ((includes (&rest classes)
+                      (setf ,include-classes (mapcar #'ensure-class classes))
+                      nil))
+               (dolist (,clause (list ,@clauses))
+                 (when ,clause
+                   (add-child ,sql ,clause)))
+               (let ((,results (select-by-sql ,class ,sql)))
+                 (dolist (,foreign-class ,include-classes)
+                   (include-foreign-objects ,foreign-class ,results))
+                 ,results))))))))
 
 (defun where-and (fields-and-values class)
   (when fields-and-values
