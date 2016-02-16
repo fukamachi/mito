@@ -191,7 +191,9 @@
 
     (when (and (initargs-enables-record-timestamps initargs)
                (not (contains-class-or-subclasses 'record-timestamps-mixin direct-superclasses)))
-      (push (find-class 'record-timestamps-mixin) (getf initargs :direct-superclasses)))
+      (setf (getf initargs :direct-superclasses)
+            (append (getf initargs :direct-superclasses)
+                    (list (find-class 'record-timestamps-mixin)))))
 
     (unless (contains-class-or-subclasses 'dao-class direct-superclasses)
       (push (find-class 'dao-class) (getf initargs :direct-superclasses)))
@@ -215,7 +217,9 @@
 
     (when (and (initargs-enables-record-timestamps initargs)
                (not (contains-class-or-subclasses 'record-timestamps-mixin direct-superclasses)))
-      (push (find-class 'record-timestamps-mixin) (getf initargs :direct-superclasses)))
+      (setf (getf initargs :direct-superclasses)
+            (append (getf initargs :direct-superclasses)
+                    (list (find-class 'record-timestamps-mixin)))))
 
     (when (and (initargs-enables-auto-pk initargs)
                (not (initargs-contains-primary-key initargs))
