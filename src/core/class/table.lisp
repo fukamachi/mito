@@ -94,14 +94,16 @@
              (loop for superclass in (c2mop:class-direct-superclasses class)
                    if (eq (class-of superclass) (find-class 'standard-class))
                      append (if (eq superclass (find-class 'standard-object))
-                                (funcall fn class)
-                                (append (funcall fn class)
-                                        main-objects))
+                                (append (funcall fn class) main-objects)
+                                (funcall fn class))
                    else
                      append (main superclass
                                   (append (funcall fn class)
                                           main-objects)))))
-    (main class)))
+    (delete-duplicates
+     (main class)
+     :test #'eq
+     :from-end t)))
 
 (defun table-column-slots (class)
   (map-all-superclasses #'table-direct-column-slots
