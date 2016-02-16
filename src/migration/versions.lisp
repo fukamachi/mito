@@ -111,14 +111,13 @@
           (with-open-file (out schema.sql
                                :direction :output
                                :if-exists :supersede)
-            (let ((out (make-broadcast-stream *standard-output* out)))
-              (with-quote-char
-                (format out "~{~A;~%~^~%~}"
-                        (mapcar (compose #'sxql:yield #'table-definition) (all-dao-classes)))
-                (format out "~2&~A;~%"
-                        (sxql:yield (schema-migrations-table-definition))))
-              (format out "~&INSERT INTO schema_migrations (version) VALUES ('~A');~%"
-                      version)))
+            (with-quote-char
+              (format out "~{~A;~%~^~%~}"
+                      (mapcar (compose #'sxql:yield #'table-definition) (all-dao-classes)))
+              (format out "~2&~A;~%"
+                      (sxql:yield (schema-migrations-table-definition))))
+            (format out "~&INSERT INTO schema_migrations (version) VALUES ('~A');~%"
+                    version))
           (format t "~&Successfully generated: ~A~%" destination)
           destination)
         (progn
