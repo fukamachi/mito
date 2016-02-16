@@ -7,6 +7,7 @@
 Mito is yet another object relational mapper and it aims to be a successor of [Integral](https://github.com/fukamachi/integral).
 
 * Supports MySQL, PostgreSQL and SQLite3
+* Adds `id` (serial primary key), `created_at` and `updated_at` by default like Ruby's ActiveRecord
 * Migrations
 * DB schema versioning
 
@@ -355,6 +356,27 @@ To prevent this performance issue, add `includes` to the above query which only 
 ;   ;; CREATE UNIQUE INDEX "unique_user_email" ON "user" ("email") () [0 rows] | MITO.MIGRATION.TABLE:MIGRATE-TABLE
 ;-> (#<SXQL-STATEMENT: ALTER TABLE user ALTER COLUMN email TYPE character varying(128), ALTER COLUMN email SET NOT NULL>
 ;    #<SXQL-STATEMENT: CREATE UNIQUE INDEX unique_user_email ON user (email)>)
+```
+
+### Schema versioning
+
+```
+$ ros install mito
+$ mito
+Usage: mito command [option...]
+
+Commands:
+    generate-migrations
+    migrate
+
+Options:
+    -t, --type DRIVER-TYPE          DBI driver type (one of "mysql", "postgres" or "sqlite3")
+    -d, --database DATABASE-NAME    Database name to use
+    -u, --username USERNAME         Username for RDBMS
+    -p, --password PASSWORD         Password for RDBMS
+    -s, --system SYSTEM             ASDF system to load (several -s's allowed)
+    -D, --directory DIRECTORY       Directory path to keep migration SQL files (default: "/Users/nitro_idiot/Programs/lib/mito/db/")
+    --dry-run                       List SQL expressions to migrate
 ```
 
 ### Inheritance and Mixin
