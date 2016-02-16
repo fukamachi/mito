@@ -81,7 +81,8 @@
                        add-indices
                        drop-indices)
       (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
-    (is (sxql:yield add-columns) "ALTER TABLE tweets ADD COLUMN status text NOT NULL, ADD COLUMN tweet_id int(10) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY"
+    (is (mapcar #'sxql:yield add-columns)
+        '("ALTER TABLE tweets ADD COLUMN status text NOT NULL, ADD COLUMN tweet_id int(10) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY")
         "Add id and status")
     (is (sxql:yield drop-columns) "ALTER TABLE tweets DROP COLUMN id"
         "Drop id")
@@ -115,7 +116,8 @@
                        add-indices
                        drop-indices)
       (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
-    (is (sxql:yield add-columns) "ALTER TABLE tweets ADD COLUMN created_at char(8) NOT NULL")
+    (is (mapcar #'sxql:yield add-columns)
+        '("ALTER TABLE tweets ADD COLUMN created_at char(8) NOT NULL"))
     (is (sxql:yield drop-columns) "ALTER TABLE tweets DROP COLUMN status")
     (is (format nil "~{~A~^~%~}"
                 (mapcar #'sxql:yield change-columns))

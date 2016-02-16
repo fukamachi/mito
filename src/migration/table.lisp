@@ -297,7 +297,7 @@
           (migration-expressions-for-others class driver-type)
         (nconc drop-indices
                (ensure-list drop-columns)
-               (ensure-list add-columns)
+               add-columns
                change-columns
                add-indices))))
 
