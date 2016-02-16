@@ -17,6 +17,8 @@
                                       #:make-dao-instance
                                       #:table-definition
 
+                                      #:dao-table-mixin
+
                                       #:insert-dao
                                       #:update-dao
                                       #:create-dao
