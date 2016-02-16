@@ -116,7 +116,7 @@ Options:
           (setf (logger-stream) nil)
           (case-equal command
             ("generate-migrations"
-             (mito.migration:generate-migrations directory :dry-run dry-run))
+             (mito.migration:generate-migrations directory))
             ("migrate"
              (mito.migration:migrate directory :dry-run dry-run))))
       (dbi:<dbi-database-error> (e)
