@@ -61,11 +61,6 @@
             (cons (keyword) _))
         t)))))
 
-(defmethod initialize-instance :after ((class dao-table-column-class) &rest initargs)
-  (declare (ignore initargs))
-  (unless (ghost-slot-p class)
-    (check-col-type (table-column-type class))))
-
 (defun initargs-enables-auto-pk (initargs)
   (first (or (getf initargs :auto-pk) '(t))))
 

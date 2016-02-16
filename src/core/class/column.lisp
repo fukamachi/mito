@@ -28,13 +28,17 @@
           :accessor ghost-slot-p
           :documentation "Option to specify slots as ghost slots. Ghost slots do not depend on a database.")))
 
-(defmethod initialize-instance :around ((class table-column-class) &rest initargs)
+(defmethod initialize-instance :around ((class table-column-class) &rest initargs
+                                        &key
+                                          col-type ghost
+                                        &allow-other-keys)
   (declare (ignore initargs))
   (let ((class (call-next-method)))
-    (when (and (not (slot-boundp class 'col-type))
-               (not (ghost-slot-p class)))
-      (error 'col-type-required
-             :slot class))
+    (unless (slot-boundp class 'col-type)
+      (if (ghost-slot-p class)
+          (setf (slot-value class 'col-type) nil)
+          (error 'col-type-required
+                 :slot class)))
     class))
 
 (defun parse-col-type (col-type)
