@@ -5,12 +5,15 @@
   (:import-from #:mito.dao
                 #:dao-table-class
                 #:table-definition)
+  (:import-from #:mito.dao.column
+                #:dao-table-column-deflate)
   (:import-from #:mito.class
                 #:database-column-slots
                 #:table-name
                 #:table-column-info
                 #:table-indices-info
-                #:create-table-sxql)
+                #:create-table-sxql
+                #:find-slot-by-name)
   (:import-from #:mito.db
                 #:table-indices
                 #:column-definitions
@@ -85,26 +88,50 @@
         (list
          ;; add columns
          (if columns-to-add
-             (apply #'sxql:make-statement :alter-table (sxql:make-sql-symbol table-name)
-                    (mapcar (lambda (column)
-                              (sxql:make-clause :add-column (sxql:make-sql-symbol (car column))
-                                                :type
-                                                (let ((type (getf (cdr column) :type)))
-                                                  (if (and (eq driver-type :postgres)
-                                                           (getf (cdr column) :auto-increment))
-                                                      (cond
-                                                        ((string= type "integer")
-                                                         "serial")
-                                                        ((string= type "bigint")
-                                                         "bigserial")
-                                                        (t
-                                                         (error "Invalid PostgreSQL serial type: ~S" type)))
-                                                      type))
-                                                :primary-key (getf (cdr column) :primary-key)
-                                                :not-null (getf (cdr column) :not-null)
-                                                :auto-increment (and (eq driver-type :mysql)
-                                                                     (getf (cdr column) :auto-increment))))
-                            columns-to-add))
+             (let ((drop-defaults '()))
+               (cons
+                (apply #'sxql:make-statement :alter-table (sxql:make-sql-symbol table-name)
+                       (mapcar (lambda (column)
+                                 (sxql:make-clause :add-column (sxql:make-sql-symbol (car column))
+                                                   :type
+                                                   (let ((type (getf (cdr column) :type)))
+                                                     (if (and (eq driver-type :postgres)
+                                                              (getf (cdr column) :auto-increment))
+                                                         (cond
+                                                           ((string= type "integer")
+                                                            "serial")
+                                                           ((string= type "bigint")
+                                                            "bigserial")
+                                                           (t
+                                                            (error "Invalid PostgreSQL serial type: ~S" type)))
+                                                         type))
+                                                   :default
+                                                   (if (getf (cdr column) :not-null)
+                                                       (let ((slot
+                                                               (mito.class:find-slot-by-name class (mito.util:lispify (car column))
+                                                                                             :test #'string-equal)))
+                                                         (cond
+                                                           ((c2mop:slot-definition-initfunction slot)
+                                                            (push (car column) drop-defaults)
+                                                            (funcall (or (dao-table-column-deflate slot) #'identity)
+                                                                     (funcall (c2mop:slot-definition-initfunction slot))))
+                                                           (t
+                                                            (warn "Adding a non-null column ~S but there's no :initform to set default"
+                                                                  (car column))
+                                                            nil)))
+                                                       nil)
+                                                   :primary-key (getf (cdr column) :primary-key)
+                                                   :not-null (getf (cdr column) :not-null)
+                                                   :auto-increment (and (eq driver-type :mysql)
+                                                                        (getf (cdr column) :auto-increment))))
+                               columns-to-add))
+                (when drop-defaults
+                  (list
+                   (apply #'sxql:make-statement :alter-table (sxql:make-sql-symbol table-name)
+                          (mapcar (lambda (column-name)
+                                    (sxql:alter-column (sxql:make-sql-symbol column-name)
+                                                       :drop-default t))
+                                  (nreverse drop-defaults)))))))
              nil)
          ;; drop columns
          (if columns-to-delete
