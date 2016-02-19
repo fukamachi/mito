@@ -57,9 +57,14 @@
                             (stack-call prev-stack))))))
 
 (defun trace-sql (sql params &optional results)
-  (format (logger-stream)
-          "~&;; ~A (~{~S~^, ~}) [~D row~:P]~:[~;~:* | ~S~]~%"
-          sql
-          params
-          (length results)
-          (get-prev-stack)))
+  (when *mito-logger-stream*
+    (format (logger-stream)
+            "~&;; ~A (~{~S~^, ~}) [~D row~:P]~:[~;~:* | ~S~]~%"
+            sql
+            (mapcar (lambda (param)
+                      (if (typep param '(simple-array (unsigned-byte 8) (*)))
+                          (map 'string #'code-char param)
+                          param))
+                    params)
+            (length results)
+            (get-prev-stack))))
