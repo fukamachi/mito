@@ -4,7 +4,8 @@
         #:mito.util
         #:mito.error)
   (:import-from #:alexandria
-                #:delete-from-plist)
+                #:delete-from-plist
+                #:ensure-car)
   (:export #:table-column-class
            #:table-column-type
            #:table-column-name
@@ -28,10 +29,7 @@
           :accessor ghost-slot-p
           :documentation "Option to specify slots as ghost slots. Ghost slots do not depend on a database.")))
 
-(defmethod initialize-instance :around ((class table-column-class) &rest initargs
-                                        &key
-                                          col-type ghost
-                                        &allow-other-keys)
+(defmethod initialize-instance :around ((class table-column-class) &rest initargs)
   (declare (ignore initargs))
   (let ((class (call-next-method)))
     (unless (slot-boundp class 'col-type)
@@ -89,7 +87,9 @@
           ((eq col-type :serial)
            (setf col-type '(:int () :unsigned)
                  auto-increment t
-                 not-null t)))
+                 not-null t))
+          ((eq col-type :bytea)
+           (setf col-type :binary)))
         `(,(table-column-name column)
           :type ,col-type
           :auto-increment ,auto-increment
@@ -106,7 +106,9 @@
                  not-null t))
           ((eq col-type :serial)
            (setf auto-increment t
-                 not-null t)))
+                 not-null t))
+          ((eq (ensure-car col-type) :binary)
+           (setf col-type :bytea)))
         `(,(table-column-name column)
           :type ,col-type
           :auto-increment ,auto-increment
