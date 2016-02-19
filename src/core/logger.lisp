@@ -8,7 +8,7 @@
            #:trace-sql))
 (in-package :mito.logger)
 
-(defvar *mito-logger-stream* '*standard-output*)
+(defvar *mito-logger-stream* nil)
 
 (defun logger-stream ()
   (etypecase *mito-logger-stream*
