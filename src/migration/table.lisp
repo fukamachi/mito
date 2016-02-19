@@ -164,7 +164,7 @@
                                                 (progn
                                                   ;; create a new sequence
                                                   (push
-                                                   (sxql:make-statement :create-sequence seq)
+                                                   (sxql:make-statement :create-sequence (sxql:make-sql-symbol seq))
                                                    before-alter-sequences)
                                                   (sxql:make-clause :set-default `(:nextval ,seq)))
                                                 (progn
