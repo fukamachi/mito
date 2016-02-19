@@ -13,6 +13,7 @@
                            :include '(#:dao-class
                                       #:dao-table-class
                                       #:object-id
+                                      #:object=
                                       #:dao-synced
                                       #:make-dao-instance
                                       #:table-definition

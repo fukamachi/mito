@@ -11,6 +11,7 @@
            #:record-timestamps-mixin
 
            #:object-id
+           #:object=
            #:object-created-at
            #:object-updated-at))
 (in-package :mito.dao.mixin)
@@ -26,6 +27,11 @@
        :primary-key t
        :reader object-id))
   (:metaclass dao-table-mixin))
+
+(defgeneric object= (object1 object2)
+  (:method ((object1 auto-pk-mixin) (object2 auto-pk-mixin))
+    (and (eq (class-of object1) (class-of object2))
+         (eql (object-id object1) (object-id object2)))))
 
 (defclass record-timestamps-mixin ()
   ((created-at :col-type (or :timestamp :null)
