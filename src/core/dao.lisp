@@ -106,7 +106,8 @@
     (apply #'create-dao (find-class class-name) initargs))
   (:method ((class dao-table-class) &rest initargs)
     (let ((obj (apply #'make-dao-instance class initargs)))
-      (insert-dao obj))))
+      (setf (dao-synced obj) nil)
+      (save-dao obj))))
 
 (defgeneric update-dao (obj)
   (:method ((obj dao-class))
