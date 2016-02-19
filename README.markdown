@@ -441,6 +441,9 @@ If you need a 'template' for tables which doesn't related to any database tables
 ;   )>)
 ```
 
+* [mito-attachment](https://github.com/fukamachi/mito-attachment)
+* [mito-auth](https://github.com/fukamachi/mito-auth)
+
 ### Triggers
 
 Since `insert-dao`, `update-dao` and `delete-dao` are defined as generic functions, you can define `:before`, `:after` or `:around` methods to those.
