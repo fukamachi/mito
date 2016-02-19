@@ -28,23 +28,24 @@
 
 (defun get-serial-keys (conn table-name)
   (remove-if-not
-   (lambda (row)
-     (let* ((column (getf row :|column_name|))
-            (seq (getf
-                  (first
-                   (dbi:fetch-all
-                    (dbi:execute
-                     (dbi:prepare conn
-                                  (format nil "SELECT pg_get_serial_sequence('~A', '~A')" table-name column)))))
-                  :|pg_get_serial_sequence|)))
+   (lambda (column)
+     (let ((seq (getf
+                 (first
+                  (dbi:fetch-all
+                   (dbi:execute
+                    (dbi:prepare conn
+                                 (format nil "SELECT pg_get_serial_sequence('~A', '~A')" table-name column)))))
+                 :|pg_get_serial_sequence|)))
        (if (eq seq :null)
            nil
            seq)))
-   (dbi:fetch-all
-    (dbi:execute
-     (dbi:prepare conn
-                  (format nil "SELECT column_name FROM information_schema.columns WHERE table_name = '~A'"
-                          table-name))))))
+   (mapcar (lambda (row)
+             (getf row :|column_name|))
+           (dbi:fetch-all
+            (dbi:execute
+             (dbi:prepare conn
+                          (format nil "SELECT column_name FROM information_schema.columns WHERE table_name = '~A'"
+                                  table-name)))))))
 
 (defun column-definitions (conn table-name)
   (let* ((serial-keys (get-serial-keys conn table-name))
