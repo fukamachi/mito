@@ -30,10 +30,20 @@
 (defclass record-timestamps-mixin ()
   ((created-at :col-type (or :timestamp :null)
                :initarg :created-at
-               :inflate #'local-time:universal-to-timestamp
+               :inflate (lambda (value)
+                          (etypecase value
+                            (integer
+                             (local-time:universal-to-timestamp value))
+                            (string
+                             (local-time:parse-timestring value :date-time-separator #\Space))))
                :accessor object-created-at)
    (updated-at :col-type (or :timestamp :null)
                :initarg :updated-at
-               :inflate #'local-time:universal-to-timestamp
+               :inflate (lambda (value)
+                          (etypecase value
+                            (integer
+                             (local-time:universal-to-timestamp value))
+                            (string
+                             (local-time:parse-timestring value :date-time-separator #\Space))))
                :accessor object-updated-at))
   (:metaclass dao-table-mixin))
