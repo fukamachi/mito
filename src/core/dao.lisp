@@ -22,7 +22,8 @@
       (:import-from #:mito.db
                     #:last-insert-id
                     #:execute-sql
-                    #:retrieve-by-sql)
+                    #:retrieve-by-sql
+                    #:table-exists-p)
       (:import-from #:mito.logger
                     #:with-sql-logging)
       (:import-from #:mito.util
@@ -309,11 +310,15 @@
           :count)))
 
 (defun ensure-table-exists (class)
-  (with-sql-logging
-    (mapc #'execute-sql (table-definition class :if-not-exists t))))
+  (setf class (ensure-class class))
+  (unless (table-exists-p *connection* (table-name class))
+    (with-sql-logging
+      (mapc #'execute-sql (table-definition class)))))
 
 (defun recreate-table (class)
   (setf class (ensure-class class))
-  (with-sql-logging
-    (execute-sql (sxql:drop-table (sxql:make-sql-symbol (table-name class))))
-    (mapc #'execute-sql (table-definition class))))
+  (let ((exists (table-exists-p *connection* (table-name class))))
+    (with-sql-logging
+      (when exists
+        (execute-sql (sxql:drop-table (sxql:make-sql-symbol (table-name class)))))
+      (mapc #'execute-sql (table-definition class)))))
