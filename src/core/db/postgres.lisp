@@ -26,20 +26,25 @@
           :|last_insert_id|
           0)))
 
-(defun sequence-name-to-column-name (seq-name)
-  (let ((pos-a (position #\_ seq-name))
-        (pos-b (position #\_ seq-name :from-end t)))
-    (subseq seq-name (1+ pos-a) pos-b)))
-
 (defun get-serial-keys (conn table-name)
-  (let ((query
-          (dbi:execute
-           (dbi:prepare conn
-                        (format nil "SELECT relname FROM pg_class WHERE relkind = 'S' AND relname LIKE '~A_%'"
-                                table-name)))))
-    (loop for row = (dbi:fetch query)
-          while row
-          collect (sequence-name-to-column-name (getf row :|relname|)))))
+  (remove-if-not
+   (lambda (row)
+     (let* ((column (getf row :|column_name|))
+            (seq (getf
+                  (first
+                   (dbi:fetch-all
+                    (dbi:execute
+                     (dbi:prepare conn
+                                  (format nil "SELECT pg_get_serial_sequence('~A', '~A')" table-name column)))))
+                  :|pg_get_serial_sequence|)))
+       (if (eq seq :null)
+           nil
+           seq)))
+   (dbi:fetch-all
+    (dbi:execute
+     (dbi:prepare conn
+                  (format nil "SELECT column_name FROM information_schema.columns WHERE table_name = '~A'"
+                          table-name))))))
 
 (defun column-definitions (conn table-name)
   (let* ((serial-keys (get-serial-keys conn table-name))
