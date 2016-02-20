@@ -108,7 +108,8 @@
                      expressions))))
           (with-open-file (out schema.sql
                                :direction :output
-                               :if-exists :supersede)
+                               :if-exists :supersede
+                               :if-does-not-exist :create)
             (with-quote-char
               (format out "~{~{~A;~%~}~^~%~}"
                       (mapcar (lambda (class)
