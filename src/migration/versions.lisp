@@ -127,7 +127,8 @@
 
 (defun migration-file-version (file)
   (let* ((name (pathname-name file))
-         (pos (position #\_ name))
+         (pos (or (position #\_ name)
+                  (position #\. name :from-end t)))
          (version
            (if pos
                (subseq name 0 pos)
