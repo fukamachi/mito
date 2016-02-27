@@ -89,7 +89,7 @@
   (let* ((schema.sql (merge-pathnames #P"schema.sql" directory))
          (directory (merge-pathnames #P"migrations/" directory))
          (version (generate-version))
-         (destination (make-pathname :name version
+         (destination (make-pathname :name (format nil "~A.up" version)
                                      :type "sql"
                                      :defaults directory))
          (expressions (all-migration-expressions))
@@ -151,7 +151,7 @@
 (defun migrate (directory &key dry-run)
   (let* ((current-version (current-migration-version))
          (sql-files (sort (uiop:directory-files (merge-pathnames #P"migrations/" directory)
-                                                "*.sql")
+                                                "*.up.sql")
                           #'string<
                           :key #'pathname-name))
          (sql-files-to-apply
