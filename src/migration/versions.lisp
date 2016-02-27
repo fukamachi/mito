@@ -175,6 +175,7 @@
                          (let ((mito.logger::*mito-logger-stream* nil))
                            (execute-sql sql))))))
           (let ((version (migration-file-version (first (last sql-files)))))
-            (update-migration-version version)
+            (when current-version
+              (update-migration-version version))
             (format t "~&Successfully updated to the version ~S.~%" version)))
         (format t "~&Version ~S is up to date.~%" current-version))))
