@@ -134,20 +134,22 @@
                            (lambda (object)
                              (if (slot-boundp object name)
                                  (slot-value object name)
-                                 (apply #'make-dao-instance rel-class
-                                        (first
-                                         (mito.db:retrieve-by-sql
-                                          (sxql:select :*
-                                            (sxql:from (sxql:make-sql-symbol (table-name rel-class)))
-                                            (sxql:where
-                                             `(:and
-                                               ,@(mapcar (lambda (pk-name)
-                                                           `(:= ,(sxql:make-sql-symbol
-                                                                  (table-column-name
-                                                                   (find-slot-by-name rel-class pk-name)))
-                                                                ,(slot-value object (rel-column-name pk-name))))
-                                                         (table-primary-key rel-class))))
-                                            (sxql:limit 1))))))))))
+                                 (let ((foreign-object
+                                         (apply #'make-dao-instance rel-class
+                                                (first
+                                                 (mito.db:retrieve-by-sql
+                                                  (sxql:select :*
+                                                    (sxql:from (sxql:make-sql-symbol (table-name rel-class)))
+                                                    (sxql:where
+                                                     `(:and
+                                                       ,@(mapcar (lambda (pk-name)
+                                                                   `(:= ,(sxql:make-sql-symbol
+                                                                          (table-column-name
+                                                                           (find-slot-by-name rel-class pk-name)))
+                                                                        ,(slot-value object (rel-column-name pk-name))))
+                                                                 (table-primary-key rel-class))))
+                                                    (sxql:limit 1)))))))
+                                   (setf (slot-value object name) foreign-object)))))))
                  (setf (getf column :readers) '())))
     (values initargs parent-column-map)))
 
