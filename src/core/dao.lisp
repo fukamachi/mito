@@ -61,7 +61,8 @@
   (let* ((class (class-of obj))
          (foreign-slot (dao-table-column-foreign-slot slot))
          (rel-column-name (find-parent-column class slot)))
-    (and (slot-boundp obj rel-column-name)
+    (and rel-column-name
+         (slot-boundp obj rel-column-name)
          (slot-value (slot-value obj rel-column-name)
                      (c2mop:slot-definition-name foreign-slot)))))
 
@@ -72,7 +73,8 @@
             (lambda (slot)
               (let ((slot-name (c2mop:slot-definition-name slot)))
                 (cond
-                  ((dao-table-column-foreign-class slot)
+                  ((and (dao-table-column-foreign-class slot)
+                        (foreign-value obj slot))
                    (list (sxql:make-sql-symbol (table-column-name slot))
                          (foreign-value obj slot)))
                   ((not (slot-boundp obj slot-name))
