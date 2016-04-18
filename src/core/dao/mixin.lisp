@@ -41,7 +41,8 @@
                             (integer
                              (local-time:universal-to-timestamp value))
                             (string
-                             (local-time:parse-timestring value :date-time-separator #\Space))))
+                             (local-time:parse-timestring value :date-time-separator #\Space))
+                            (null nil)))
                :accessor object-created-at)
    (updated-at :col-type (or :timestamp :null)
                :initarg :updated-at
@@ -50,6 +51,7 @@
                             (integer
                              (local-time:universal-to-timestamp value))
                             (string
-                             (local-time:parse-timestring value :date-time-separator #\Space))))
+                             (local-time:parse-timestring value :date-time-separator #\Space))
+                            (null nil)))
                :accessor object-updated-at))
   (:metaclass dao-table-mixin))
