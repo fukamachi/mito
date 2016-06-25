@@ -30,8 +30,6 @@
                     #:unlispify
                     #:symbol-name-literally
                     #:ensure-class)
-      (:import-from #:dbi
-                    #:with-transaction)
       (:import-from #:optima
                     #:match
                     #:guard)
@@ -89,14 +87,13 @@
   (:method ((obj dao-class))
     (check-connected)
     (let ((serial-key (table-serial-key (class-of obj))))
-      (dbi:with-transaction *connection*
-        (execute-sql
-         (sxql:insert-into (sxql:make-sql-symbol (table-name (class-of obj)))
-           (make-set-clause obj)))
-        (when serial-key
-          (setf (slot-value obj serial-key)
-                (last-insert-id *connection* (table-name (class-of obj))
-                                (unlispify (symbol-name-literally serial-key))))))
+      (execute-sql
+       (sxql:insert-into (sxql:make-sql-symbol (table-name (class-of obj)))
+         (make-set-clause obj)))
+      (when serial-key
+        (setf (slot-value obj serial-key)
+              (last-insert-id *connection* (table-name (class-of obj))
+                              (unlispify (symbol-name-literally serial-key)))))
       (setf (dao-synced obj) t)
       obj))
   (:method :before ((obj record-timestamps-mixin))
