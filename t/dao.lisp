@@ -153,6 +153,13 @@
      (mito.dao:select-dao 'tweet
        (mito.dao::where (:in :user (list user))))))
 
+  (defclass tweet2 () ()
+    (:metaclass dao-table-class)
+    (:record-timestamps nil))
+
+  (let ((user (mito:find-dao 'user :name "Eitaro")))
+    (ok (mito:create-dao 'tweet2 :status "Hello" :user user)))
+
   (disconnect-toplevel))
 
 (finalize)
