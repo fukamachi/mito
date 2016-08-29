@@ -94,6 +94,30 @@
                                      :defaults directory))
          (expressions (all-migration-expressions))
          (sxql:*use-placeholder* nil))
+
+    ;; Warn if there're non-applied migration files.
+    (let* ((current-version (current-migration-version))
+           (sql-files (sort (uiop:directory-files directory "*.up.sql")
+                            #'string<
+                            :key #'pathname-name))
+           (non-applied-files
+             (if current-version
+                 (remove-if-not (lambda (version)
+                                  (and version
+                                       (string< current-version version)))
+                                sql-files
+                                :key #'migration-file-version)
+                 sql-files)))
+      (when non-applied-files
+        (if (y-or-n-p "Found non-applied ~D migration file~:*~P. Will you delete them?"
+                      (length non-applied-files))
+            (dolist (file non-applied-files)
+              (format *error-output* "~&Deleting '~A'...~%" file)
+              (delete-file file))
+            (progn
+              (format *error-output* "~&Given up.~%")
+              (return-from generate-migrations nil)))))
+
     (if expressions
         (progn
           (ensure-directories-exist directory)
