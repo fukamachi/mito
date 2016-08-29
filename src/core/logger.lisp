@@ -3,22 +3,12 @@
   (:use #:cl)
   (:import-from #:alexandria
                 #:delete-from-plist)
-  (:export #:logger-stream
+  (:export #:*mito-logger-stream*
            #:with-sql-logging
            #:trace-sql))
 (in-package :mito.logger)
 
 (defvar *mito-logger-stream* nil)
-
-(defun logger-stream ()
-  (etypecase *mito-logger-stream*
-    (symbol (symbol-value *mito-logger-stream*))
-    (stream *mito-logger-stream*)
-    (null (make-broadcast-stream))
-    ((eql t) *standard-output*)))
-
-(defun (setf logger-stream) (stream)
-  (setf *mito-logger-stream* stream))
 
 (defmacro with-sql-logging (&body body)
   `(let ((*mito-logger-stream* *standard-output*))
@@ -58,7 +48,7 @@
 
 (defun trace-sql (sql params &optional results)
   (when *mito-logger-stream*
-    (format (logger-stream)
+    (format *mito-logger-stream*
             "~&;; ~A (~{~S~^, ~}) [~D row~:P]~:[~;~:* | ~S~]~%"
             sql
             (mapcar (lambda (param)

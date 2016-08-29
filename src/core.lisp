@@ -36,5 +36,5 @@
                            :include '(#:execute-sql
                                       #:retrieve-by-sql))
 (cl-reexport:reexport-from :mito.logger
-                           :include '(#:logger-stream))
+                           :include '(#:*mito-logger-stream*))
 (cl-reexport:reexport-from :mito.error)
