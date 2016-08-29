@@ -43,6 +43,7 @@
                #:update-dao
                #:create-dao
                #:delete-dao
+               #:delete-by-pk
                #:save-dao
                #:select-dao
                #:includes
@@ -146,6 +147,23 @@
                                  `(:= ,(unlispify key) ,(slot-value obj key)))
                                primary-key)))))
         (setf (dao-synced obj) nil)))
+    (values)))
+
+(defgeneric delete-by-pk (class &rest pkeys)
+  (:method ((class symbol) &rest pkeys)
+    (apply #'delete-by-pk (find-class class) pkeys))
+  (:method ((class dao-table-class) &rest pkeys)
+    (let ((primary-key (table-primary-key class)))
+      (unless primary-key
+        (error 'no-primary-keys :table (table-name class)))
+
+      (execute-sql
+       (sxql:delete-from (sxql:make-sql-symbol (table-name class))
+         (sxql:where
+          `(:and ,@(mapcar (lambda (key value)
+                             `(:= ,(unlispify key) ,value))
+                           primary-key
+                           pkeys))))))
     (values)))
 
 (defgeneric save-dao (obj)

@@ -24,6 +24,7 @@
                                       #:update-dao
                                       #:create-dao
                                       #:delete-dao
+                                      #:delete-by-pk
                                       #:save-dao
                                       #:select-dao
                                       #:includes
