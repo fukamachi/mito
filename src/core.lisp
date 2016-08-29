@@ -14,6 +14,8 @@
                                       #:dao-table-class
                                       #:object-id
                                       #:object=
+                                      #:object-created-at
+                                      #:object-updated-at
                                       #:dao-synced
                                       #:make-dao-instance
                                       #:table-definition
