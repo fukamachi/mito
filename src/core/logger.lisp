@@ -49,12 +49,12 @@
 (defun trace-sql (sql params &optional results)
   (when *mito-logger-stream*
     (format *mito-logger-stream*
-            "~&;; ~A (~{~S~^, ~}) [~D row~:P]~:[~;~:* | ~S~]~%"
-            sql
-            (mapcar (lambda (param)
-                      (if (typep param '(simple-array (unsigned-byte 8) (*)))
-                          (map 'string #'code-char param)
-                          param))
-                    params)
-            (length results)
-            (get-prev-stack))))
+            "~&~<;; ~@; ~A (~{~S~^, ~}) [~D row~:P]~:[~;~:* | ~S~]~:>~%"
+            (list sql
+                  (mapcar (lambda (param)
+                            (if (typep param '(simple-array (unsigned-byte 8) (*)))
+                                (map 'string #'code-char param)
+                                param))
+                          params)
+                  (length results)
+                  (get-prev-stack)))))

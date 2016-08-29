@@ -153,6 +153,15 @@
      (mito.dao:select-dao 'tweet
        (mito.dao::where (:in :user (list user))))))
 
+  (defclass tweet2 (tweet) ()
+    (:metaclass dao-table-class)
+    (:record-timestamps nil))
+  (mito:execute-sql "DROP TABLE IF EXISTS tweet2")
+  (mito:ensure-table-exists 'tweet2)
+
+  (let ((user (mito:find-dao 'user :name "Eitaro")))
+    (ok (mito:create-dao 'tweet2 :status "Hello" :user user)))
+
   (let ((tweet (mito:find-dao 'tweet :id 1)))
     (is (mito:count-dao 'tweet) 2)
     (ok tweet)

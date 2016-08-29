@@ -249,8 +249,22 @@
                      :if-not-exists if-not-exists))
 
 (defun find-parent-column (table slot)
-  (gethash (c2mop:slot-definition-name slot)
-           (slot-value table 'parent-column-map)))
+  (let* ((name (c2mop:slot-definition-name slot))
+         (fifo-queue-of-classes (list table))
+         (last fifo-queue-of-classes))
+    ;; runs a breadth-first search
+    (labels ((enqueue-last (thing)
+               (setf (cdr last) (list thing)
+                     last (cdr last)))
+             (rec ()
+               (let ((class (first fifo-queue-of-classes)))
+                 (when class
+                   (or (gethash name (slot-value class 'parent-column-map))
+                       (progn
+                         (map nil #'enqueue-last (c2mop:class-direct-superclasses class))
+                         (pop fifo-queue-of-classes)
+                         (rec)))))))
+      (rec))))
 
 (defun find-child-columns (table slot)
   (let (results)
