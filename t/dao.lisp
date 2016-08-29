@@ -153,6 +153,14 @@
      (mito.dao:select-dao 'tweet
        (mito.dao::where (:in :user (list user))))))
 
+  (let ((tweet (mito:find-dao 'tweet :id 1)))
+    (is (mito:count-dao 'tweet) 2)
+    (ok tweet)
+    (mito:delete-dao tweet)
+    (is (mito:count-dao 'tweet) 1)
+    (mito:delete-by-pk 'tweet 2)
+    (is (mito:count-dao 'tweet) 0))
+
   (disconnect-toplevel))
 
 (finalize)
