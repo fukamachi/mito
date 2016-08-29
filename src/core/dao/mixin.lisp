@@ -34,7 +34,7 @@
          (eql (object-id object1) (object-id object2)))))
 
 (defclass record-timestamps-mixin ()
-  ((created-at :col-type (or :timestamp :null)
+  ((created-at :col-type (or :datetime :null)
                :initarg :created-at
                :inflate (lambda (value)
                           (etypecase value
@@ -44,7 +44,7 @@
                              (local-time:parse-timestring value :date-time-separator #\Space))
                             (null nil)))
                :accessor object-created-at)
-   (updated-at :col-type (or :timestamp :null)
+   (updated-at :col-type (or :datetime :null)
                :initarg :updated-at
                :inflate (lambda (value)
                           (etypecase value
