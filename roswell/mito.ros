@@ -9,7 +9,7 @@ exec ros -Q -- $0 "$@"
         #:mito.migration)
   (:import-from #:mito.core
                 #:*connection*
-                #:logger-stream
+                #:*mito-logger-stream*
                 #:execute-sql)
   (:import-from #:dbi
                 #:with-transaction
@@ -113,7 +113,7 @@ Options:
                               (error (e)
                                 (format *error-output* "~&Failed to connect to the database:~%  ~A~%" e)
                                 (uiop:quit -1)))))
-          (setf (logger-stream) nil)
+          (setf *mito-logger-stream* nil)
           (case-equal command
             ("generate-migrations"
              (mito.migration:generate-migrations directory))
