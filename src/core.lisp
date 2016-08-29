@@ -22,6 +22,9 @@
 
                                       #:dao-table-mixin
 
+                                      #:inflate-for-col-type
+                                      #:deflate-for-col-type
+
                                       #:insert-dao
                                       #:update-dao
                                       #:create-dao

@@ -83,7 +83,7 @@
                   (t
                    (let ((value (slot-value obj slot-name)))
                      (list (sxql:make-sql-symbol (table-column-name slot))
-                           (funcall (dao-table-column-deflate slot) value)))))))
+                           (dao-table-column-deflate slot value)))))))
             (database-column-slots class)))))
 
 (defgeneric insert-dao (obj)

@@ -114,8 +114,8 @@
                                                          (cond
                                                            ((c2mop:slot-definition-initfunction slot)
                                                             (push (car column) drop-defaults)
-                                                            (funcall (or (dao-table-column-deflate slot) #'identity)
-                                                                     (funcall (c2mop:slot-definition-initfunction slot))))
+                                                            (dao-table-column-deflate slot
+                                                                                      (funcall (c2mop:slot-definition-initfunction slot))))
                                                            (t
                                                             (warn "Adding a non-null column ~S but there's no :initform to set default"
                                                                   (car column))
