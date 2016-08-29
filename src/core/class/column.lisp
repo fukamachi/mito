@@ -142,4 +142,6 @@
   (:method (column (driver-type (eql :postgres)))
     (let ((column-info (table-column-info column driver-type)))
       (setf (getf (cdr column-info) :auto-increment) nil)
+      (when (eq (getf (cdr column-info) :type) :datetime)
+        (setf (getf (cdr column-info) :type) :time))
       column-info)))
