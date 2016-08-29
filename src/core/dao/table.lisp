@@ -89,7 +89,7 @@
                                              :key #'c2mop:slot-definition-initargs)
                        if column
                          append (list k
-                                      (funcall (dao-table-column-inflate column) v))
+                                      (dao-table-column-inflate column v))
                        else
                          append (list k v)))))
     (setf (dao-synced obj) t)

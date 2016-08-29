@@ -172,4 +172,32 @@
 
   (disconnect-toplevel))
 
+(dolist (driver '(:mysql :postgres :sqlite3))
+  (subtest (format nil "inflate & deflate (~A)" driver)
+    (setf *connection* (connect-to-testdb driver))
+    (defclass user ()
+      ((id :col-type :serial
+           :primary-key t)
+       (name :col-type :text
+             :initarg :name)
+       (is-admin :col-type :boolean
+                 :initform nil
+                 :initarg :is-admin))
+      (:metaclass dao-table-class))
+    (mito:execute-sql
+     (sxql:drop-table :user :if-exists t))
+    (mito:ensure-table-exists 'user)
+
+    (let ((mito:*mito-logger-stream* t))
+      (mito:create-dao 'user :name "Admin User A" :is-admin t)
+      (mito:create-dao 'user :name "User B" :is-admin nil)
+
+      (let ((user (mito:find-dao 'user :id 1)))
+        (is (slot-value user 'is-admin) t)
+        (is-type (mito:object-created-at user) 'local-time:timestamp))
+      (let ((user (mito:find-dao 'user :id 2)))
+        (is (slot-value user 'is-admin) nil)
+        (is-type (mito:object-created-at user) 'local-time:timestamp)))
+    (disconnect-toplevel)))
+
 (finalize)

@@ -36,22 +36,8 @@
 (defclass record-timestamps-mixin ()
   ((created-at :col-type (or :datetime :null)
                :initarg :created-at
-               :inflate (lambda (value)
-                          (etypecase value
-                            (integer
-                             (local-time:universal-to-timestamp value))
-                            (string
-                             (local-time:parse-timestring value :date-time-separator #\Space))
-                            (null nil)))
                :accessor object-created-at)
    (updated-at :col-type (or :datetime :null)
                :initarg :updated-at
-               :inflate (lambda (value)
-                          (etypecase value
-                            (integer
-                             (local-time:universal-to-timestamp value))
-                            (string
-                             (local-time:parse-timestring value :date-time-separator #\Space))
-                            (null nil)))
                :accessor object-updated-at))
   (:metaclass dao-table-mixin))

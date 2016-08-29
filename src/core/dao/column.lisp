@@ -17,7 +17,9 @@
            #:dao-table-column-inflate
            #:dao-table-column-deflate
            #:dao-table-column-foreign-class
-           #:dao-table-column-foreign-slot))
+           #:dao-table-column-foreign-slot
+           #:inflate-for-col-type
+           #:deflate-for-col-type))
 (in-package :mito.dao.column)
 
 (deftype references ()
@@ -25,13 +27,9 @@
 
 (defclass dao-table-column-class (table-column-class)
   ((inflate :type (or function null)
-            :initarg :inflate
-            :initform #'identity
-            :reader dao-table-column-inflate)
+            :initarg :inflate)
    (deflate :type (or function null)
-            :initarg :deflate
-            :initform #'identity
-            :reader dao-table-column-deflate)
+            :initarg :deflate)
    (references :type references
                :initarg :references
                :initform nil
@@ -114,3 +112,63 @@
                 (otherwise t)))
         column-info)
       (call-next-method)))
+
+(defgeneric dao-table-column-inflate (column value)
+  (:method ((column dao-table-column-class) value)
+    (if (slot-boundp column 'inflate)
+        (funcall (slot-value column 'inflate) value)
+        (inflate-for-col-type
+         (mito.class.column::parse-col-type (table-column-type column))
+         value))))
+
+(defgeneric dao-table-column-deflate (column value)
+  (:method ((column dao-table-column-class) value)
+    (if (slot-boundp column 'deflate)
+        (funcall (slot-value column 'deflate) value)
+        (deflate-for-col-type
+          (mito.class.column::parse-col-type (table-column-type column))
+          value))))
+
+(defgeneric inflate-for-col-type (col-type value)
+  (:method (col-type value)
+    (declare (ignore col-type))
+    (identity value))
+  (:method ((col-type (eql :datetime)) value)
+    (etypecase value
+      (integer
+       (local-time:universal-to-timestamp value))
+      (string
+       (local-time:parse-timestring value :date-time-separator #\Space))
+      (null nil)))
+  (:method ((col-type (eql :timestamp)) value)
+    (inflate-for-col-type :datetime value))
+  (:method ((col-type (eql :boolean)) value)
+    (cond
+      ;; MySQL & SQLite3
+      ((typep value 'integer)
+       (not (= value 0)))
+      ;; PostgreSQL
+      ((typep value 'boolean)
+       value)
+      (t
+       (error "Unexpected value for boolean column: ~S" value)))))
+
+(defgeneric deflate-for-col-type (col-type value)
+  (:method (col-type value)
+    (declare (ignore col-type))
+    (identity value))
+  (:method ((col-type (eql :datetime)) value)
+    (etypecase value
+      (integer
+       (local-time:universal-to-timestamp value))
+      (local-time:timestamp
+       (local-time:format-timestring nil value
+                                     :format
+                                     '((:YEAR 4) #\- (:MONTH 2) #\- (:DAY 2) #\Space (:HOUR 2) #\: (:MIN 2) #\: (:SEC 2))))
+      (null nil)))
+  (:method ((col-type (eql :timestamp)) value)
+    (deflate-for-col-type :datetime value))
+  (:method ((col-type (eql :boolean)) value)
+    (ecase value
+      (t 1)
+      ('nil 0))))
