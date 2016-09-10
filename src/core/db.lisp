@@ -106,6 +106,31 @@
         (trace-sql sql binds)
         (apply #'dbi:do-sql *connection* sql binds)))))
 
+(defun array-convert-nulls-to-nils (results-array &key (recursive t))
+  (let ((darray (make-array (array-total-size results-array)
+                     :displaced-to results-array
+                     :element-type (array-element-type results-array))))
+    (loop for x across darray
+         for i from 0
+       do (cond ((eq x :null)
+                 (setf (aref darray i) nil))
+                ((and recursive x (listp x))
+                 (setf (aref darray i)
+                       (list-convert-nulls-to-nils x)))
+                ((and recursive x (vectorp x))
+                 (setf (aref darray i)
+                       (array-convert-nulls-to-nils x)))))
+    results-array))
+
+(defun list-convert-nulls-to-nils (results-list &key (recursive t))
+  (mapcar (lambda (x) (cond ((eq x :null) nil)
+                            ((and recursive x (listp x))
+                             (list-convert-nulls-to-nils x))
+                            ((and recursive x (vectorp x))
+                             (array-convert-nulls-to-nils x))
+                            (t x)))
+          results-list))
+
 (defgeneric retrieve-by-sql (sql &key binds)
   (:method :before (sql &key binds)
     (declare (ignore sql binds))
@@ -120,9 +145,12 @@
                    collect
                    (loop for (k v) on result by #'cddr
                          collect (lispify k)
-                         collect (if (eq v :null)
-                                     nil
-                                     v)))))
+                         collect (cond ((eq v :null) nil)
+                                       ((and v (listp v))
+                                        (list-convert-nulls-to-nils v))
+                                       ((arrayp v)
+                                        (array-convert-nulls-to-nils v))
+                                       (t v))))))
 
       (trace-sql sql binds results)
       results))
