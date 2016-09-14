@@ -13,20 +13,19 @@
   (setf *connection* (connect-to-testdb :postgres))
   (is (mito:retrieve-by-sql "select row(1,NULL);")
       '((:ROW (1 NIL))))
-  
+
   (is (mito:retrieve-by-sql "select NULL;")
       '((:?COLUMN? NIL)))
-  
+
   (is (mito:retrieve-by-sql "select row(NULL, 'a', NULL);")
       '((:ROW (NIL "a" NIL))))
-  
+
   (is (mito:retrieve-by-sql "select row(ARRAY[NULL, NULL]);")
       '((:ROW (#(NIL NIL))))
       :test #'equalp)
-  
+
   (is (mito:retrieve-by-sql "select row(ARRAY['bogus', NULL]);")
       '((:ROW (#("bogus" NIL))))
       :test #'equalp))
 
 (finalize)
-
