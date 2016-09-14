@@ -112,26 +112,28 @@
                             :element-type (array-element-type results-array))))
     (loop for x across darray
           for i from 0
-          do (cond
-               ((eq x :null)
+          do (typecase x
+               ((eql :null)
                 (setf (aref darray i) nil))
-               ((consp x)
+               (cons
                 (setf (aref darray i)
                       (list-convert-nulls-to-nils x)))
-               ((vectorp x)
+               ((and (not string) vector)
                 (setf (aref darray i)
                       (array-convert-nulls-to-nils x)))))
     results-array))
 
 (defun list-convert-nulls-to-nils (results-list)
   (mapcar (lambda (x)
-            (cond
-              ((eq x :null) nil)
-              ((consp x)
+            (typecase x
+              ((eql :null)
+               nil)
+              (cons
                (list-convert-nulls-to-nils x))
-              ((vectorp x)
+              ((and (not string) vector)
                (array-convert-nulls-to-nils x))
-              (t x)))
+              (otherwise
+               x)))
           results-list))
 
 (defgeneric retrieve-by-sql (sql &key binds)
