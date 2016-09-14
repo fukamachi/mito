@@ -106,6 +106,36 @@
         (trace-sql sql binds)
         (apply #'dbi:do-sql *connection* sql binds)))))
 
+(defun array-convert-nulls-to-nils (results-array)
+  (let ((darray (make-array (array-total-size results-array)
+                            :displaced-to results-array
+                            :element-type (array-element-type results-array))))
+    (loop for x across darray
+          for i from 0
+          do (typecase x
+               ((eql :null)
+                (setf (aref darray i) nil))
+               (cons
+                (setf (aref darray i)
+                      (list-convert-nulls-to-nils x)))
+               ((and (not string) vector)
+                (setf (aref darray i)
+                      (array-convert-nulls-to-nils x)))))
+    results-array))
+
+(defun list-convert-nulls-to-nils (results-list)
+  (mapcar (lambda (x)
+            (typecase x
+              ((eql :null)
+               nil)
+              (cons
+               (list-convert-nulls-to-nils x))
+              ((and (not string) vector)
+               (array-convert-nulls-to-nils x))
+              (otherwise
+               x)))
+          results-list))
+
 (defgeneric retrieve-by-sql (sql &key binds)
   (:method :before (sql &key binds)
     (declare (ignore sql binds))
@@ -120,9 +150,12 @@
                    collect
                    (loop for (k v) on result by #'cddr
                          collect (lispify k)
-                         collect (if (eq v :null)
-                                     nil
-                                     v)))))
+                         collect (cond ((eq v :null) nil)
+                                       ((and v (listp v))
+                                        (list-convert-nulls-to-nils v))
+                                       ((arrayp v)
+                                        (array-convert-nulls-to-nils v))
+                                       (t v))))))
 
       (trace-sql sql binds results)
       results))
