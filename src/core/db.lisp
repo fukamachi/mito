@@ -106,7 +106,7 @@
         (trace-sql sql binds)
         (apply #'dbi:do-sql *connection* sql binds)))))
 
-(defun array-convert-nulls-to-nils (results-array &key (recursive t))
+(defun array-convert-nulls-to-nils (results-array)
   (let ((darray (make-array (array-total-size results-array)
                             :displaced-to results-array
                             :element-type (array-element-type results-array))))
@@ -115,21 +115,21 @@
           do (cond
                ((eq x :null)
                 (setf (aref darray i) nil))
-               ((and recursive x (listp x))
+               ((consp x)
                 (setf (aref darray i)
                       (list-convert-nulls-to-nils x)))
-               ((and recursive x (vectorp x))
+               ((vectorp x)
                 (setf (aref darray i)
                       (array-convert-nulls-to-nils x)))))
     results-array))
 
-(defun list-convert-nulls-to-nils (results-list &key (recursive t))
+(defun list-convert-nulls-to-nils (results-list)
   (mapcar (lambda (x)
             (cond
               ((eq x :null) nil)
-              ((and recursive x (listp x))
+              ((consp x)
                (list-convert-nulls-to-nils x))
-              ((and recursive x (vectorp x))
+              ((vectorp x)
                (array-convert-nulls-to-nils x))
               (t x)))
           results-list))
