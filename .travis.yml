@@ -18,6 +18,7 @@ install:
   - curl -L https://raw.githubusercontent.com/snmsts/roswell/release/scripts/install-for-ci.sh | sh
   - ros install prove
   - git clone https://github.com/fukamachi/sxql ~/lisp/sxql
+  - ros install marijnh/Postmodern
 
 cache:
   directories:
