@@ -108,7 +108,9 @@
            (setf auto-increment t
                  not-null t))
           ((eq (ensure-car col-type) :binary)
-           (setf col-type :bytea)))
+           (setf col-type :bytea))
+          ((eq (ensure-car col-type) :datetime)
+           (setf col-type :time)))
         `(,(table-column-name column)
           :type ,col-type
           :auto-increment ,auto-increment
@@ -142,6 +144,4 @@
   (:method (column (driver-type (eql :postgres)))
     (let ((column-info (table-column-info column driver-type)))
       (setf (getf (cdr column-info) :auto-increment) nil)
-      (when (eq (getf (cdr column-info) :type) :datetime)
-        (setf (getf (cdr column-info) :type) :time))
       column-info)))
