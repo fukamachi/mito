@@ -302,7 +302,7 @@
                                                                    (c2mop:slot-definition-name
                                                                     (dao-table-column-foreign-slot child)))))))))
                     else
-                      collect `(:= ,field ,value))))
+                      collect `(:= ,(unlispify field) ,value))))
       (when op
         (sxql:where `(:and ,@op))))))
 
