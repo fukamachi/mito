@@ -124,7 +124,7 @@
                   "CREATE TABLE tweet (
     status TEXT NOT NULL,
     user INTEGER NOT NULL,
-    created_at TIME NOT NULL,
+    created_at TIMESTAMP NOT NULL,
     PRIMARY KEY (user, created_at)
 )"
                   "PRIMARY KEY")
@@ -138,7 +138,7 @@
                   "CREATE TABLE tweet (
     status TEXT NOT NULL,
     user INTEGER NOT NULL,
-    created_at TIME NOT NULL,
+    created_at TIMESTAMP NOT NULL,
     UNIQUE (user, created_at)
 )"
                   "UNIQUE KEY")
@@ -152,7 +152,7 @@
                   '("CREATE TABLE tweet (
     status TEXT NOT NULL,
     user INTEGER NOT NULL,
-    created_at TIME NOT NULL
+    created_at TIMESTAMP NOT NULL
 )" "CREATE INDEX key_tweet_user_created_at ON tweet (user, created_at)")
                   "KEY")
   (is-table-class :postgres
@@ -164,7 +164,7 @@
                   "CREATE TABLE tweet (
     status TEXT NOT NULL,
     user INTEGER NOT NULL,
-    created_at TIME
+    created_at TIMESTAMP
 )"
                   "NULL"))
 
