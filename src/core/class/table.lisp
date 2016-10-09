@@ -117,10 +117,14 @@
 (defgeneric table-indices-info (class driver-type)
   (:method (class driver-type)
     (let ((table-name (table-name class)))
-      (flet ((unlispify-keys (keys)
-               (if (listp keys)
-                   (mapcar #'string (mapcar #'unlispify keys))
-                   (string (unlispify keys)))))
+      (labels ((ensure-string (data)
+                 (etypecase data
+                   (symbol (symbol-name-literally data))
+                   (string data)))
+               (unlispify-keys (keys)
+                 (if (listp keys)
+                     (mapcar #'unlispify (mapcar #'ensure-string keys))
+                     (unlispify (ensure-string keys)))))
         (append
          (when (slot-value class 'primary-key)
            (let ((primary-keys (slot-value class 'primary-key)))
