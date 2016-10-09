@@ -19,6 +19,8 @@
                     #:database-column-slots
                     #:ghost-slot-p
                     #:find-slot-by-name)
+      (:import-from #:mito.class.column
+                    #:table-column-type)
       (:import-from #:mito.db
                     #:last-insert-id
                     #:execute-sql
@@ -206,10 +208,13 @@
                          results)))
         records))))
 
-(defun child-columns (column class)
+(defun child-columns (column class object)
   (let ((slot (find-slot-by-name class column :test #'string=)))
-    (and slot
-         (find-child-columns class slot))))
+    (when (and slot (ghost-slot-p slot))
+      ;; check the type of the specified object
+      (let ((expected-type (mito.class.column::parse-col-type (table-column-type slot))))
+        (assert (typep object expected-type)))
+      (find-child-columns class slot))))
 
 (defun slot-foreign-value (object class slot-name)
   (slot-value object
@@ -230,7 +235,7 @@
                  (cons y
                        (cons (guard x (keywordp x))
                              nil))))
-       `(let ((,children (child-columns ,x ,class)))
+       `(let ((,children (child-columns ,x ,class ,y)))
           (if ,children
               (apply #'sxql:make-op
                      :and
@@ -244,7 +249,7 @@
                            (eql op :not-in)))
              (cons (guard x (keywordp x))
                    (cons y nil)))
-       `(let ((,children (child-columns ,x ,class)))
+       `(let ((,children (child-columns ,x ,class ,y)))
           (cond
             ((and ,children
                   (cdr ,children))
