@@ -219,47 +219,49 @@
 
 (defun expand-op (object class)
   "Expand relational columns if the operator is :=, :!= , :in or :not-in."
-  (optima:match object
-    ((or (cons (guard op (or (eql op :=)
-                             (eql op :!=)))
-               (cons (guard x (keywordp x)) (cons y nil)))
-         (cons (guard op (or (eql op :=)
-                             (eql op :!=)))
-               (cons y
-                     (cons (guard x (keywordp x))
-                           nil))))
-     `(let ((children (child-columns ,x ,class)))
-        (if children
-            (apply #'sxql:make-op
-                   :and
-                   (mapcar (lambda (col)
-                             (sxql:make-op ,op
-                                           (sxql:make-sql-symbol (unlispify (symbol-name-literally col)))
-                                           (slot-foreign-value ,y ,class col)))
-                           children))
-            (sxql:make-op ,op ,x ,y))))
-    ((cons (guard op (or (eql op :in)
-                         (eql op :not-in)))
-           (cons (guard x (keywordp x))
-                 (cons y nil)))
-     `(let ((children (child-columns ,x ,class)))
-        (cond
-          ((and children
-                (cdr children))
-           (error "Cannot specify a relational column which has composite primary keys"))
-          (children
-           (sxql:make-op ,op
-                         (sxql:make-sql-symbol (unlispify (symbol-name-literally (first children))))
-                         (mapcar (lambda (obj)
-                                   (slot-foreign-value obj ,class (first children)))
-                                 ,y)))
-          (t (sxql:make-op ,op ,x ,y)))))
-    ((cons (optima:guard op (keywordp op))
-           args)
-     `(sxql:make-op ,op
-                    ,@(mapcar (lambda (arg)
-                                (expand-op arg class)) args)))
-    (otherwise object)))
+  (let ((obj (gensym "OBJ"))
+        (children (gensym "CHILDREN")))
+    (optima:match object
+      ((or (cons (guard op (or (eql op :=)
+                               (eql op :!=)))
+                 (cons (guard x (keywordp x)) (cons y nil)))
+           (cons (guard op (or (eql op :=)
+                               (eql op :!=)))
+                 (cons y
+                       (cons (guard x (keywordp x))
+                             nil))))
+       `(let ((,children (child-columns ,x ,class)))
+          (if ,children
+              (apply #'sxql:make-op
+                     :and
+                     (mapcar (lambda (,obj)
+                               (sxql:make-op ,op
+                                             (sxql:make-sql-symbol (unlispify (symbol-name-literally ,obj)))
+                                             (slot-foreign-value ,y ,class ,obj)))
+                             ,children))
+              (sxql:make-op ,op ,x ,y))))
+      ((cons (guard op (or (eql op :in)
+                           (eql op :not-in)))
+             (cons (guard x (keywordp x))
+                   (cons y nil)))
+       `(let ((,children (child-columns ,x ,class)))
+          (cond
+            ((and ,children
+                  (cdr ,children))
+             (error "Cannot specify a relational column which has composite primary keys"))
+            (,children
+             (sxql:make-op ,op
+                           (sxql:make-sql-symbol (unlispify (symbol-name-literally (first ,children))))
+                           (mapcar (lambda (,obj)
+                                     (slot-foreign-value ,obj ,class (first ,children)))
+                                   ,y)))
+            (t (sxql:make-op ,op ,x ,y)))))
+      ((cons (optima:guard op (keywordp op))
+             args)
+       `(sxql:make-op ,op
+                      ,@(mapcar (lambda (arg)
+                                  (expand-op arg class)) args)))
+      (otherwise object))))
 
 (defmacro select-dao (class &body clauses)
   (with-gensyms (sql clause results include-classes foreign-class)
