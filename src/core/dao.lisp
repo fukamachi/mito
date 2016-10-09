@@ -111,7 +111,7 @@
   (:method ((class-name symbol) &rest initargs)
     (apply #'create-dao (find-class class-name) initargs))
   (:method ((class dao-table-class) &rest initargs)
-    (let ((obj (apply #'make-dao-instance class initargs)))
+    (let ((obj (apply #'make-instance class :allow-other-keys t initargs)))
       (setf (dao-synced obj) nil)
       (save-dao obj))))
 
