@@ -208,13 +208,12 @@
                          results)))
         records))))
 
-(defun child-columns (column class object)
+(defun child-columns (column class)
   (let ((slot (find-slot-by-name class column :test #'string=)))
     (when (and slot (ghost-slot-p slot))
-      ;; check the type of the specified object
-      (let ((expected-type (mito.class.column::parse-col-type (table-column-type slot))))
-        (assert (typep object expected-type)))
-      (find-child-columns class slot))))
+      (values
+       (find-child-columns class slot)
+       (mito.class.column::parse-col-type (table-column-type slot))))))
 
 (defun slot-foreign-value (object class slot-name)
   (slot-value object
@@ -225,7 +224,8 @@
 (defun expand-op (object class)
   "Expand relational columns if the operator is :=, :!= , :in or :not-in."
   (let ((obj (gensym "OBJ"))
-        (children (gensym "CHILDREN")))
+        (children (gensym "CHILDREN"))
+        (expected-type (gensym "EXPECTED-TYPE")))
     (optima:match object
       ((or (cons (guard op (or (eql op :=)
                                (eql op :!=)))
@@ -235,21 +235,27 @@
                  (cons y
                        (cons (guard x (keywordp x))
                              nil))))
-       `(let ((,children (child-columns ,x ,class ,y)))
+       `(multiple-value-bind (,children ,expected-type)
+            (child-columns ,x ,class)
           (if ,children
-              (apply #'sxql:make-op
-                     :and
-                     (mapcar (lambda (,obj)
-                               (sxql:make-op ,op
-                                             (sxql:make-sql-symbol (unlispify (symbol-name-literally ,obj)))
-                                             (slot-foreign-value ,y ,class ,obj)))
-                             ,children))
+              (progn
+                (assert (typep ,y ,expected-type))
+                (apply #'sxql:make-op
+                       :and
+                       (mapcar (lambda (,obj)
+                                 (sxql:make-op ,op
+                                               (sxql:make-sql-symbol (unlispify (symbol-name-literally ,obj)))
+                                               (slot-foreign-value ,y ,class ,obj)))
+                               ,children)))
               (sxql:make-op ,op ,x ,y))))
       ((cons (guard op (or (eql op :in)
                            (eql op :not-in)))
              (cons (guard x (keywordp x))
                    (cons y nil)))
-       `(let ((,children (child-columns ,x ,class ,y)))
+       `(multiple-value-bind (,children ,expected-type)
+            (child-columns ,x ,class)
+          (every (lambda (,obj)
+                   (assert (typep ,obj ,expected-type))) ,y)
           (cond
             ((and ,children
                   (cdr ,children))
