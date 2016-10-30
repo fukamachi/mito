@@ -95,6 +95,11 @@
     (setf (dao-synced obj) t)
     obj))
 
+(defun rel-column-name (name pk-name)
+  (intern
+   (format nil "~A-~A" name pk-name)
+   (symbol-package name)))
+
 (defun initialize-initargs (initargs)
   (let ((parent-column-map (make-hash-table :test 'eq)))
     ;; Add relational column slots (ex. user-id)
@@ -115,43 +120,68 @@
                       ;; FIXME: find-class returns NIL if the class is this same class
                       (rel-class (find-class col-type))
                       (pk-names (table-primary-key rel-class)))
-                 (flet ((rel-column-name (pk-name)
-                          (intern
-                           (format nil "~A-~A" name pk-name)
-                           (symbol-package name))))
-                   (dolist (pk-name pk-names)
-                     (let ((rel-column-name (rel-column-name pk-name)))
-                       (setf (gethash rel-column-name parent-column-map) name)
-                       (rplacd (last (getf initargs :direct-slots))
-                               `((:name ,rel-column-name
-                                  :initargs (,(intern (symbol-name rel-column-name) :keyword))
-                                  ;; Defer retrieving the relational column type until table-column-info
-                                  :col-type ,(getf column :col-type)
-                                  :references (,(class-name rel-class) ,pk-name))))))
-
-                   (dolist (reader (getf column :readers))
-                     (setf (fdefinition reader)
-                           (lambda (object)
-                             (if (slot-boundp object name)
-                                 (slot-value object name)
-                                 (let ((foreign-object
-                                         (apply #'make-dao-instance rel-class
-                                                (first
-                                                 (mito.db:retrieve-by-sql
-                                                  (sxql:select :*
-                                                    (sxql:from (sxql:make-sql-symbol (table-name rel-class)))
-                                                    (sxql:where
-                                                     `(:and
-                                                       ,@(mapcar (lambda (pk-name)
-                                                                   `(:= ,(sxql:make-sql-symbol
-                                                                          (table-column-name
-                                                                           (find-slot-by-name rel-class pk-name)))
-                                                                        ,(slot-value object (rel-column-name pk-name))))
-                                                                 (table-primary-key rel-class))))
-                                                    (sxql:limit 1)))))))
-                                   (setf (slot-value object name) foreign-object)))))))
-                 (setf (getf column :readers) '())))
+                 (dolist (pk-name pk-names)
+                   (let ((rel-column-name (rel-column-name name pk-name)))
+                     (setf (gethash rel-column-name parent-column-map) name)
+                     (rplacd (last (getf initargs :direct-slots))
+                             `((:name ,rel-column-name
+                                :initargs (,(intern (symbol-name rel-column-name) :keyword))
+                                ;; Defer retrieving the relational column type until table-column-info
+                                :col-type ,(getf column :col-type)
+                                :references (,(class-name rel-class) ,pk-name))))))))
     (values initargs parent-column-map)))
+
+(defun make-relational-reader-method (func-name class slot-name rel-class)
+  (let ((generic-function
+          (ensure-generic-function func-name :lambda-list '(object))))
+    (add-method
+     generic-function
+     (make-instance 'standard-method
+                    :lambda-list '(object)
+                    :qualifiers ()
+                    :specializers (list class)
+                    :function
+                    (lambda (object &rest ignore)
+                      (declare (ignore ignore))
+                      ;; I don't know why but SBCL pass a CONS of the instance instead of the instance itself.
+                      (when (consp object)
+                        (setf object (first object)))
+                      (if (slot-boundp object slot-name)
+                          (slot-value object slot-name)
+                          (let ((foreign-object
+                                  (apply #'make-dao-instance rel-class
+                                         (first
+                                          (mito.db:retrieve-by-sql
+                                           (sxql:select :*
+                                             (sxql:from (sxql:make-sql-symbol (table-name rel-class)))
+                                             (sxql:where
+                                              `(:and
+                                                ,@(mapcar (lambda (pk-name)
+                                                            `(:= ,(sxql:make-sql-symbol
+                                                                   (table-column-name
+                                                                    (find-slot-by-name rel-class pk-name)))
+                                                                 ,(slot-value object (rel-column-name slot-name pk-name))))
+                                                          (table-primary-key rel-class))))
+                                             (sxql:limit 1)))))))
+                            (setf (slot-value object slot-name) foreign-object))))))))
+
+(defun add-relational-readers (class initargs)
+  (loop for column in (copy-seq (getf initargs :direct-slots)) ;; Prevent infinite-loop
+        for (col-type . not-null) = (let ((col-type (getf column :col-type)))
+                                      (optima:match col-type
+                                        ((or (list 'or :null x)
+                                             (list 'or x :null))
+                                         (cons x t))
+                                        (otherwise
+                                         (cons col-type nil))))
+        when (and (symbolp col-type)
+                  (not (null col-type))
+                  (not (keywordp col-type)))
+          do (let* ((name (getf column :name))
+                    ;; FIXME: find-class returns NIL if the class is this same class
+                    (rel-class (find-class col-type)))
+               (dolist (reader (getf column :readers))
+                 (make-relational-reader-method reader class name rel-class)))))
 
 (defun expand-relational-keys (class slot-name)
   (let ((keys (slot-value class slot-name))
@@ -206,6 +236,7 @@
       (push (find-class 'auto-pk-mixin) (getf initargs :direct-superclasses)))
 
     (let ((class (apply #'call-next-method class initargs)))
+      (add-relational-readers class initargs)
       (expand-relational-keys class 'mito.class.table::primary-key)
       (expand-relational-keys class 'mito.class.table::unique-keys)
       (expand-relational-keys class 'mito.class.table::keys)
@@ -216,7 +247,6 @@
                                                                     &key direct-superclasses &allow-other-keys)
   (multiple-value-bind (initargs parent-column-map)
       (initialize-initargs initargs)
-
     (when (and (initargs-enables-record-timestamps initargs)
                (not (contains-class-or-subclasses 'record-timestamps-mixin direct-superclasses)))
       (setf (getf initargs :direct-superclasses)
@@ -229,6 +259,7 @@
       (push (find-class 'auto-pk-mixin) (getf initargs :direct-superclasses)))
 
     (let ((class (apply #'call-next-method class initargs)))
+      (add-relational-readers class initargs)
       (expand-relational-keys class 'mito.class.table::primary-key)
       (expand-relational-keys class 'mito.class.table::unique-keys)
       (expand-relational-keys class 'mito.class.table::keys)
