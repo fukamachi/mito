@@ -36,6 +36,7 @@
                                       #:find-dao
                                       #:retrieve-dao
                                       #:count-dao
+                                      #:drop-table
                                       #:recreate-table
                                       #:ensure-table-exists))
 (cl-reexport:reexport-from :mito.db

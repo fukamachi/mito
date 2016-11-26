@@ -52,6 +52,7 @@
                #:find-dao
                #:retrieve-dao
                #:count-dao
+               #:drop-table
                #:recreate-table
                #:ensure-table-exists))))
 (in-package :mito.dao)
@@ -348,10 +349,15 @@
     (with-sql-logging
       (mapc #'execute-sql (table-definition class)))))
 
-(defun recreate-table (class)
+(defun drop-table (class)
   (setf class (ensure-class class))
   (let ((exists (table-exists-p *connection* (table-name class))))
     (with-sql-logging
       (when exists
-        (execute-sql (sxql:drop-table (sxql:make-sql-symbol (table-name class)))))
-      (mapc #'execute-sql (table-definition class)))))
+        (execute-sql (sxql:drop-table (sxql:make-sql-symbol (table-name class))))))))
+
+(defun recreate-table (class)
+  (setf class (ensure-class class))
+  (drop-table class)
+  (with-sql-logging
+    (mapc #'execute-sql (table-definition class))))
