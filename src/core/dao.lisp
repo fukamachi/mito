@@ -5,6 +5,7 @@
       (:use #:cl
             #:sxql
             #:mito.class)
+      (:shadow :drop-table)
       (:import-from #:mito.dao.column
                     #:dao-table-column-deflate
                     #:dao-table-column-foreign-class
