@@ -190,6 +190,8 @@
                (let ((slot (find key direct-slots
                                  :key #'c2mop:slot-definition-name
                                  :test #'eq)))
+                 (unless slot
+                   (error "Unknown column ~S is found in ~S." key slot-name))
                  (if (ghost-slot-p slot)
                      (mapcar #'c2mop:slot-definition-name
                              (remove-if-not (lambda (ds)
