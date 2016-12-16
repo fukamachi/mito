@@ -25,7 +25,7 @@
   ((id :col-type :bigserial
        :initarg :id
        :primary-key t
-       :reader object-id))
+       :accessor object-id))
   (:metaclass dao-table-mixin))
 
 (defgeneric object= (object1 object2)
