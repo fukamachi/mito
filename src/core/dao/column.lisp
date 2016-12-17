@@ -176,6 +176,7 @@
        (local-time:format-timestring nil value
                                      :format
                                      '((:YEAR 4) #\- (:MONTH 2) #\- (:DAY 2) #\Space (:HOUR 2) #\: (:MIN 2) #\: (:SEC 2))))
+      (string value)
       (null nil)))
   (:method ((col-type (eql :date)) value)
     (deflate-for-col-type :datetime value))
