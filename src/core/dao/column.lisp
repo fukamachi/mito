@@ -140,8 +140,17 @@
       (string
        (local-time:parse-timestring value :date-time-separator #\Space))
       (null nil)))
+  (:method ((col-type (eql :date)) value)
+    (inflate-for-col-type :datetime value))
   (:method ((col-type (eql :timestamp)) value)
     (inflate-for-col-type :datetime value))
+  (:method ((col-type (eql :time)) value)
+    (flet ((v (key)
+             (second (assoc key value))))
+      (if (consp value)
+          (format nil "~2,'0D:~2,'0D:~2,'0D~:[.~3,'0D~;~]"
+                  (v :hours) (v :minutes) (v :seconds) (= (v :microseconds) 0) (v :microseconds))
+          value)))
   (:method ((col-type (eql :boolean)) value)
     (cond
       ;; MySQL & SQLite3
@@ -160,12 +169,16 @@
   (:method ((col-type (eql :datetime)) value)
     (etypecase value
       (integer
-       (local-time:universal-to-timestamp value))
+       (local-time:format-timestring nil (local-time:universal-to-timestamp value)
+                                     :format
+                                     '((:YEAR 4) #\- (:MONTH 2) #\- (:DAY 2) #\Space (:HOUR 2) #\: (:MIN 2) #\: (:SEC 2))))
       (local-time:timestamp
        (local-time:format-timestring nil value
                                      :format
                                      '((:YEAR 4) #\- (:MONTH 2) #\- (:DAY 2) #\Space (:HOUR 2) #\: (:MIN 2) #\: (:SEC 2))))
       (null nil)))
+  (:method ((col-type (eql :date)) value)
+    (deflate-for-col-type :datetime value))
   (:method ((col-type (eql :timestamp)) value)
     (deflate-for-col-type :datetime value))
   (:method ((col-type (eql :boolean)) value)
