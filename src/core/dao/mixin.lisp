@@ -25,8 +25,17 @@
   ((id :col-type :bigserial
        :initarg :id
        :primary-key t
-       :accessor object-id))
+       :accessor %object-id))
   (:metaclass dao-table-mixin))
+
+(defgeneric object-id (object)
+  (:method ((object auto-pk-mixin))
+    (if (slot-boundp object 'id)
+        (%object-id object)
+        nil)))
+
+(defun (setf object-id) (id object)
+  (setf (%object-id object) id))
 
 (defgeneric object= (object1 object2)
   (:method ((object1 auto-pk-mixin) (object2 auto-pk-mixin))
