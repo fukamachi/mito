@@ -41,7 +41,7 @@
     (setf (getf initargs :table-name) nil))
   (apply #'call-next-method class initargs))
 
-(defmethod c2mop:direct-slot-definition-class ((class table-class) &key)
+(defmethod c2mop:direct-slot-definition-class ((class table-class) &key &allow-other-keys)
   'table-column-class)
 
 (defmethod c2mop:validate-superclass ((class table-class) (super standard-class))
