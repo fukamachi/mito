@@ -25,7 +25,8 @@
                  (:test-file "migration/sqlite3")
                  (:test-file "migration/mysql")
                  (:test-file "migration/postgres")
-                 (:test-file "postgres-types"))))
+                 (:test-file "postgres-types")
+                 (:test-file "mixin"))))
   :description "Test system for mito"
 
   :defsystem-depends-on (:prove-asdf)

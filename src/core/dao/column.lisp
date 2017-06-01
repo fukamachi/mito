@@ -37,7 +37,10 @@
 
 (defgeneric dao-table-column-foreign-class (column)
   (:method ((column dao-table-column-class))
-    (when-let (foreign-class-name (ensure-car (dao-table-column-references column)))
+    (when-let (foreign-class-name (or (ensure-car (dao-table-column-references column))
+                                      (and (typep (table-column-type column)
+                                                  '(and symbol (not null) (not keyword)))
+                                           (table-column-type column))))
       (find-class foreign-class-name))))
 
 (defgeneric dao-table-column-foreign-slot (column)
