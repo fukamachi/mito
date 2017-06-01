@@ -182,10 +182,11 @@
 (defun include-foreign-objects (foreign-class records)
   (when records
     (let* ((class (class-of (first records)))
-           (rel-slots (remove-if-not (lambda (slot)
-                                       (eq (dao-table-column-foreign-class slot)
-                                           foreign-class))
-                                     (table-column-slots class))))
+           (rel-slots (remove-duplicates
+                       (remove-if-not (lambda (slot)
+                                        (eq (dao-table-column-foreign-class slot)
+                                            foreign-class))
+                                      (database-column-slots class)))))
       (unless rel-slots
         (error "~S is not related to ~S" class foreign-class))
       (when (cdr rel-slots)

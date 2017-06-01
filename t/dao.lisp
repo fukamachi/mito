@@ -172,6 +172,44 @@
 
   (disconnect-toplevel))
 
+(subtest "foreign slots"
+  (setf *connection* (connect-to-testdb :mysql))
+  (defclass user ()
+    ()
+    (:metaclass dao-table-class))
+  (defclass tweet ()
+    ()
+    (:metaclass dao-table-class))
+  (defclass tweet-tag ()
+    ((user :col-type user)
+     (tweet :col-type tweet))
+    (:metaclass dao-table-class)
+    (:primary-key user tweet))
+  (is (mapcar #'sxql:yield (table-definition 'tweet-tag))
+      '("CREATE TABLE tweet_tag (
+    user_id BIGINT UNSIGNED NOT NULL,
+    tweet_id BIGINT UNSIGNED NOT NULL,
+    created_at DATETIME,
+    updated_at DATETIME,
+    PRIMARY KEY (user_id, tweet_id)
+)"))
+  (defclass tweet-tag ()
+    ((user :col-type user)
+     (tweet :col-type tweet))
+    (:metaclass dao-table-class)
+    (:keys (user tweet)))
+  (is (mapcar #'sxql:yield (table-definition 'tweet-tag))
+      '("CREATE TABLE tweet_tag (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    tweet_id BIGINT UNSIGNED NOT NULL,
+    created_at DATETIME,
+    updated_at DATETIME,
+    KEY (user_id, tweet_id)
+)"))
+
+  (disconnect-toplevel))
+
 (dolist (driver '(:mysql :postgres :sqlite3))
   (subtest (format nil "inflate & deflate (~A)" driver)
     (setf *connection* (connect-to-testdb driver))

@@ -12,6 +12,7 @@
                 #:table-column-type
                 #:table-column-slots
                 #:table-primary-key
+                #:database-column-slots
                 #:create-table-sxql
                 #:ghost-slot-p
                 #:find-slot-by-name)
@@ -186,7 +187,8 @@
 
 (defun expand-relational-keys (class slot-name)
   (let ((keys (slot-value class slot-name))
-        (direct-slots (c2mop:class-direct-slots class)))
+        (direct-slots (c2mop:class-direct-slots class))
+        (db-slots (database-column-slots class)))
     (labels ((expand-key (key)
                (let ((slot (find key direct-slots
                                  :key #'c2mop:slot-definition-name
@@ -198,7 +200,7 @@
                              (remove-if-not (lambda (ds)
                                               (eq (dao-table-column-foreign-class ds)
                                                   (find-class (table-column-type slot))))
-                                            direct-slots))
+                                            db-slots))
                      (list key))))
              (expand-keys (keys)
                (loop for key in keys
