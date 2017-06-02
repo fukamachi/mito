@@ -9,12 +9,15 @@
                 #:unique-key
                 #:index-key)
   (:import-from #:alexandria
-                #:appendf)
+                #:appendf
+                #:ensure-list)
   (:export #:create-table-sxql
 
            #:table-class
            #:table-column-class
            #:table-column-name
+           #:table-column-type
+           #:table-column-not-null-p
            #:table-column-slots
            #:table-direct-column-slots
            #:table-name
@@ -23,8 +26,10 @@
            #:database-column-slots
            #:table-column-info
            #:table-indices-info
+           #:find-slot-by-name
 
-           #:find-slot-by-name))
+           #:find-parent-column
+           #:find-child-columns))
 (in-package :mito.class)
 
 (defgeneric create-table-sxql (class driver-type &key if-not-exists)
@@ -62,10 +67,18 @@
                       (table-indices-info class driver-type)))
        add-indices))))
 
-(defun find-slot-by-name (class slot-name &key (test #'eq))
-  (find slot-name
-        (table-column-slots (if (typep class 'symbol)
-                                (find-class class)
-                                class))
-        :test test
-        :key #'c2mop:slot-definition-name))
+(defmethod table-column-references-column ((column table-column-class))
+  (destructuring-bind (&optional ref-class-name ref-column-name)
+      (ensure-list (table-column-references column))
+    (when ref-class-name
+      (let ((ref-class (find-class ref-class-name)))
+        (find-slot-by-name ref-class
+                           (or ref-column-name
+                               (let ((pk-names (table-primary-key ref-class)))
+                                 (unless pk-names
+                                   (error "Foreign class ~S has no primary keys and no slot name is specified to :references"
+                                          (class-name ref-class)))
+                                 (when (cdr pk-names)
+                                   (error "Foreign class ~S has a composite primary key and failed to detect which to use for :references"
+                                          (class-name ref-class)))
+                                 (first pk-names))))))))

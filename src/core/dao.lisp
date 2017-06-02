@@ -6,19 +6,17 @@
             #:sxql
             #:mito.class)
       (:import-from #:mito.dao.column
-                    #:dao-table-column-deflate
-                    #:dao-table-column-foreign-class
-                    #:dao-table-column-foreign-slot)
-      (:import-from #:mito.dao.table
-                    #:find-parent-column
-                    #:find-child-columns)
+                    #:dao-table-column-deflate)
       (:import-from #:mito.connection
                     #:*connection*
                     #:check-connected)
       (:import-from #:mito.class
                     #:database-column-slots
                     #:ghost-slot-p
-                    #:find-slot-by-name)
+                    #:find-slot-by-name
+                    #:find-parent-column
+                    #:find-child-columns
+                    #:table-column-references-column)
       (:import-from #:mito.class.column
                     #:table-column-type)
       (:import-from #:mito.db
@@ -62,7 +60,7 @@
 
 (defun foreign-value (obj slot)
   (let* ((class (class-of obj))
-         (foreign-slot (dao-table-column-foreign-slot slot))
+         (foreign-slot (table-column-references-column slot))
          (rel-column-name (find-parent-column class slot)))
     (and rel-column-name
          (slot-boundp obj rel-column-name)
@@ -76,7 +74,7 @@
             (lambda (slot)
               (let ((slot-name (c2mop:slot-definition-name slot)))
                 (cond
-                  ((and (dao-table-column-foreign-class slot)
+                  ((and (table-column-references-column slot)
                         (foreign-value obj slot))
                    (list (sxql:make-sql-symbol (table-column-name slot))
                          (foreign-value obj slot)))
@@ -184,14 +182,14 @@
     (let* ((class (class-of (first records)))
            (rel-slots (remove-duplicates
                        (remove-if-not (lambda (slot)
-                                        (eq (dao-table-column-foreign-class slot)
-                                            foreign-class))
+                                        (eq (table-column-type slot)
+                                            (class-name foreign-class)))
                                       (database-column-slots class)))))
       (unless rel-slots
         (error "~S is not related to ~S" class foreign-class))
       (when (cdr rel-slots)
         (error "Cannot use 'includes' with a class which has composite primary keys."))
-      (let* ((foreign-slot (dao-table-column-foreign-slot (first rel-slots)))
+      (let* ((foreign-slot (table-column-references-column (first rel-slots)))
              (sql
                (sxql:select :*
                  (sxql:from (sxql:make-sql-symbol (table-name foreign-class)))
@@ -214,12 +212,12 @@
     (when (and slot (ghost-slot-p slot))
       (values
        (find-child-columns class slot)
-       (mito.class.column::parse-col-type (table-column-type slot))))))
+       (table-column-type slot)))))
 
 (defun slot-foreign-value (object class slot-name)
   (slot-value object
               (c2mop:slot-definition-name
-               (dao-table-column-foreign-slot
+               (table-column-references-column
                 (find-slot-by-name class slot-name)))))
 
 (defun expand-op (object class)
@@ -314,7 +312,7 @@
                                                  `(:= ,(intern (string (c2mop:slot-definition-name child)) :keyword)
                                                       ,(slot-value value
                                                                    (c2mop:slot-definition-name
-                                                                    (dao-table-column-foreign-slot child)))))))))
+                                                                    (table-column-references-column child)))))))))
                     else
                       collect `(:= ,(unlispify field) ,value))))
       (when op

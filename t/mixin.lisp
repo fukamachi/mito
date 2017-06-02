@@ -75,7 +75,7 @@
   (is (mapcar #'sxql:yield (table-definition 'tweet))
       '("CREATE TABLE tweet (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    user BIGINT UNSIGNED NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
     status VARCHAR(140) NOT NULL,
     created_at DATETIME,
     updated_at DATETIME

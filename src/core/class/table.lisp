@@ -17,7 +17,11 @@
            #:table-primary-key
            #:table-serial-key
            #:table-indices-info
-           #:database-column-slots))
+           #:database-column-slots
+           #:find-slot-by-name
+
+           #:find-parent-column
+           #:find-child-columns))
 (in-package :mito.class.table)
 
 (defclass table-class (standard-class)
@@ -28,18 +32,105 @@
    (keys :initarg :keys
          :initform nil)
    (table-name :initarg :table-name
-               :initform nil)))
+               :initform nil)
+
+   (parent-column-map)))
+
+(defun rel-column-name (name pk-name)
+  (intern
+   (format nil "~A-~A" name pk-name)
+   (symbol-package name)))
+
+(defun add-referencing-slots (initargs)
+  (let ((parent-column-map (make-hash-table :test 'eq)))
+    (setf (getf initargs :direct-slots)
+          (loop for column in (getf initargs :direct-slots)
+                for (col-type . not-null) = (let ((col-type (getf column :col-type)))
+                                              (optima:match col-type
+                                                ((or (list 'or :null x)
+                                                     (list 'or x :null))
+                                                 (cons x t))
+                                                (otherwise
+                                                 (cons col-type nil))))
+
+                if (typep col-type '(and symbol (not null) (not keyword)))
+                  append
+                  (let* ((name (getf column :name))
+                         ;; FIXME: find-class raises an error if the class is this same class or not defined yet.
+                         (rel-class (find-class col-type))
+                         (pk-names (table-primary-key rel-class)))
+                    (unless pk-names
+                      (error "Foreign class ~S has no primary keys."
+                             (class-name rel-class)))
+                    (rplacd (cdr column)
+                            `(:ghost t ,@(cddr column)))
+
+                    (cons column
+                          (mapcar (lambda (pk-name)
+                                    (let ((rel-column-name (rel-column-name name pk-name)))
+                                      (setf (gethash rel-column-name parent-column-map) name)
+                                      `(:name ,rel-column-name
+                                        :initargs (,(intern (symbol-name rel-column-name) :keyword))
+                                        :col-type ,col-type
+                                        :references (,col-type ,pk-name))))
+                                  pk-names)))
+                collect column))
+    (values initargs parent-column-map)))
+
+(defun expand-relational-keys (class slot-name)
+  (let ((keys (slot-value class slot-name))
+        (direct-slots (c2mop:class-direct-slots class))
+        (db-slots (database-column-slots class)))
+    (labels ((expand-key (key)
+               (let ((slot (find key direct-slots
+                                 :key #'c2mop:slot-definition-name
+                                 :test #'eq)))
+                 (unless slot
+                   (error "Unknown column ~S is found in ~S." key slot-name))
+                 (if (ghost-slot-p slot)
+                     (mapcar #'c2mop:slot-definition-name
+                             (remove-if-not (lambda (ds)
+                                              (eq (table-column-type ds)
+                                                  (table-column-type slot)))
+                                            db-slots))
+                     (list key))))
+             (expand-keys (keys)
+               (loop for key in keys
+                     append (expand-key key))))
+      (setf (slot-value class slot-name)
+            (loop for key in keys
+                  if (listp key)
+                    collect (expand-keys key)
+                  else
+                    append (expand-key key))))))
+
+(defmethod initialize-instance :around ((class table-class) &rest initargs)
+  (multiple-value-bind (initargs parent-column-map)
+      (add-referencing-slots initargs)
+    (let ((class (apply #'call-next-method class initargs)))
+      (setf (slot-value class 'parent-column-map) parent-column-map)
+      (expand-relational-keys class 'primary-key)
+      (expand-relational-keys class 'unique-keys)
+      (expand-relational-keys class 'keys)
+      class)))
 
 (defmethod reinitialize-instance :around ((class table-class) &rest initargs)
-  (unless (getf initargs :primary-key)
-    (setf (getf initargs :primary-key) nil))
-  (unless (getf initargs :unique-keys)
-    (setf (getf initargs :unique-keys) nil))
-  (unless (getf initargs :keys)
-    (setf (getf initargs :keys) nil))
-  (unless (getf initargs :table-name)
-    (setf (getf initargs :table-name) nil))
-  (apply #'call-next-method class initargs))
+  (multiple-value-bind (initargs parent-column-map)
+      (add-referencing-slots initargs)
+    (unless (getf initargs :primary-key)
+      (setf (getf initargs :primary-key) nil))
+    (unless (getf initargs :unique-keys)
+      (setf (getf initargs :unique-keys) nil))
+    (unless (getf initargs :keys)
+      (setf (getf initargs :keys) nil))
+    (unless (getf initargs :table-name)
+      (setf (getf initargs :table-name) nil))
+    (let ((class (apply #'call-next-method class initargs)))
+      (setf (slot-value class 'parent-column-map) parent-column-map)
+      (expand-relational-keys class 'primary-key)
+      (expand-relational-keys class 'unique-keys)
+      (expand-relational-keys class 'keys)
+      class)))
 
 (defmethod c2mop:direct-slot-definition-class ((class table-class) &key &allow-other-keys)
   'table-column-class)
@@ -109,6 +200,14 @@
   (map-all-superclasses #'table-direct-column-slots
                         class))
 
+(defun find-slot-by-name (class slot-name &key (test #'eq))
+  (find slot-name
+        (table-column-slots (if (typep class 'symbol)
+                                (find-class class)
+                                class))
+        :test test
+        :key #'c2mop:slot-definition-name))
+
 (defgeneric database-column-slots (class)
   (:method ((class table-class))
     (remove-if #'ghost-slot-p
@@ -170,3 +269,29 @@
                                :primary-key nil
                                :columns (ensure-list (unlispify-keys key))))
                        keys)))))))))
+
+(defun find-parent-column (table slot)
+  (let* ((name (c2mop:slot-definition-name slot))
+         (fifo-queue-of-classes (list table))
+         (last fifo-queue-of-classes))
+    ;; runs a breadth-first search
+    (labels ((enqueue-last (thing)
+               (setf (cdr last) (list thing)
+                     last (cdr last)))
+             (rec ()
+               (let ((class (first fifo-queue-of-classes)))
+                 (when class
+                   (or (gethash name (slot-value class 'parent-column-map))
+                       (progn
+                         (map nil #'enqueue-last (c2mop:class-direct-superclasses class))
+                         (pop fifo-queue-of-classes)
+                         (rec)))))))
+      (rec))))
+
+(defun find-child-columns (table slot)
+  (let (results)
+    (maphash (lambda (child parent)
+               (when (eq parent (c2mop:slot-definition-name slot))
+                 (push child results)))
+             (slot-value table 'parent-column-map))
+    results))

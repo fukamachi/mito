@@ -248,4 +248,24 @@
 )"
                   "NULL"))
 
+(subtest "references"
+  (defclass user ()
+    ((name :col-type (:varchar 64)
+           :primary-key t))
+    (:metaclass table-class))
+  (is-table-class :mysql
+                  (defclass tweet ()
+                    ((user :col-type user))
+                    (:metaclass table-class))
+                  "CREATE TABLE tweet (
+    user_name VARCHAR(64) NOT NULL
+)")
+  (is-table-class :mysql
+                  (defclass tweet ()
+                    ((user-name :references (user name)))
+                    (:metaclass table-class))
+                  "CREATE TABLE tweet (
+    user_name VARCHAR(64) NOT NULL
+)"))
+
 (finalize)

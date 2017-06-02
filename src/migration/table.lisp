@@ -29,6 +29,7 @@
   (:import-from #:mito.logger
                 #:with-sql-logging)
   (:import-from #:mito.util
+                #:lispify
                 #:list-diff
                 #:ensure-class)
   (:import-from #:alexandria
@@ -109,8 +110,8 @@
                                                    :default
                                                    (if (getf (cdr column) :not-null)
                                                        (let ((slot
-                                                               (mito.class:find-slot-by-name class (mito.util:lispify (car column))
-                                                                                             :test #'string-equal)))
+                                                               (find-slot-by-name class (lispify (car column))
+                                                                                  :test #'string-equal)))
                                                          (cond
                                                            ((c2mop:slot-definition-initfunction slot)
                                                             (push (car column) drop-defaults)

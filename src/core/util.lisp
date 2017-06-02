@@ -1,6 +1,7 @@
 (in-package :cl-user)
 (defpackage mito.util
   (:use #:cl)
+  (:import-from #:closer-mop)
   (:export #:group-by-plist
            #:list-diff
            #:lispify
