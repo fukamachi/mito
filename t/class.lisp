@@ -266,6 +266,32 @@
                     (:metaclass table-class))
                   "CREATE TABLE tweet (
     user_name VARCHAR(64) NOT NULL
+)")
+  (is-table-class :mysql
+                  (defclass tweet ()
+                    ((id :col-type :bigserial
+                         :primary-key t)
+                     (user :col-type user))
+                    (:metaclass table-class)
+                    (:unique-keys user))
+                  "CREATE TABLE tweet (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_name VARCHAR(64) NOT NULL,
+    UNIQUE (user_name)
+)")
+
+  (is-table-class :mysql
+                  (defclass tweet-tags ()
+                    ((tweet1 :col-type tweet)
+                     (tweet2 :col-type tweet)
+                     (uuid :col-type (:varchar 40)))
+                    (:metaclass table-class)
+                    (:unique-keys (tweet1 tweet2 uuid)))
+                  "CREATE TABLE tweet_tags (
+    tweet1_id BIGINT UNSIGNED NOT NULL,
+    tweet2_id BIGINT UNSIGNED NOT NULL,
+    uuid VARCHAR(40) NOT NULL,
+    UNIQUE (tweet1_id, tweet2_id, uuid)
 )"))
 
 (finalize)

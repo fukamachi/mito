@@ -79,8 +79,7 @@
 
 (defun expand-relational-keys (class slot-name)
   (let ((keys (slot-value class slot-name))
-        (direct-slots (c2mop:class-direct-slots class))
-        (db-slots (database-column-slots class)))
+        (direct-slots (c2mop:class-direct-slots class)))
     (labels ((expand-key (key)
                (let ((slot (find key direct-slots
                                  :key #'c2mop:slot-definition-name
@@ -88,11 +87,7 @@
                  (unless slot
                    (error "Unknown column ~S is found in ~S." key slot-name))
                  (if (ghost-slot-p slot)
-                     (mapcar #'c2mop:slot-definition-name
-                             (remove-if-not (lambda (ds)
-                                              (eq (table-column-type ds)
-                                                  (table-column-type slot)))
-                                            db-slots))
+                     (find-child-columns class slot)
                      (list key))))
              (expand-keys (keys)
                (loop for key in keys
