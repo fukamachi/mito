@@ -79,9 +79,9 @@
 
 (defun expand-relational-keys (class slot-name)
   (let ((keys (slot-value class slot-name))
-        (direct-slots (c2mop:class-direct-slots class)))
+        (db-slots (database-column-slots class)))
     (labels ((expand-key (key)
-               (let ((slot (find key direct-slots
+               (let ((slot (find key db-slots
                                  :key #'c2mop:slot-definition-name
                                  :test #'eq)))
                  (unless slot
