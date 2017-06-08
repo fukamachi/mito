@@ -44,8 +44,9 @@
                  (:file "error")
                  (:file "util")))))
 
-(defmethod perform :after ((op load-op) (c (eql (find-system :cl-postgres nil))))
-  (symbol-call :cl-postgres :set-sql-datetime-readers
-               :timestamp (lambda (usec)
-                            (+ #.(encode-universal-time 0 0 0 1 1 2000 0)
-                               (/ usec 1000000.0)))))
+(defmethod perform :after ((op load-op) (c t))
+  (when (eq c (find-system :cl-postgres nil))
+    (symbol-call :cl-postgres :set-sql-datetime-readers
+                 :timestamp (lambda (usec)
+                              (+ #.(encode-universal-time 0 0 0 1 1 2000 0)
+                                 (/ usec 1000000.0))))))
