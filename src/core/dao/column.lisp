@@ -54,10 +54,16 @@
   (:method (col-type value)
     (declare (ignore col-type))
     (identity value))
+  (:method ((col-type cons) value)
+    (inflate-for-col-type (first col-type) value))
   (:method ((col-type (eql :datetime)) value)
     (etypecase value
       (integer
        (local-time:universal-to-timestamp value))
+      (float
+       (multiple-value-bind (sec nsec)
+           (truncate value)
+         (local-time:universal-to-timestamp sec :nsec (* (floor (* nsec 1000000)) 1000))))
       (string
        (local-time:parse-timestring value :date-time-separator #\Space))
       (null nil)))
@@ -87,6 +93,8 @@
   (:method (col-type value)
     (declare (ignore col-type))
     (identity value))
+  (:method ((col-type cons) value)
+    (deflate-for-col-type (first col-type) value))
   (:method ((col-type (eql :datetime)) value)
     (etypecase value
       (integer
@@ -96,7 +104,7 @@
       (local-time:timestamp
        (local-time:format-timestring nil value
                                      :format
-                                     '((:YEAR 4) #\- (:MONTH 2) #\- (:DAY 2) #\Space (:HOUR 2) #\: (:MIN 2) #\: (:SEC 2))))
+                                     '((:YEAR 4) #\- (:MONTH 2) #\- (:DAY 2) #\Space (:HOUR 2) #\: (:MIN 2) #\: (:SEC 2) #\. (:NSEC))))
       (string value)
       (null nil)))
   (:method ((col-type (eql :date)) value)

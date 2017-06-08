@@ -238,4 +238,21 @@
         (is-type (mito:object-created-at user) 'local-time:timestamp)))
     (disconnect-toplevel)))
 
+(subtest "timestamp with milliseconds (PostgreSQL)"
+  (setf *connection* (connect-to-testdb :postgres))
+  (defclass user ()
+    ((registered-at :col-type :timestamp))
+    (:metaclass dao-table-class)
+    (:record-timestamps nil))
+  (mito:execute-sql
+   (sxql:drop-table :user :if-exists t))
+  (mito:ensure-table-exists 'user)
+
+  (let ((now (local-time:now)))
+    (mito:create-dao 'user :registered-at now)
+    (let ((user (mito:find-dao 'user :id 1)))
+      (is-type (slot-value user 'registered-at) 'local-time:timestamp)
+      (ok (/= (local-time:nsec-of (slot-value user 'registered-at)) 0))))
+  (disconnect-toplevel))
+
 (finalize)
