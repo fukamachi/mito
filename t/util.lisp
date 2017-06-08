@@ -29,7 +29,7 @@
   (dbi:disconnect conn))
 
 (defun postgres-connect-to-testdb ()
-  (dbi:connect-cached :postgres :database-name "mito_test" :username "nobody" :password "nobody"))
+  (dbi:connect-cached :postgres :database-name "mito_test" :username "nobody" :password "nobody" :microsecond-precision t))
 
 (defun mysql-disconnect-from-testdb (conn)
   (dbi:disconnect conn))
