@@ -252,7 +252,7 @@
     (mito:create-dao 'user :registered-at now)
     (let ((user (mito:find-dao 'user :id 1)))
       (is-type (slot-value user 'registered-at) 'local-time:timestamp)
-      (ok (/= (local-time:nsec-of (slot-value user 'registered-at)) 0))))
+      (ok (/= 0 (local-time:nsec-of (slot-value user 'registered-at))))))
   (disconnect-toplevel))
 
 (finalize)

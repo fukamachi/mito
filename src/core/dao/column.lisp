@@ -63,7 +63,7 @@
       (float
        (multiple-value-bind (sec nsec)
            (truncate value)
-         (local-time:universal-to-timestamp sec :nsec (* (floor (* nsec 1000000)) 1000))))
+         (local-time:universal-to-timestamp sec :nsec (* (round (* nsec 1000000)) 1000))))
       (string
        (local-time:parse-timestring value :date-time-separator #\Space))
       (null nil)))
