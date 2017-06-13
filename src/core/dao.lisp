@@ -64,6 +64,7 @@
          (rel-column-name (find-parent-column class slot)))
     (and rel-column-name
          (slot-boundp obj rel-column-name)
+         (slot-value obj rel-column-name)
          (slot-value (slot-value obj rel-column-name)
                      (c2mop:slot-definition-name foreign-slot)))))
 
@@ -74,10 +75,11 @@
             (lambda (slot)
               (let ((slot-name (c2mop:slot-definition-name slot)))
                 (cond
-                  ((and (table-column-references-column slot)
-                        (foreign-value obj slot))
-                   (list (sxql:make-sql-symbol (table-column-name slot))
-                         (foreign-value obj slot)))
+                  ((table-column-references-column slot)
+                   (if (foreign-value obj slot)
+                       (list (sxql:make-sql-symbol (table-column-name slot))
+                             (foreign-value obj slot))
+                       nil))
                   ((not (slot-boundp obj slot-name))
                    nil)
                   (t
