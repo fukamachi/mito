@@ -175,7 +175,7 @@
                    (typep slot 'table-column-class))
                  (c2mop:class-direct-slots class)))
 
-(defun map-all-superclasses (fn class)
+(defun map-all-superclasses (fn class &key (key #'identity))
   (labels ((main (class &optional main-objects)
              (loop for superclass in (c2mop:class-direct-superclasses class)
                    if (eq (class-of superclass) (find-class 'standard-class))
@@ -189,12 +189,13 @@
     (delete-duplicates
      (main class)
      :test #'eq
-     :key #'c2mop:slot-definition-name
+     :key key
      :from-end t)))
 
 (defun table-column-slots (class)
   (map-all-superclasses #'table-direct-column-slots
-                        class))
+                        class
+                        :key #'c2mop:slot-definition-name))
 
 (defun find-slot-by-name (class slot-name &key (test #'eq))
   (find slot-name
