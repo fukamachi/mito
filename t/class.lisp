@@ -292,6 +292,14 @@
     tweet2_id BIGINT UNSIGNED NOT NULL,
     uuid VARCHAR(40) NOT NULL,
     UNIQUE (tweet1_id, tweet2_id, uuid)
+)")
+
+  (is-table-class :mysql
+                  (defclass tweet-tags ()
+                    ((tweet1 :col-type (or tweet :null)))
+                    (:metaclass table-class))
+                  "CREATE TABLE tweet_tags (
+    tweet1_id BIGINT UNSIGNED
 )"))
 
 (finalize)

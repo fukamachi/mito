@@ -49,9 +49,9 @@
                                               (optima:match col-type
                                                 ((or (list 'or :null x)
                                                      (list 'or x :null))
-                                                 (cons x t))
+                                                 (cons x nil))
                                                 (otherwise
-                                                 (cons col-type nil))))
+                                                 (cons col-type t))))
 
                 if (typep col-type '(and symbol (not null) (not keyword)))
                   append
@@ -71,7 +71,9 @@
                                       (setf (gethash rel-column-name parent-column-map) name)
                                       `(:name ,rel-column-name
                                         :initargs (,(intern (symbol-name rel-column-name) :keyword))
-                                        :col-type ,col-type
+                                        :col-type ,(if not-null
+                                                       col-type
+                                                       `(or ,col-type :null))
                                         :references (,col-type ,pk-name))))
                                   pk-names)))
                 collect column))
