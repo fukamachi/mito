@@ -189,6 +189,7 @@
     (delete-duplicates
      (main class)
      :test #'eq
+     :key #'c2mop:slot-definition-name
      :from-end t)))
 
 (defun table-column-slots (class)
