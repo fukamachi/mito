@@ -135,12 +135,12 @@
                      (created-at :col-type :datetime))
                     (:metaclass table-class)
                     (:unique-keys (user created-at)))
-                  "CREATE TABLE tweet (
+                  '("CREATE TABLE tweet (
     status TEXT NOT NULL,
     user INTEGER NOT NULL,
-    created_at TIMESTAMP NOT NULL,
-    UNIQUE (user, created_at)
+    created_at TIMESTAMP NOT NULL
 )"
+                    "CREATE UNIQUE INDEX unique_tweet_user_created_at ON tweet (user, created_at)")
                   "UNIQUE KEY")
   (is-table-class :postgres
                   (defclass tweet ()

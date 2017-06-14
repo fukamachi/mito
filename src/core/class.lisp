@@ -50,7 +50,19 @@
                                (list (sxql:primary-key (mapcar #'sxql:make-sql-symbol (getf (cdr index) :columns))))
                                nil))
                           ((getf (cdr index) :unique-key)
-                           (list (sxql:unique-key (mapcar #'sxql:make-sql-symbol (getf (cdr index) :columns)))))
+                           (if (eq driver-type :postgres)
+                               (progn
+                                 (appendf add-indices
+                                          (list (sxql:create-index (sxql:make-sql-symbol
+                                                                    (format nil "unique_~A_~{~A~^_~}"
+                                                                            (table-name class)
+                                                                            (getf (cdr index) :columns)))
+                                                                   :on
+                                                                   (cons (sxql:make-sql-symbol (table-name class))
+                                                                         (mapcar #'sxql:make-sql-symbol (getf (cdr index) :columns)))
+                                                                   :unique t)))
+                                 nil)
+                               (list (sxql:unique-key (mapcar #'sxql:make-sql-symbol (getf (cdr index) :columns))))))
                           (t
                            (if (eq driver-type :postgres)
                                (progn
