@@ -155,9 +155,10 @@
   (:method ((class symbol) &rest fields-and-values)
     (apply #'delete-by-values (find-class class) fields-and-values))
   (:method ((class dao-table-class) &rest fields-and-values)
-    (execute-sql
-     (sxql:delete-from (sxql:make-sql-symbol (table-name class))
-       (where-and fields-and-values class)))
+    (let ((sxql:*sql-symbol-conversion* #'unlispify))
+      (execute-sql
+       (sxql:delete-from (sxql:make-sql-symbol (table-name class))
+         (where-and fields-and-values class))))
     (values)))
 
 (defgeneric save-dao (obj)
