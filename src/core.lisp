@@ -29,7 +29,7 @@
                                       #:update-dao
                                       #:create-dao
                                       #:delete-dao
-                                      #:delete-by-pk
+                                      #:delete-by-values
                                       #:save-dao
                                       #:select-dao
                                       #:includes

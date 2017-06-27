@@ -167,7 +167,7 @@
     (ok tweet)
     (mito:delete-dao tweet)
     (is (mito:count-dao 'tweet) 1)
-    (mito:delete-by-pk 'tweet 2)
+    (mito:delete-by-values 'tweet :id 2)
     (is (mito:count-dao 'tweet) 0))
 
   (disconnect-toplevel))
