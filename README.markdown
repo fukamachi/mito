@@ -188,7 +188,7 @@ This may be useful when you define methods which can be applied for all table cl
 ;; Deleting
 (mito:delete-dao me)
 ;-> ;; DELETE FROM `user` WHERE (`id` = ?) (1) [0 rows] | MITO.DAO:DELETE-DAO
-(mito:delete-by-pk 'user 1)
+(mito:delete-by-values 'user :id 1)
 ;-> ;; DELETE FROM `user` WHERE (`id` = ?) (1) [0 rows] | MITO.DAO:DELETE-DAO
 ```
 
