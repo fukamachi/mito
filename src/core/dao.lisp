@@ -248,13 +248,13 @@
                    (cons y nil)))
        `(multiple-value-bind (,children ,expected-type)
             (child-columns ,x ,class)
-          (every (lambda (,obj)
-                   (assert (typep ,obj ,expected-type))) ,y)
           (cond
             ((and ,children
                   (cdr ,children))
              (error "Cannot specify a relational column which has composite primary keys"))
             (,children
+             (every (lambda (,obj)
+                      (assert (typep ,obj ,expected-type))) ,y)
              (sxql:make-op ,op
                            (sxql:make-sql-symbol (unlispify (symbol-name-literally (first ,children))))
                            (mapcar (lambda (,obj)
