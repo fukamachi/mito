@@ -88,14 +88,23 @@
   (setf *connection* (connect-to-testdb :mysql))
   (when (find-class 'user nil)
     (setf (find-class 'user) nil))
+  (when (find-class 'user-setting nil)
+    (setf (find-class 'user-setting) nil))
   (when (find-class 'tweet nil)
     (setf (find-class 'tweet) nil))
+
+  (defclass user-setting ()
+    ()
+    (:metaclass dao-table-class))
 
   (defclass user ()
     ((id :col-type :serial
          :primary-key t)
      (name :col-type :text
-           :initarg :name))
+           :initarg :name)
+     (setting :col-type (or user-setting :null)
+              :initarg :setting
+              :accessor user-setting))
     (:metaclass dao-table-class)
     (:record-timestamps nil))
 
@@ -117,6 +126,8 @@
 )"))
   (mito:execute-sql "DROP TABLE IF EXISTS tweet")
   (mito:execute-sql "DROP TABLE IF EXISTS user")
+  (mito:execute-sql "DROP TABLE IF EXISTS user_setting")
+  (mito:ensure-table-exists 'user-setting)
   (mito:ensure-table-exists 'user)
   (mito:ensure-table-exists 'tweet)
   (let ((user (mito:create-dao 'user :name "Eitaro")))
@@ -152,6 +163,8 @@
     (ok
      (mito.dao:select-dao 'tweet
        (mito.dao::where (:in :user (list user))))))
+
+  (is (user-setting (mito:find-dao 'user)) nil)
 
   (defclass tweet2 (tweet) ()
     (:metaclass dao-table-class)
