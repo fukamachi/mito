@@ -3,7 +3,7 @@
   (:use #:cl
         #:mito.error)
   (:import-from #:dbi
-                #:connect-cached
+                #:connect
                 #:disconnect
                 #:connection-driver-type)
   (:export #:*connection*
@@ -34,7 +34,7 @@
 
 (defun connect-toplevel (driver-name &rest args &key database-name &allow-other-keys)
   (declare (ignore database-name))
-  (setf *connection* (apply #'dbi:connect-cached driver-name args)))
+  (setf *connection* (apply #'dbi:connect driver-name args)))
 
 (defun disconnect-toplevel ()
   (when (connected-p)
