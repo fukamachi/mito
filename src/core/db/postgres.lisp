@@ -14,17 +14,16 @@
 (in-package :mito.db.postgres)
 
 (defun last-insert-id (conn table-name serial-key-name)
-  (let ((serial-key (sxql:make-sql-symbol serial-key-name)))
-    (getf (dbi:fetch
-           (dbi:execute
-            (dbi:prepare conn
-                         (sxql:yield
-                          (select ((:as serial-key :last_insert_id))
-                            (from (sxql:make-sql-symbol table-name))
-                            (order-by (:desc serial-key))
-                            (limit 1))))))
-          :|last_insert_id|
-          0)))
+  (handler-case
+      (getf (dbi:fetch
+             (dbi:execute
+              (dbi:prepare conn
+                           (format nil "SELECT currval(pg_get_serial_sequence('~A', '~A')) AS last_insert_id"
+                                   table-name
+                                   serial-key-name))))
+            :|last_insert_id|
+            0)
+    (dbi:<dbi-error> () 0)))
 
 (defun get-serial-keys (conn table-name)
   (remove-if-not

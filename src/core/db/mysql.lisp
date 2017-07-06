@@ -19,19 +19,12 @@
 (in-package :mito.db.mysql)
 
 (defun last-insert-id (conn table-name serial-key-name)
-  (let ((serial-key (sxql:make-sql-symbol serial-key-name)))
-    (let ((sxql:*quote-character* (or sxql:*quote-character*
-                                      (connection-quote-character conn))))
-      (getf (dbi:fetch
-             (dbi:execute
-              (dbi:prepare conn
-                           (sxql:yield
-                            (select ((:as serial-key :last_insert_id))
-                              (from (sxql:make-sql-symbol table-name))
-                              (order-by (:desc serial-key))
-                              (limit 1))))))
-            :|last_insert_id|
-            0))))
+  (declare (ignore table-name serial-key-name))
+  (getf (dbi:fetch
+         (dbi:execute
+          (dbi:prepare conn "SELECT last_insert_id() AS last_insert_id")))
+        :|last_insert_id|
+        0))
 
 (defun table-indices (conn table-name)
   (let ((query

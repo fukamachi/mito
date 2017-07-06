@@ -41,15 +41,10 @@
   (subtest "last-insert-id"
     (is (last-insert-id conn "users" "id") 0
         "Should be 0 when there's no record")
-    (dbi:do-sql conn "INSERT INTO users (id, first_name, family_name) VALUES (1, 'Eitaro', 'Fukamachi')")
+    (dbi:do-sql conn "INSERT INTO users (first_name, family_name) VALUES ('Eitaro', 'Fukamachi')")
     (is (last-insert-id conn "users" "id") 1
         "Should be 1 after inserting")
-    (let ((driver-type (dbi:connection-driver-type conn)))
-      (dbi:disconnect conn)
-      (setf conn (connect-to-testdb driver-type)))
-    (is (last-insert-id conn "users" "id") 1
-        "Should be still 1 after reconnecting")
-    (dbi:do-sql conn "INSERT INTO users (id, first_name, family_name) VALUES (2, 'Rudolph', 'Miller')")
+    (dbi:do-sql conn "INSERT INTO users (first_name, family_name) VALUES ('Rudolph', 'Miller')")
     (is (last-insert-id conn "users" "id") 2
         "Should be 2 after inserting once more."))
 
