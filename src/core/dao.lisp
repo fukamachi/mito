@@ -171,6 +171,8 @@
 
 (defun include-foreign-objects (foreign-class records)
   (when records
+    (when (cdr (table-primary-key foreign-class))
+      (error "Cannot use 'includes' with a class which has composite primary keys."))
     (let* ((class (class-of (first records)))
            (rel-slots (remove-duplicates
                        (remove-if-not (lambda (slot)
@@ -179,25 +181,24 @@
                                       (database-column-slots class)))))
       (unless rel-slots
         (error "~S is not related to ~S" class foreign-class))
-      (when (cdr rel-slots)
-        (error "Cannot use 'includes' with a class which has composite primary keys."))
-      (let* ((foreign-slot (table-column-references-column (first rel-slots)))
-             (sql
-               (sxql:select :*
-                 (sxql:from (sxql:make-sql-symbol (table-name foreign-class)))
-                 (sxql:where
-                  (:in (sxql:make-sql-symbol (table-column-name foreign-slot))
-                       (loop for obj in records
-                             collect (slot-value obj (c2mop:slot-definition-name (first rel-slots))))))))
-             (results
-               (select-by-sql foreign-class sql)))
-        (dolist (obj records)
-          (setf (slot-value obj (find-parent-column class (first rel-slots)))
-                (find-if (lambda (result)
-                           (equal (slot-value result (c2mop:slot-definition-name foreign-slot))
-                                  (slot-value obj (c2mop:slot-definition-name (first rel-slots)))))
-                         results)))
-        records))))
+      (dolist (rel-slot rel-slots)
+        (let* ((foreign-slot (table-column-references-column rel-slot))
+               (sql
+                 (sxql:select :*
+                   (sxql:from (sxql:make-sql-symbol (table-name foreign-class)))
+                   (sxql:where
+                    (:in (sxql:make-sql-symbol (table-column-name foreign-slot))
+                         (loop for obj in records
+                               collect (slot-value obj (c2mop:slot-definition-name rel-slot)))))))
+               (results
+                 (select-by-sql foreign-class sql)))
+          (dolist (obj records)
+            (setf (slot-value obj (find-parent-column class rel-slot))
+                  (find-if (lambda (result)
+                             (equal (slot-value result (c2mop:slot-definition-name foreign-slot))
+                                    (slot-value obj (c2mop:slot-definition-name rel-slot))))
+                           results)))
+          records)))))
 
 (defun child-columns (column class)
   (let ((slot (find-slot-by-name class column :test #'string=)))

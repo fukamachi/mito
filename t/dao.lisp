@@ -152,6 +152,25 @@
                (mito:includes 'user)))
       "foreign slots are loaded eagerly with 'includes'.")
 
+  (defclass friend-relationship ()
+    ((user-a :col-type user
+             :initarg :user-a)
+     (user-b :col-type user
+             :initarg :user-b))
+    (:metaclass dao-table-class))
+  (mito:execute-sql "DROP TABLE IF EXISTS friend_relationshiop")
+  (mito:ensure-table-exists 'friend-relationship)
+  (mito:create-dao 'friend-relationship
+                   :user-a (mito:create-dao 'user :name "userA")
+                   :user-b (mito:create-dao 'user :name "userB"))
+
+  (ok (every (lambda (rel)
+               (and (slot-boundp rel 'user-a)
+                    (slot-boundp rel 'user-b)))
+             (mito:select-dao 'friend-relationship
+               (mito:includes 'user)))
+      "foreign slots are loaded eagerly with 'includes'.")
+
   (let ((user (mito:find-dao 'user)))
     (ok user)
     (is-type (mito:find-dao 'tweet :user user)
