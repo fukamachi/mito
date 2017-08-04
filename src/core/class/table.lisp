@@ -83,9 +83,12 @@
   (let ((keys (slot-value class slot-name))
         (table-slots (table-column-slots class)))
     (labels ((expand-key (key)
-               (let ((slot (find key table-slots
-                                 :key #'c2mop:slot-definition-name
-                                 :test #'eq)))
+               (let* ((key-name (if (stringp key)
+                                    key
+                                    (unlispify (symbol-name-literally key))))
+                      (slot (find key-name table-slots
+                                  :key #'table-column-name
+                                  :test #'string=)))
                  (unless slot
                    (error "Unknown column ~S is found in ~S ~S." key (class-name class) slot-name))
                  (if (ghost-slot-p slot)
