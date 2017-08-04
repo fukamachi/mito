@@ -69,12 +69,6 @@
         (list-diff db-columns table-columns
                    :key #'car)
 
-      (dolist (idx db-indices)
-        (setf (getf (cdr idx) :columns)
-              (sort (getf (cdr idx) :columns) #'string<=)))
-      (dolist (idx table-indices)
-        (setf (getf (cdr idx) :columns)
-              (sort (getf (cdr idx) :columns) #'string<=)))
       (multiple-value-bind (indices-intersection
                             indices-to-delete
                             indices-to-add)

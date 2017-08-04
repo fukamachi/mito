@@ -214,7 +214,7 @@
     (is drop-columns nil)
     (is change-columns nil)
     (is (length add-indices) 1)
-    (like (sxql:yield (first add-indices)) "^CREATE UNIQUE INDEX [^ ]+ ON tweets \\(created_at, user\\)$")
+    (like (sxql:yield (first add-indices)) "^CREATE UNIQUE INDEX [^ ]+ ON tweets \\(user, created_at\\)$")
     (is drop-indices nil))
 
   (migrate-table (find-class 'tweets))
@@ -245,7 +245,7 @@
     (is drop-columns nil)
     (is change-columns nil)
     (is (length add-indices) 1)
-    (like (sxql:yield (first add-indices)) "^CREATE UNIQUE INDEX [^ ]+ ON tweets \\(created_at, tweet_id, user\\)$")
+    (like (sxql:yield (first add-indices)) "^CREATE UNIQUE INDEX [^ ]+ ON tweets \\(tweet_id, user, created_at\\)$")
     (is (length drop-indices) 1)
     (like (sxql:yield (first drop-indices)) "^DROP INDEX [^ ]+ ON tweets$"))
 
@@ -277,7 +277,7 @@
     (is drop-columns nil)
     (is change-columns nil)
     (is (length add-indices) 1)
-    (like (sxql:yield (first add-indices)) "^CREATE INDEX [^ ]+ ON tweets \\(created_at, user\\)$")
+    (like (sxql:yield (first add-indices)) "^CREATE INDEX [^ ]+ ON tweets \\(user, created_at\\)$")
     (is (length drop-indices) 1)
     (like (sxql:yield (first drop-indices)) "^DROP INDEX [^ ]+ ON tweets$"))
 

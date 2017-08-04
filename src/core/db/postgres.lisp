@@ -90,12 +90,16 @@
         definitions)))
 
 (defun table-indices (conn table-name)
-  (let ((columns (mapcar #'car (column-definitions conn table-name)))
-        (query (dbi:execute (dbi:prepare conn
+  (let ((query (dbi:execute (dbi:prepare conn
                                          (format nil
                                                  "SELECT~
                                                 ~%    i.relname AS index_name,~
-                                                ~%    a.attname AS column_name,~
+                                                ~%    ARRAY(~
+                                                ~%        SELECT pg_get_indexdef(ix.indexrelid, k + 1, TRUE)~
+                                                ~%        FROM~
+                                                ~%          generate_subscripts(ix.indkey, 1) AS k~
+                                                ~%        ORDER BY k~
+                                                ~%    ) AS column_names,~
                                                 ~%    ix.indisunique AS is_unique,~
                                                 ~%    ix.indisprimary AS is_primary~
                                                 ~%FROM~
@@ -109,18 +113,19 @@
                                                 ~%    and a.attrelid = t.oid~
                                                 ~%    and a.attnum = ANY(ix.indkey)~
                                                 ~%    and t.relkind = 'r'~
-                                                ~%    and t.relname LIKE '~A'" table-name)))))
+                                                ~%    and t.relname = '~A'~
+                                                ~%GROUP BY~
+                                                ~%    t.relname, i.relname, ix.indexrelid, ix.indkey, ix.indisunique, ix.indisprimary~
+                                                ~%ORDER BY t.relname, i.relname" table-name)))))
     (mapcar #'(lambda (plist)
-                (destructuring-bind (index-name &rest column-list) plist
-                  (list index-name
-                        :unique-key (getf (first column-list) :|is_unique|)
-                        :primary-key (getf (first column-list) :|is_primary|)
-                        :columns (sort (mapcar #'(lambda (column)
-                                                   (getf column :|column_name|))
-                                               column-list)
-                                       (lambda (a b)
-                                         (< (position a columns :test #'string=)
-                                            (position b columns :test #'string=)))))))
-            (group-by-plist (dbi:fetch-all query)
-                            :key :|index_name|
-                                 :test #'string=))))
+                (destructuring-bind (&key |index_name| |column_names| |is_unique| |is_primary|) plist
+                  (list |index_name|
+                        :unique-key |is_unique|
+                        :primary-key |is_primary|
+                        :columns (map 'list (lambda (column)
+                                              (if (and (char= (aref column 0) #\")
+                                                       (char= (aref column (1- (length column))) #\"))
+                                                  (read-from-string column)
+                                                  column))
+                                      |column_names|))))
+            (dbi:fetch-all query))))
