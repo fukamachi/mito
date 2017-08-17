@@ -116,21 +116,23 @@
                                                  (and (slot-boundp object slot-name)
                                                       (slot-value object slot-name)))
                                                child-columns)
-                                        (apply #'make-dao-instance rel-class
-                                               (first
-                                                (mito.db:retrieve-by-sql
-                                                 (sxql:select :*
-                                                   (sxql:from (sxql:make-sql-symbol (table-name rel-class)))
-                                                   (sxql:where
-                                                    `(:and
-                                                      ,@(mapcar (lambda (slot-name)
-                                                                  `(:= ,(sxql:make-sql-symbol
-                                                                         (table-column-name
-                                                                          (table-column-references-column
-                                                                           (find-slot-by-name class slot-name))))
-                                                                       ,(slot-value object slot-name)))
-                                                                child-columns)))
-                                                   (sxql:limit 1))))))))
+                                        (let ((result
+                                                (first
+                                                 (mito.db:retrieve-by-sql
+                                                  (sxql:select :*
+                                                    (sxql:from (sxql:make-sql-symbol (table-name rel-class)))
+                                                    (sxql:where
+                                                     `(:and
+                                                       ,@(mapcar (lambda (slot-name)
+                                                                   `(:= ,(sxql:make-sql-symbol
+                                                                          (table-column-name
+                                                                           (table-column-references-column
+                                                                            (find-slot-by-name class slot-name))))
+                                                                        ,(slot-value object slot-name)))
+                                                                 child-columns)))
+                                                    (sxql:limit 1))))))
+                                          (and result
+                                               (apply #'make-dao-instance rel-class result))))))
                             (setf (slot-value object slot-name) foreign-object))))))))
 
 (defun add-relational-readers (class initargs)

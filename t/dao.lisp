@@ -140,7 +140,20 @@
   (let ((tweets (mito:select-dao 'tweet)))
     (is (length tweets) 2)
     (is-type (first tweets) 'tweet)
-    (is-type (tweet-user (first tweets)) 'user))
+    (is-type (tweet-user (first tweets)) 'user)
+
+    (diag "deleting the related foreign object")
+    (dbi:with-transaction mito:*connection*
+      (mito:delete-dao (tweet-user (first tweets)))
+      (slot-makunbound (first tweets) 'user)
+      ;; related foreign object is nil
+      (is (tweet-user (first tweets)) nil)
+      (setf (tweet-status (first tweets)) "Hello, World")
+
+      ;; can update
+      (mito:update-dao (first tweets))
+      (isnt (slot-value (mito:find-dao 'tweet :id (mito:object-id (first tweets))) 'user-id) nil)
+      (dbi:rollback mito:*connection*)))
 
   (ok (every (lambda (tweet)
                (not (slot-boundp tweet 'user)))
