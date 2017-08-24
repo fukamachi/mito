@@ -196,11 +196,14 @@
               (loop for sql = (read-one-sql in)
                     while sql
                     do (format t "~&-> ~A;~%" sql)
-                       (unless dry-run
-                         (let ((mito.logger::*mito-logger-stream* nil))
-                           (execute-sql sql))))))
+                       (let ((mito.logger::*mito-logger-stream* nil))
+                         (execute-sql sql)))))
           (let ((version (migration-file-version (first (last sql-files)))))
             (when current-version
               (update-migration-version version))
-            (format t "~&Successfully updated to the version ~S.~%" version)))
+            (if dry-run
+                (format t "~&No problems were found while migration.~%")
+                (format t "~&Successfully updated to the version ~S.~%" version)))
+          (when dry-run
+            (dbi:rollback *connection*)))
         (format t "~&Version ~S is up to date.~%" current-version))))
