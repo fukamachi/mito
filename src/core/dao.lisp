@@ -18,6 +18,7 @@
                     #:find-child-columns
                     #:table-column-references-column)
       (:import-from #:mito.class.column
+                    #:table-column-name
                     #:table-column-type)
       (:import-from #:mito.db
                     #:last-insert-id
@@ -307,7 +308,7 @@
                                (when children
                                  `((:and ,@(loop for child in children
                                                  collect
-                                                 `(:= ,(intern (string (c2mop:slot-definition-name child)) :keyword)
+                                                 `(:= ,(intern (table-column-name child) :keyword)
                                                       ,(slot-value value
                                                                    (c2mop:slot-definition-name
                                                                     (table-column-references-column child)))))))))
