@@ -179,6 +179,7 @@
                                                 "*.up.sql")
                           #'string<
                           :key #'pathname-name))
+         (schema.sql (merge-pathnames #P"schema.sql" directory))
          (sql-files-to-apply
            (if current-version
                (remove-if-not (lambda (version)
@@ -186,24 +187,28 @@
                                      (string< current-version version)))
                               sql-files
                               :key #'migration-file-version)
-               (list
-                (merge-pathnames #P"schema.sql" directory)))))
-    (if sql-files-to-apply
-        (dbi:with-transaction *connection*
-          (dolist (file sql-files-to-apply)
-            (format t "~&Applying '~A'...~%" file)
-            (with-open-file (in file)
-              (loop for sql = (read-one-sql in)
-                    while sql
-                    do (format t "~&-> ~A;~%" sql)
-                       (let ((mito.logger::*mito-logger-stream* nil))
-                         (execute-sql sql)))))
-          (let ((version (migration-file-version (first (last sql-files)))))
-            (when current-version
-              (update-migration-version version))
-            (if dry-run
-                (format t "~&No problems were found while migration.~%")
-                (format t "~&Successfully updated to the version ~S.~%" version)))
-          (when dry-run
-            (dbi:rollback *connection*)))
-        (format t "~&Version ~S is up to date.~%" current-version))))
+               (and (probe-file schema.sql)
+                    (list schema.sql)))))
+    (cond
+      (sql-files-to-apply
+       (dbi:with-transaction *connection*
+         (dolist (file sql-files-to-apply)
+           (format t "~&Applying '~A'...~%" file)
+           (with-open-file (in file)
+             (loop for sql = (read-one-sql in)
+                   while sql
+                   do (format t "~&-> ~A;~%" sql)
+                      (let ((mito.logger::*mito-logger-stream* nil))
+                        (execute-sql sql)))))
+         (let ((version (migration-file-version (first (last sql-files)))))
+           (when current-version
+             (update-migration-version version))
+           (if dry-run
+               (format t "~&No problems were found while migration.~%")
+               (format t "~&Successfully updated to the version ~S.~%" version)))
+         (when dry-run
+           (dbi:rollback *connection*))))
+      (current-version
+       (format t "~&Version ~S is up to date.~%" current-version))
+      (t
+       (format t "~&Nothing to migrate.~%")))))
