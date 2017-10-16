@@ -102,38 +102,42 @@
                     :qualifiers ()
                     :specializers (list class)
                     :function
-                    (lambda (object &rest ignore)
-                      (declare (ignore ignore))
-                      ;; I don't know why but SBCL pass a CONS of the instance instead of the instance itself.
-                      (when (consp object)
-                        (setf object (first object)))
-                      (if (slot-boundp object slot-name)
-                          (slot-value object slot-name)
-                          (let* ((child-columns (find-child-columns class
-                                                                    (find-slot-by-name class slot-name)))
-                                 (foreign-object
-                                   (and (every (lambda (slot-name)
-                                                 (and (slot-boundp object slot-name)
-                                                      (slot-value object slot-name)))
-                                               child-columns)
-                                        (let ((result
-                                                (first
-                                                 (mito.db:retrieve-by-sql
-                                                  (sxql:select :*
-                                                    (sxql:from (sxql:make-sql-symbol (table-name rel-class)))
-                                                    (sxql:where
-                                                     `(:and
-                                                       ,@(mapcar (lambda (slot-name)
-                                                                   `(:= ,(sxql:make-sql-symbol
-                                                                          (table-column-name
-                                                                           (table-column-references-column
-                                                                            (find-slot-by-name class slot-name))))
-                                                                        ,(slot-value object slot-name)))
-                                                                 child-columns)))
-                                                    (sxql:limit 1))))))
-                                          (and result
-                                               (apply #'make-dao-instance rel-class result))))))
-                            (setf (slot-value object slot-name) foreign-object))))))))
+                    (let ((calledp nil))
+                      (lambda (object &rest ignore)
+                        (declare (ignore ignore))
+                        ;; I don't know why but SBCL pass a CONS of the instance instead of the instance itself.
+                        (when (consp object)
+                          (setf object (first object)))
+                        (if (and (slot-boundp object slot-name)
+                                 (or calledp
+                                     (not (null (slot-value object slot-name)))))
+                            (slot-value object slot-name)
+                            (let* ((child-columns (find-child-columns class
+                                                                      (find-slot-by-name class slot-name)))
+                                   (foreign-object
+                                     (and (every (lambda (slot-name)
+                                                   (and (slot-boundp object slot-name)
+                                                        (slot-value object slot-name)))
+                                                 child-columns)
+                                          (let ((result
+                                                  (first
+                                                   (mito.db:retrieve-by-sql
+                                                    (sxql:select :*
+                                                      (sxql:from (sxql:make-sql-symbol (table-name rel-class)))
+                                                      (sxql:where
+                                                       `(:and
+                                                         ,@(mapcar (lambda (slot-name)
+                                                                     `(:= ,(sxql:make-sql-symbol
+                                                                            (table-column-name
+                                                                             (table-column-references-column
+                                                                              (find-slot-by-name class slot-name))))
+                                                                          ,(slot-value object slot-name)))
+                                                                   child-columns)))
+                                                      (sxql:limit 1))))))
+                                            (and result
+                                                 (apply #'make-dao-instance rel-class result))))))
+                              (setf calledp t
+                                    (slot-value object slot-name) foreign-object)))))))))
 
 (defun add-relational-readers (class initargs)
   (loop for column in (copy-seq (getf initargs :direct-slots)) ;; Prevent infinite-loop
