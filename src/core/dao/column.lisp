@@ -68,7 +68,13 @@
        (local-time:parse-timestring value :date-time-separator #\Space))
       (null nil)))
   (:method ((col-type (eql :date)) value)
-    (inflate-for-col-type :datetime value))
+    (let ((offset (local-time::timestamp-subtimezone value local-time:*default-timezone*)))
+      (etypecase value
+        (integer
+         (local-time:universal-to-timestamp (- value offset)))
+        (string
+         (local-time:parse-timestring value :date-time-separator #\Space :offset offset))
+        (null nil))))
   (:method ((col-type (eql :timestamp)) value)
     (inflate-for-col-type :datetime value))
   (:method ((col-type (eql :time)) value)
@@ -89,6 +95,12 @@
       (t
        (error "Unexpected value for boolean column: ~S" value)))))
 
+(defvar *db-datetime-format*
+  '((:year 4) #\- (:month 2) #\- (:day 2) #\Space (:hour 2) #\: (:min 2) #\: (:sec 2) #\. (:nsec)))
+
+(defvar *db-date-format*
+  '((:year 4) #\- (:month 2) #\- (:day 2)))
+
 (defgeneric deflate-for-col-type (col-type value)
   (:method (col-type value)
     (declare (ignore col-type))
@@ -99,16 +111,24 @@
     (etypecase value
       (integer
        (local-time:format-timestring nil (local-time:universal-to-timestamp value)
-                                     :format
-                                     '((:YEAR 4) #\- (:MONTH 2) #\- (:DAY 2) #\Space (:HOUR 2) #\: (:MIN 2) #\: (:SEC 2))))
+                                     :format *db-datetime-format*))
       (local-time:timestamp
        (local-time:format-timestring nil value
-                                     :format
-                                     '((:YEAR 4) #\- (:MONTH 2) #\- (:DAY 2) #\Space (:HOUR 2) #\: (:MIN 2) #\: (:SEC 2) #\. (:NSEC))))
+                                     :format *db-datetime-format*))
       (string value)
       (null nil)))
   (:method ((col-type (eql :date)) value)
-    (deflate-for-col-type :datetime value))
+    (etypecase value
+      (integer
+       (local-time:format-timestring nil (local-time:universal-to-timestamp value)
+                                     :format *db-date-format*
+                                     :timezone local-time:+gmt-zone+))
+      (local-time:timestamp
+       (local-time:format-timestring nil value
+                                     :format *db-date-format*
+                                     :timezone local-time:+gmt-zone+))
+      (string value)
+      (null nil)))
   (:method ((col-type (eql :timestamp)) value)
     (deflate-for-col-type :datetime value))
   (:method ((col-type (eql :boolean)) value)
