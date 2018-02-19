@@ -234,8 +234,8 @@
       '("CREATE TABLE tweet_tag (
     user_id BIGINT UNSIGNED NOT NULL,
     tweet_id BIGINT UNSIGNED NOT NULL,
-    created_at DATETIME,
-    updated_at DATETIME,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
     PRIMARY KEY (user_id, tweet_id)
 )"))
   (defclass tweet-tag ()
@@ -248,8 +248,8 @@
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT UNSIGNED NOT NULL,
     tweet_id BIGINT UNSIGNED NOT NULL,
-    created_at DATETIME,
-    updated_at DATETIME,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
     KEY (user_id, tweet_id)
 )"))
 

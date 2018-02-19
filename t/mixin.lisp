@@ -26,8 +26,8 @@
       '("CREATE TABLE tweet (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     status VARCHAR(140) NOT NULL,
-    created_at DATETIME,
-    updated_at DATETIME
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
 )"))
 
   (mito:execute-sql "DROP TABLE IF EXISTS tweet")
@@ -77,8 +77,8 @@
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT UNSIGNED NOT NULL,
     status VARCHAR(140) NOT NULL,
-    created_at DATETIME,
-    updated_at DATETIME
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
 )"))
 
   (disconnect-toplevel))
