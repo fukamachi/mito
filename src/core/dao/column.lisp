@@ -97,7 +97,7 @@
        (error "Unexpected value for boolean column: ~S" value)))))
 
 (defvar *db-datetime-format*
-  '((:year 4) #\- (:month 2) #\- (:day 2) #\Space (:hour 2) #\: (:min 2) #\: (:sec 2) #\. (:nsec)))
+  '((:year 4) #\- (:month 2) #\- (:day 2) #\Space (:hour 2) #\: (:min 2) #\: (:sec 2) #\. (:nsec) :gmt-offset-or-z))
 
 (defvar *db-date-format*
   '((:year 4) #\- (:month 2) #\- (:day 2)))
