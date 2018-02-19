@@ -68,14 +68,15 @@
        (local-time:parse-timestring value :date-time-separator #\Space))
       (null nil)))
   (:method ((col-type (eql :date)) value)
-    (let ((offset (local-time::timestamp-subtimezone value local-time:*default-timezone*)))
-      (etypecase value
-        (integer
-         (local-time:universal-to-timestamp (- value offset)))
-        (string
-         (local-time:parse-timestring value :date-time-separator #\Space :offset offset))
-        (null nil))))
+    (etypecase value
+      (integer
+       (local-time:universal-to-timestamp value))
+      (string
+       (local-time:parse-timestring value :date-time-separator #\Space))
+      (null nil)))
   (:method ((col-type (eql :timestamp)) value)
+    (inflate-for-col-type :datetime value))
+  (:method ((col-type (eql :timestamptz)) value)
     (inflate-for-col-type :datetime value))
   (:method ((col-type (eql :time)) value)
     (flet ((v (key)
@@ -111,10 +112,12 @@
     (etypecase value
       (integer
        (local-time:format-timestring nil (local-time:universal-to-timestamp value)
-                                     :format *db-datetime-format*))
+                                     :format *db-datetime-format*
+                                     :timezone local-time:+gmt-zone+))
       (local-time:timestamp
        (local-time:format-timestring nil value
-                                     :format *db-datetime-format*))
+                                     :format *db-datetime-format*
+                                     :timezone local-time:+gmt-zone+))
       (string value)
       (null nil)))
   (:method ((col-type (eql :date)) value)
@@ -130,6 +133,8 @@
       (string value)
       (null nil)))
   (:method ((col-type (eql :timestamp)) value)
+    (deflate-for-col-type :datetime value))
+  (:method ((col-type (eql :timestamptz)) value)
     (deflate-for-col-type :datetime value))
   (:method ((col-type (eql :boolean)) value)
     (ecase value

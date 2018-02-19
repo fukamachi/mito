@@ -78,11 +78,14 @@
     (let (auto-increment
           (col-type (table-column-type column))
           (not-null (table-column-not-null-p column)))
-      (when (or (eq col-type :serial)
-                (eq col-type :bigserial))
-        (setf col-type :integer
-              auto-increment t
-              not-null t))
+      (cond
+        ((or (eq col-type :serial)
+             (eq col-type :bigserial))
+         (setf col-type :integer
+               auto-increment t
+               not-null t))
+        ((eq col-type :timestamptz)
+         (setf col-type :timestamp)))
       (when auto-increment
         (unless (primary-key-p column)
           (warn "SQLite3 supports AUTOINCREMENT for PRIMARY KEYs. Ignoring :auto-increment.")
@@ -111,7 +114,9 @@
                auto-increment t
                not-null t))
         ((eq col-type :bytea)
-         (setf col-type :binary)))
+         (setf col-type :binary))
+        ((eq col-type :timestamptz)
+         (setf col-type :timestamp)))
       `(,(table-column-name column)
         :type ,col-type
         :auto-increment ,auto-increment
