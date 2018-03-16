@@ -32,7 +32,8 @@
 
 (defun initialize-migrations-table ()
   (check-connected)
-  (execute-sql (schema-migrations-table-definition)))
+  (let ((*error-output* (make-broadcast-stream)))
+    (execute-sql (schema-migrations-table-definition))))
 
 (defun all-dao-classes ()
   (let ((hash (make-hash-table :test 'eq)))
