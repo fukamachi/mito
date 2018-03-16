@@ -12,6 +12,7 @@
                 #:table-column-type
                 #:table-column-slots
                 #:table-column-references-column
+                #:table-primary-key
                 #:create-table-sxql
                 #:find-slot-by-name
                 #:find-child-columns)
@@ -182,7 +183,11 @@
 
   (when (and (initargs-enables-auto-pk initargs)
              (not (initargs-contains-primary-key initargs))
-             (not (contains-class-or-subclasses 'auto-pk-mixin direct-superclasses)))
+             (not (contains-class-or-subclasses 'auto-pk-mixin direct-superclasses))
+             (not (mapcan #'table-primary-key
+                          (remove-if-not (lambda (c)
+                                           (typep c 'table-class))
+                                         direct-superclasses))))
     (push (find-class 'auto-pk-mixin) (getf initargs :direct-superclasses)))
 
   (let ((class (apply #'call-next-method class initargs)))
@@ -199,7 +204,11 @@
 
   (when (and (initargs-enables-auto-pk initargs)
              (not (initargs-contains-primary-key initargs))
-             (not (contains-class-or-subclasses 'auto-pk-mixin direct-superclasses)))
+             (not (contains-class-or-subclasses 'auto-pk-mixin direct-superclasses))
+             (not (mapcan #'table-primary-key
+                          (remove-if-not (lambda (c)
+                                           (typep c 'table-class))
+                                         direct-superclasses))))
     (push (find-class 'auto-pk-mixin) (getf initargs :direct-superclasses)))
 
   (let ((class (apply #'call-next-method class initargs)))
