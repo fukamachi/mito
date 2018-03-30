@@ -87,7 +87,7 @@
             (sxql:where (:and (:= :name table-name)
                               (:= :type "table")))
             (sxql:limit 1)))))
-    (and (dbi:fetch
+    (and (dbi:fetch-all
           (apply #'dbi:execute (dbi:prepare conn sql) binds))
          t)))
 
