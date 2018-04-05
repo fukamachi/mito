@@ -21,12 +21,12 @@
 (defrule quoted-symbol (and #\" (+ (or (not #\") (and #\\ #\"))) #\")
   (:destructure (d1 content d2)
     (declare (ignore d1 d2))
-    (coerce content 'string)))
+    (format nil "\"~{~A~}\"" content)))
 
 (defrule quoted-string (and #\' (+ (or (not #\') (and #\\ #\'))) #\')
   (:destructure (d1 content d2)
     (declare (ignore d1 d2))
-    (coerce content 'string)))
+    (format nil "'~{~A~}'" content)))
 
 (defrule space (or #\Space #\Newline #\Return #\Tab))
 
