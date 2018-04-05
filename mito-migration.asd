@@ -12,6 +12,7 @@
                :dbi
                :closer-mop
                :cl-reexport
+               :esrap
                :alexandria
                :uiop)
   :components ((:file "src/migration" :depends-on ("migration-components"))
@@ -19,5 +20,6 @@
                 :pathname "src/migration"
                 :components
                 ((:file "table" :depends-on ("sxql"))
-                 (:file "versions" :depends-on ("table"))
-                 (:file "sxql")))))
+                 (:file "versions" :depends-on ("table" "sql-parse"))
+                 (:file "sxql")
+                 (:file "sql-parse")))))

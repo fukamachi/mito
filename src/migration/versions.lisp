@@ -4,6 +4,8 @@
         #:sxql)
   (:import-from #:mito.migration.table
                 #:migration-expressions)
+  (:import-from #:mito.migration.sql-parse
+                #:parse-statements)
   (:import-from #:mito.dao
                 #:dao-class
                 #:dao-table-class
@@ -162,18 +164,6 @@
                (every #'digit-char-p version))
       version)))
 
-(defun read-one-sql (stream)
-  (let ((sql
-          (string-trim '(#\Space #\Tab #\Newline #\LineFeed)
-                       (with-output-to-string (s)
-                         (loop for char = (read-char stream nil nil)
-                               while char
-                               until (char= char #\;)
-                               do (write-char char s))))))
-    (if (= (length sql) 0)
-        nil
-        sql)))
-
 (defun migrate (directory &key dry-run)
   (let* ((current-version (current-migration-version))
          (sql-files (sort (uiop:directory-files (merge-pathnames #P"migrations/" directory)
@@ -195,12 +185,11 @@
        (dbi:with-transaction *connection*
          (dolist (file sql-files-to-apply)
            (format t "~&Applying '~A'...~%" file)
-           (with-open-file (in file)
-             (loop for sql = (read-one-sql in)
-                   while sql
-                   do (format t "~&-> ~A;~%" sql)
-                      (let ((mito.logger::*mito-logger-stream* nil))
-                        (execute-sql sql)))))
+           (let ((content (uiop:read-file-string file)))
+             (dolist (stmt (parse-statements content))
+               (format t "~&-> ~A~%" stmt)
+               (let ((mito.logger::*mito-logger-stream* nil))
+                 (execute-sql stmt)))))
          (let ((version (migration-file-version (first (last sql-files)))))
            (when current-version
              (update-migration-version version))
