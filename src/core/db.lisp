@@ -21,6 +21,8 @@
                 #:yield)
   (:import-from #:sxql.sql-type
                 #:sql-statement)
+  (:import-from #:sxql.composed-statement
+                #:composed-statement)
   (:export #:last-insert-id
            #:table-indices
            #:column-definitions
@@ -160,6 +162,12 @@
       (trace-sql sql binds results)
       results))
   (:method ((sql sql-statement) &key binds)
+    (declare (ignore binds))
+    (with-quote-char
+      (multiple-value-bind (sql binds)
+          (sxql:yield sql)
+        (retrieve-by-sql sql :binds binds))))
+  (:method ((sql composed-statement) &key binds)
     (declare (ignore binds))
     (with-quote-char
       (multiple-value-bind (sql binds)
