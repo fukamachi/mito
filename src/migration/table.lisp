@@ -300,7 +300,10 @@
               nil
               (table-definition class :or-replace t))
        (execute-sql
-        (format nil "DROP VIEW \"__~A\"" (table-name class)))))
+        (format nil "DROP VIEW ~@[~A~]__~A~@[~A~]"
+                sxql:*quote-character*
+                (table-name class)
+                sxql:*quote-character*))))
     (dao-table-class
      (if (eq driver-type :sqlite3)
          (migration-expressions-for-sqlite3 class)
