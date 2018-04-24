@@ -6,6 +6,7 @@
         #:mito.connection
         #:mito.class
         #:mito.dao.mixin
+        #:mito.dao.view
         #:mito.dao.table))
 (in-package :mito-test.mixin)
 

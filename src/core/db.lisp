@@ -26,6 +26,7 @@
   (:export #:last-insert-id
            #:table-indices
            #:column-definitions
+           #:table-view-query
            #:table-exists-p
            #:execute-sql
            #:retrieve-by-sql))
@@ -65,6 +66,12 @@
      (:mysql    #'mito.db.mysql:column-definitions)
      (:postgres #'mito.db.postgres:column-definitions)
      (:sqlite3  #'mito.db.sqlite3:column-definitions))
+   conn table-name))
+
+(defun table-view-query (conn table-name)
+  (funcall
+   (ecase (dbi:connection-driver-type conn)
+     (:postgres #'mito.db.postgres:table-view-query))
    conn table-name))
 
 (defun table-exists-p (conn table-name)

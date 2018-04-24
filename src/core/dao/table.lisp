@@ -3,6 +3,8 @@
   (:use #:cl
         #:mito.util
         #:mito.error)
+  (:import-from #:mito.dao.view
+                #:table-definition)
   (:import-from #:mito.connection
                 #:driver-type)
   (:import-from #:mito.class
@@ -28,7 +30,6 @@
            #:dao-synced
 
            #:make-dao-instance
-           #:table-definition
 
            #:depending-table-classes))
 (in-package :mito.dao.table)
@@ -74,7 +75,7 @@
   (setf class (ensure-class class))
 
   (assert (and class
-               (typep class 'dao-table-class)))
+               (typep class 'table-class)))
 
   (let* ((list (loop for (k v) on initargs by #'cddr
                     for column = (find-if (lambda (initargs)
@@ -222,8 +223,6 @@
           (cons (find-class 'dao-class) direct-superclasses)))
   (apply #'call-next-method class name keys))
 
-(defun table-definition (class &key if-not-exists)
-  (setf class (ensure-class class))
-  (check-type class table-class)
+(defmethod table-definition ((class dao-table-class) &key if-not-exists &allow-other-keys)
   (create-table-sxql class (driver-type)
                      :if-not-exists if-not-exists))

@@ -56,6 +56,7 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (cl-reexport:reexport-from :mito.dao.mixin)
+  (cl-reexport:reexport-from :mito.dao.view)
   (cl-reexport:reexport-from :mito.dao.table))
 
 (defun foreign-value (obj slot)

@@ -10,7 +10,8 @@
                 #:fetch-all)
   (:export #:last-insert-id
            #:column-definitions
-           #:table-indices))
+           #:table-indices
+           #:table-view-query))
 (in-package :mito.db.postgres)
 
 (defun last-insert-id (conn table-name serial-key-name)
@@ -129,3 +130,12 @@
                                                   column))
                                       |column_names|))))
             (dbi:fetch-all query))))
+
+(defun table-view-query (conn table-name)
+  (let ((query (dbi:execute (dbi:prepare conn
+                                         (format nil "SELECT pg_get_viewdef('~A'::regclass) AS def" table-name)))))
+    (string-right-trim
+     '(#\Space #\;)
+     (string-left-trim
+      '(#\Space)
+      (getf (first (dbi:fetch-all query)) :|def|)))))

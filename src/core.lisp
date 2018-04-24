@@ -12,6 +12,7 @@
 (cl-reexport:reexport-from :mito.dao
                            :include '(#:dao-class
                                       #:dao-table-class
+                                      #:dao-table-view
                                       #:object-id
                                       #:object=
                                       #:object-created-at
