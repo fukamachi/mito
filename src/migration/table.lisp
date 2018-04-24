@@ -4,7 +4,9 @@
         #:sxql)
   (:import-from #:mito.dao
                 #:dao-table-class
-                #:table-definition)
+                #:dao-table-view
+                #:table-definition
+                #:dao-table-view-as-query)
   (:import-from #:mito.dao.column
                 #:dao-table-column-deflate)
   (:import-from #:mito.class
@@ -17,6 +19,7 @@
   (:import-from #:mito.db
                 #:table-indices
                 #:column-definitions
+                #:table-view-query
                 #:table-exists-p
                 #:execute-sql)
   (:import-from #:mito.connection
@@ -284,19 +287,34 @@
 
 (defun migration-expressions (class &optional (driver-type (driver-type *connection*)))
   (setf class (ensure-class class))
-  (if (eq driver-type :sqlite3)
-      (migration-expressions-for-sqlite3 class)
-      (destructuring-bind (add-columns
-                           drop-columns
-                           change-columns
-                           add-indices
-                           drop-indices)
-          (migration-expressions-for-others class driver-type)
-        (nconc drop-indices
-               (ensure-list drop-columns)
-               add-columns
-               change-columns
-               add-indices))))
+  (etypecase class
+    (dao-table-view
+     (execute-sql
+      (sxql:make-statement :create-view
+                           (sxql:make-sql-symbol (format nil "__~A" (table-name class)))
+                           :or-replace t
+                           :as (first (dao-table-view-as-query class))))
+     (unwind-protect
+          (if (equal (table-view-query *connection* (format nil "__~A" (table-name class)))
+                     (table-view-query *connection* (table-name class)))
+              nil
+              (table-definition class :or-replace t))
+       (execute-sql
+        (format nil "DROP VIEW \"__~A\"" (table-name class)))))
+    (dao-table-class
+     (if (eq driver-type :sqlite3)
+         (migration-expressions-for-sqlite3 class)
+         (destructuring-bind (add-columns
+                              drop-columns
+                              change-columns
+                              add-indices
+                              drop-indices)
+             (migration-expressions-for-others class driver-type)
+           (nconc drop-indices
+                  (ensure-list drop-columns)
+                  add-columns
+                  change-columns
+                  add-indices))))))
 
 (defmethod initialize-instance :after ((class dao-table-class) &rest initargs)
   (declare (ignore initargs))

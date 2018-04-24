@@ -20,7 +20,8 @@
                   :pathname "dao"
                   :depends-on ("connection" "class" "db" "logger" "util")
                   :components
-                  ((:file "table" :depends-on ("column" "mixin"))
+                  ((:file "table" :depends-on ("column" "mixin" "view"))
+                   (:file "view" :depends-on ("column"))
                    (:file "mixin" :depends-on ("column"))
                    (:file "column")))
                  (:file "class" :depends-on ("class-components"))
