@@ -15,7 +15,8 @@
                 #:delete-from-plist)
   (:export #:last-insert-id
            #:table-indices
-           #:column-definitions))
+           #:column-definitions
+           #:table-view-query))
 (in-package :mito.db.mysql)
 
 (defun last-insert-id (conn table-name serial-key-name)
@@ -70,3 +71,8 @@
                 (setf (getf (cdr def) :primary-key) nil))
               definitions)
         definitions)))
+
+(defun table-view-query (conn table-name)
+  (let ((query (dbi:execute (dbi:prepare conn
+                                         (format nil "SHOW CREATE VIEW `~A`" table-name)))))
+    (getf (first (dbi:fetch-all query)) :|Create View|)))

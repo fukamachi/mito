@@ -71,6 +71,7 @@
 (defun table-view-query (conn table-name)
   (funcall
    (ecase (dbi:connection-driver-type conn)
+     (:mysql #'mito.db.mysql:table-view-query)
      (:postgres #'mito.db.postgres:table-view-query))
    conn table-name))
 
