@@ -20,7 +20,7 @@
 (defmethod c2mop:direct-slot-definition-class ((class dao-table-view) &key)
   'dao-table-column-class)
 
-(defstruct (create-view (:include sxql.sql-type:sql-statement (name "CREATE VIEW"))
+(defstruct (create-view (:include sxql.sql-type:sql-statement (sxql.sql-type:name "CREATE VIEW"))
                         (:constructor make-create-view (view-name &key or-replace as)))
   view-name
   or-replace
