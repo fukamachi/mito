@@ -178,6 +178,9 @@ This may be useful when you define methods which can be applied for all table cl
 ;-> ;; SELECT * FROM `user` WHERE (`id` = ?) LIMIT 1 (1) [1 row] | MITO.DB:RETRIEVE-BY-SQL
 ;=> #<USER {10077C6073}>
 
+(mito:retrieve-dao 'user)
+;=> (#<USER {10077C6073}>)
+
 ;; Updating
 (setf (slot-value me 'name) "nitro_idiot")
 ;=> "nitro_idiot"
@@ -190,7 +193,13 @@ This may be useful when you define methods which can be applied for all table cl
 ;-> ;; DELETE FROM `user` WHERE (`id` = ?) (1) [0 rows] | MITO.DAO:DELETE-DAO
 (mito:delete-by-values 'user :id 1)
 ;-> ;; DELETE FROM `user` WHERE (`id` = ?) (1) [0 rows] | MITO.DAO:DELETE-DAO
+
+;; Counting
+(mito:count-dao 'user)
+;-> 1
 ```
+
+Use `select-dao` to build custom queries with sxql (examples below).
 
 ### Relationship
 
