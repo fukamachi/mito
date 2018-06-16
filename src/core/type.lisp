@@ -55,9 +55,10 @@
     (or real-type
         (setf real-type
               (progn
-                (dbi:do-sql conn
-                  (sxql:yield
-                   (sxql:drop-table :get_column_real_type :if-exists t)))
+                (let ((*error-output* (make-broadcast-stream)))
+                  (dbi:do-sql conn
+                    (sxql:yield
+                     (sxql:drop-table :get_column_real_type :if-exists t))))
                 (dbi:do-sql conn
                   (sxql:yield
                    (sxql:create-table :get_column_real_type
