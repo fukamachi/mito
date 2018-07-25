@@ -78,19 +78,17 @@
                (typep class 'table-class)))
 
   (let* ((list (loop for (k v) on initargs by #'cddr
-                    for column = (find-if (lambda (initargs)
-                                            (find k initargs :test #'eq))
-                                          (table-column-slots class)
-                                          :key #'c2mop:slot-definition-initargs)
-                    if column
-                    append (list k
-                                 (dao-table-column-inflate column v))
-                    else
-                    append (list k v)))
-        (obj
-          (apply #'make-instance class
-                 :allow-other-keys t
-                 list)))
+                     for column = (find-if (lambda (initargs)
+                                             (find k initargs :test #'eq))
+                                           (table-column-slots class)
+                                           :key #'c2mop:slot-definition-initargs)
+                     if column
+                       append (list k
+                                    (dao-table-column-inflate column v))
+                     else
+                       append (list k v)))
+         (obj (allocate-instance class))
+         (obj (apply #'shared-initialize obj nil list)))
     (setf (dao-synced obj) t)
     obj))
 
