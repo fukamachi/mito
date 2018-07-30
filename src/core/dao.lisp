@@ -191,11 +191,12 @@
                    (sxql:from (sxql:make-sql-symbol (table-name foreign-class)))
                    (sxql:where
                     (:in (sxql:make-sql-symbol (table-column-name foreign-slot))
-                         (loop for obj in records
-                               append
-                               (mapcar (lambda (rel-slot)
-                                         (slot-value obj (c2mop:slot-definition-name rel-slot)))
-                                       rel-slots))))))
+                         (remove nil
+                                 (loop for obj in records
+                                       append
+                                       (mapcar (lambda (rel-slot)
+                                                 (slot-value obj (c2mop:slot-definition-name rel-slot)))
+                                               rel-slots)))))))
                (results
                  (select-by-sql foreign-class sql)))
           (dolist (obj records)
