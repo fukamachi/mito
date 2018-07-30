@@ -186,26 +186,26 @@
         (unless rel-slots
           (error "~S is not related to ~S" class foreign-class))
         (let* ((foreign-slot (table-column-references-column (first rel-slots)))
-               (sql
-                 (sxql:select :*
-                   (sxql:from (sxql:make-sql-symbol (table-name foreign-class)))
-                   (sxql:where
-                    (:in (sxql:make-sql-symbol (table-column-name foreign-slot))
-                         (remove nil
-                                 (loop for obj in records
-                                       append
-                                       (mapcar (lambda (rel-slot)
-                                                 (slot-value obj (c2mop:slot-definition-name rel-slot)))
-                                               rel-slots)))))))
-               (results
-                 (select-by-sql foreign-class sql)))
-          (dolist (obj records)
-            (dolist (rel-slot rel-slots)
-              (setf (slot-value obj (find-parent-column class rel-slot))
-                    (find-if (lambda (result)
-                               (equal (slot-value result (c2mop:slot-definition-name foreign-slot))
-                                      (slot-value obj (c2mop:slot-definition-name rel-slot))))
-                             results))))
+               (rel-slot-values (remove nil
+                                        (loop for obj in records
+                                              append
+                                              (mapcar (lambda (rel-slot)
+                                                        (slot-value obj (c2mop:slot-definition-name rel-slot)))
+                                                      rel-slots)))))
+          (unless rel-slot-values
+            (return-from include-foreign-objects records))
+          (let* ((sql (sxql:select :*
+                        (sxql:from (sxql:make-sql-symbol (table-name foreign-class)))
+                        (sxql:where
+                         (:in (sxql:make-sql-symbol (table-column-name foreign-slot)) rel-slot-values))))
+                 (results (select-by-sql foreign-class sql)))
+            (dolist (obj records)
+              (dolist (rel-slot rel-slots)
+                (setf (slot-value obj (find-parent-column class rel-slot))
+                      (find-if (lambda (result)
+                                 (equal (slot-value result (c2mop:slot-definition-name foreign-slot))
+                                        (slot-value obj (c2mop:slot-definition-name rel-slot))))
+                               results)))))
           records)))))
 
 (defun child-columns (column class)
