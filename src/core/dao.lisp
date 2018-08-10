@@ -82,10 +82,9 @@
       ('nil 0)))
   (:method (driver-type col-type (value vector))
     (declare (ignore driver-type col-type))
-    (with-output-to-string (*standard-output*)
-      (format nil "{~{~A~^, ~}}"
-              ;; Perhaps conversion might be needed for each elements
-              (coerce value 'list)))))
+    (format nil "{~{~A~^, ~}}"
+            ;; Perhaps conversion might be needed for each elements
+            (coerce value 'list))))
 
 (defun make-set-clause (obj)
   (let ((class (class-of obj)))
