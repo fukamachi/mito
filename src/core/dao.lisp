@@ -83,6 +83,10 @@
     (ecase value
       (t 1)
       ('nil 0)))
+  (:method ((driver-type (eql :sqlite3)) (col-type (eql :boolean)) value)
+    (ecase value
+      (t 1)
+      ('nil 0)))
   (:method (driver-type col-type (value vector))
     (declare (ignore driver-type col-type))
     (format nil "{~{~A~^, ~}}"
