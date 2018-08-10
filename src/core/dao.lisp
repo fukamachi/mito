@@ -76,6 +76,9 @@
   (:method (driver-type col-type value)
     (declare (ignore driver-type col-type))
     value)
+  (:method (driver-type col-type (value string))
+    (declare (ignore driver-type col-type))
+    value)
   (:method ((driver-type (eql :mysql)) (col-type (eql :boolean)) value)
     (ecase value
       (t 1)
