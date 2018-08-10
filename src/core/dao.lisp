@@ -9,7 +9,8 @@
                     #:dao-table-column-deflate)
       (:import-from #:mito.connection
                     #:*connection*
-                    #:check-connected)
+                    #:check-connected
+                    #:driver-type)
       (:import-from #:mito.class
                     #:database-column-slots
                     #:ghost-slot-p
@@ -38,7 +39,8 @@
                     #:ensure-list
                     #:once-only
                     #:with-gensyms)
-      (:export #:insert-dao
+      (:export #:convert-for-driver-type
+               #:insert-dao
                #:update-dao
                #:create-dao
                #:delete-dao
@@ -69,6 +71,21 @@
          (slot-value (slot-value obj rel-column-name)
                      (c2mop:slot-definition-name foreign-slot)))))
 
+(defgeneric convert-for-driver-type (driver-type value)
+  (:method (driver-type value)
+    (declare (ignore driver-type))
+    value)
+  (:method ((driver-type (eql :mysql)) (value (eql 't)))
+    1)
+  (:method ((driver-type (eql :mysql)) (value (eql 'nil)))
+    0)
+  (:method (driver-type (value vector))
+    (with-output-to-string (*standard-output*)
+      (format nil "{~{~A~^, ~}}"
+              (mapcar (lambda (v)
+                        (convert-for-driver-type driver-type v))
+                      (coerce value 'list))))))
+
 (defun make-set-clause (obj)
   (let ((class (class-of obj)))
     (apply #'sxql:make-clause :set=
@@ -86,7 +103,8 @@
                   (t
                    (let ((value (slot-value obj slot-name)))
                      (list (sxql:make-sql-symbol (table-column-name slot))
-                           (dao-table-column-deflate slot value)))))))
+                           (convert-for-driver-type (driver-type)
+                                                    (dao-table-column-deflate slot value))))))))
             (database-column-slots class)))))
 
 (defgeneric insert-dao (obj)
