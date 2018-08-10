@@ -14,6 +14,7 @@
                 #:database-column-slots
                 #:table-name
                 #:table-column-info
+                #:table-column-type
                 #:table-indices-info
                 #:create-table-sxql
                 #:find-slot-by-name)
@@ -115,6 +116,7 @@
                                                             (push (car column) drop-defaults)
                                                             (convert-for-driver-type
                                                              (driver-type)
+                                                             (table-column-type slot)
                                                              (dao-table-column-deflate slot
                                                                                        (funcall (c2mop:slot-definition-initfunction slot)))))
                                                            (t
