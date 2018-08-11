@@ -18,8 +18,6 @@
                     #:find-parent-column
                     #:find-child-columns
                     #:table-column-references-column
-                    #:table-column-type)
-      (:import-from #:mito.class.column
                     #:table-column-name
                     #:table-column-type)
       (:import-from #:mito.db
