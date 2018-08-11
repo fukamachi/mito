@@ -3,6 +3,7 @@
   (:use #:cl
         #:sxql)
   (:import-from #:mito.dao
+                #:convert-for-driver-type
                 #:dao-table-class
                 #:dao-table-view
                 #:table-definition
@@ -13,6 +14,7 @@
                 #:database-column-slots
                 #:table-name
                 #:table-column-info
+                #:table-column-type
                 #:table-indices-info
                 #:create-table-sxql
                 #:find-slot-by-name)
@@ -112,8 +114,11 @@
                                                          (cond
                                                            ((c2mop:slot-definition-initfunction slot)
                                                             (push (car column) drop-defaults)
-                                                            (dao-table-column-deflate slot
-                                                                                      (funcall (c2mop:slot-definition-initfunction slot))))
+                                                            (convert-for-driver-type
+                                                             (driver-type)
+                                                             (table-column-type slot)
+                                                             (dao-table-column-deflate slot
+                                                                                       (funcall (c2mop:slot-definition-initfunction slot)))))
                                                            (t
                                                             (warn "Adding a non-null column ~S but there's no :initform to set default"
                                                                   (car column))

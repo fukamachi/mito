@@ -135,8 +135,4 @@
   (:method ((col-type (eql :timestamp)) value)
     (deflate-for-col-type :datetime value))
   (:method ((col-type (eql :timestamptz)) value)
-    (deflate-for-col-type :datetime value))
-  (:method ((col-type (eql :boolean)) value)
-    (ecase value
-      (t 1)
-      ('nil 0))))
+    (deflate-for-col-type :datetime value)))

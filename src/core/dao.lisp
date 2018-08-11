@@ -9,15 +9,15 @@
                     #:dao-table-column-deflate)
       (:import-from #:mito.connection
                     #:*connection*
-                    #:check-connected)
+                    #:check-connected
+                    #:driver-type)
       (:import-from #:mito.class
                     #:database-column-slots
                     #:ghost-slot-p
                     #:find-slot-by-name
                     #:find-parent-column
                     #:find-child-columns
-                    #:table-column-references-column)
-      (:import-from #:mito.class.column
+                    #:table-column-references-column
                     #:table-column-name
                     #:table-column-type)
       (:import-from #:mito.db
@@ -38,7 +38,8 @@
                     #:ensure-list
                     #:once-only
                     #:with-gensyms)
-      (:export #:insert-dao
+      (:export #:convert-for-driver-type
+               #:insert-dao
                #:update-dao
                #:create-dao
                #:delete-dao
@@ -69,6 +70,31 @@
          (slot-value (slot-value obj rel-column-name)
                      (c2mop:slot-definition-name foreign-slot)))))
 
+(defgeneric convert-for-driver-type (driver-type col-type value)
+  (:method (driver-type col-type value)
+    (declare (ignore driver-type col-type))
+    value)
+  (:method (driver-type col-type (value string))
+    (declare (ignore driver-type col-type))
+    value)
+  (:method ((driver-type (eql :mysql)) (col-type (eql :boolean)) value)
+    (ecase value
+      (t 1)
+      ('nil 0)))
+  (:method ((driver-type (eql :sqlite3)) (col-type (eql :boolean)) value)
+    (ecase value
+      (t 1)
+      ('nil 0)))
+  (:method ((driver-type (eql :postgres)) (col-type (eql :boolean)) value)
+    (ecase value
+      (t '(:raw "true"))
+      ('nil '(:raw "false"))))
+  (:method (driver-type col-type (value vector))
+    (declare (ignore driver-type col-type))
+    (format nil "{~{~A~^, ~}}"
+            ;; Perhaps conversion might be needed for each elements
+            (coerce value 'list))))
+
 (defun make-set-clause (obj)
   (let ((class (class-of obj)))
     (apply #'sxql:make-clause :set=
@@ -86,7 +112,9 @@
                   (t
                    (let ((value (slot-value obj slot-name)))
                      (list (sxql:make-sql-symbol (table-column-name slot))
-                           (dao-table-column-deflate slot value)))))))
+                           (convert-for-driver-type (driver-type)
+                                                    (table-column-type slot)
+                                                    (dao-table-column-deflate slot value))))))))
             (database-column-slots class)))))
 
 (defgeneric insert-dao (obj)
