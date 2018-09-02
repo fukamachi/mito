@@ -10,6 +10,7 @@
                "optima"
                "cl-reexport"
                "local-time"
+               "uuid"
                "alexandria")
   :components ((:file "src/core" :depends-on ("core-components"))
                (:module "core-components"

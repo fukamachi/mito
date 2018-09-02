@@ -22,7 +22,8 @@
                 #:dao-table-column-class
                 #:dao-table-column-inflate)
   (:import-from #:mito.dao.mixin
-                #:auto-pk-mixin
+                #:serial-pk-mixin
+                #:uuid-pk-mixin
                 #:record-timestamps-mixin)
   (:export #:dao-class
            #:dao-table-class
@@ -41,7 +42,7 @@
 
 (defclass dao-table-class (table-class)
   ((auto-pk :initarg :auto-pk
-            :initform '(t))
+            :initform '(:serial))
    (record-timestamps :initarg :record-timestamps
                       :initform '(t))))
 
@@ -60,7 +61,7 @@
         t)))))
 
 (defun initargs-enables-auto-pk (initargs)
-  (first (or (getf initargs :auto-pk) '(t))))
+  (first (or (getf initargs :auto-pk) '(:serial))))
 
 (defun initargs-enables-record-timestamps (initargs)
   (first (or (getf initargs :record-timestamps) '(t))))
@@ -180,14 +181,19 @@
   (unless (contains-class-or-subclasses 'dao-class direct-superclasses)
     (push (find-class 'dao-class) (getf initargs :direct-superclasses)))
 
-  (when (and (initargs-enables-auto-pk initargs)
-             (not (initargs-contains-primary-key initargs))
-             (not (contains-class-or-subclasses 'auto-pk-mixin direct-superclasses))
-             (not (mapcan #'table-primary-key
-                          (remove-if-not (lambda (c)
-                                           (typep c 'table-class))
-                                         direct-superclasses))))
-    (push (find-class 'auto-pk-mixin) (getf initargs :direct-superclasses)))
+  (let ((auto-pk-type (initargs-enables-auto-pk initargs)))
+    (when auto-pk-type
+      (let ((auto-pk-class (ecase auto-pk-type
+                             (:serial 'serial-pk-mixin)
+                             (:uuid 'uuid-pk-mixin)
+                             ('t 'serial-pk-mixin))))
+        (when (and (not (initargs-contains-primary-key initargs))
+                   (not (contains-class-or-subclasses auto-pk-class direct-superclasses))
+                   (not (mapcan #'table-primary-key
+                                (remove-if-not (lambda (c)
+                                                 (typep c 'table-class))
+                                               direct-superclasses))))
+          (push (find-class auto-pk-class) (getf initargs :direct-superclasses))))))
 
   (let ((class (apply #'call-next-method class initargs)))
     (add-relational-readers class initargs)
@@ -201,14 +207,19 @@
           (append (getf initargs :direct-superclasses)
                   (list (find-class 'record-timestamps-mixin)))))
 
-  (when (and (initargs-enables-auto-pk initargs)
-             (not (initargs-contains-primary-key initargs))
-             (not (contains-class-or-subclasses 'auto-pk-mixin direct-superclasses))
-             (not (mapcan #'table-primary-key
-                          (remove-if-not (lambda (c)
-                                           (typep c 'table-class))
-                                         direct-superclasses))))
-    (push (find-class 'auto-pk-mixin) (getf initargs :direct-superclasses)))
+  (let ((auto-pk-type (initargs-enables-auto-pk initargs)))
+    (when auto-pk-type
+      (let ((auto-pk-class (ecase auto-pk-type
+                             (:serial 'serial-pk-mixin)
+                             (:uuid 'uuid-pk-mixin)
+                             ('t 'serial-pk-mixin))))
+        (when (and (not (initargs-contains-primary-key initargs))
+                   (not (contains-class-or-subclasses auto-pk-class direct-superclasses))
+                   (not (mapcan #'table-primary-key
+                                (remove-if-not (lambda (c)
+                                                 (typep c 'table-class))
+                                               direct-superclasses))))
+          (push (find-class auto-pk-class) (getf initargs :direct-superclasses))))))
 
   (let ((class (apply #'call-next-method class initargs)))
     (add-relational-readers class initargs)

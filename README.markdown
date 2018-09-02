@@ -7,7 +7,7 @@
 Mito is yet another object relational mapper and it aims to be a successor of [Integral](https://github.com/fukamachi/integral).
 
 * Supports MySQL, PostgreSQL and SQLite3
-* Adds `id` (serial primary key), `created_at` and `updated_at` by default like Ruby's ActiveRecord
+* Adds `id` (serial/uuid primary key), `created_at` and `updated_at` by default like Ruby's ActiveRecord
 * Migrations
 * DB schema versioning
 
@@ -109,8 +109,9 @@ class-option ::= {:primary-key symbol*} |
                  {:unique-keys {symbol | (symbol*)}*} |
                  {:keys {symbol | (symbol*)}*} |
                  {:table-name table-name}
-                 {:auto-pk boolean}
+                 {:auto-pk auto-pk-mixin-class-name}
                  {:record-timestamps boolean}
+auto-pk-mixin-class-name ::= {:serial | :uuid}
 ```
 
 Note the class automatically adds some slots -- a primary key named `id` if there's no primary keys, `created_at` and `updated_at` for recording timestamps. To disable these behaviors, specify `:auto-pk nil` or `:record-timestamps nil` to defclass forms.
