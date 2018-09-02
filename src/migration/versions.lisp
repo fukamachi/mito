@@ -123,7 +123,7 @@
               (format *error-output* "~&Given up.~%")
               (return-from generate-migrations nil)))))
 
-    (if expressions
+    (if (or expressions force)
         (progn
           (ensure-directories-exist directory)
           (with-open-file (out destination
@@ -152,11 +152,6 @@
           destination)
         (progn
           (format t "~&Nothing to migrate.~%")
-          (when force
-            (with-open-file (out destination
-                                 :direction :output
-                                 :if-does-not-exist :create))
-            (format t "~&Successfully generated: ~A~%" destination))
           nil))))
 
 (defun migration-file-version (file)
