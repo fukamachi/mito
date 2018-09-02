@@ -88,12 +88,7 @@
   (:method ((driver-type (eql :postgres)) (col-type (eql :boolean)) value)
     (ecase value
       (t '(:raw "true"))
-      ('nil '(:raw "false"))))
-  (:method (driver-type col-type (value vector))
-    (declare (ignore driver-type col-type))
-    (format nil "{~{~A~^, ~}}"
-            ;; Perhaps conversion might be needed for each elements
-            (coerce value 'list))))
+      ('nil '(:raw "false")))))
 
 (defun make-set-clause (obj)
   (let ((class (class-of obj)))
