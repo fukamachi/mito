@@ -44,6 +44,7 @@ exec ros -Q -- $0 "$@"
         driver-type
         (directory *default-migration-directory*)
         (systems '())
+        force
         dry-run)
     (loop for option = (pop args)
           while option
@@ -66,8 +67,10 @@ exec ros -Q -- $0 "$@"
                 (setf directory (uiop:ensure-directory-pathname (pop args))))
                ("--dry-run"
                 (setf dry-run t))
+               (("-f" "--force")
+                (setf force t))
                (otherwise (error "Unknown option: ~A" option))))
-    (values (cons driver-type connect-args) directory (nreverse systems) dry-run)))
+    (values (cons driver-type connect-args) directory (nreverse systems) dry-run force)))
 
 (defun print-usage ()
   (format *error-output* "~&Usage: mito command [option...]
@@ -84,6 +87,7 @@ Options:
     -s, --system SYSTEM             ASDF system to load (several -s's allowed)
     -D, --directory DIRECTORY       Directory path to keep migration SQL files (default: \"~A\")
     --dry-run                       List SQL expressions to migrate
+    -f, --force                     Create a new empty migration file even when it's unnecessary.
 "
           *default-migration-directory*))
 
@@ -94,7 +98,7 @@ Options:
     (print-usage)
     (uiop:quit -1))
 
-  (multiple-value-bind (connect-args directory systems dry-run)
+  (multiple-value-bind (connect-args directory systems dry-run force)
       (handler-case (parse-args argv)
         (error (e) (format *error-output* "~&~A~%" e) (uiop:quit -1)))
     (when (null (first connect-args))
@@ -117,7 +121,7 @@ Options:
           (setf *mito-logger-stream* nil)
           (case-equal command
             ("generate-migrations"
-             (mito.migration:generate-migrations directory))
+             (mito.migration:generate-migrations directory :force force))
             ("migrate"
              (mito.migration:migrate directory :dry-run dry-run))))
       (dbi:<dbi-database-error> (e)

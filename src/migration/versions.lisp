@@ -90,7 +90,7 @@
     (format nil "~4,'0D~2,'0D~2,'0D~2,'0D~2,'0D~2,'0D"
             year mon day hour min sec)))
 
-(defun generate-migrations (directory)
+(defun generate-migrations (directory &key force)
   (let* ((schema.sql (merge-pathnames #P"schema.sql" directory))
          (directory (merge-pathnames #P"migrations/" directory))
          (version (generate-version))
@@ -152,6 +152,11 @@
           destination)
         (progn
           (format t "~&Nothing to migrate.~%")
+          (when force
+            (with-open-file (out destination
+                                 :direction :output
+                                 :if-does-not-exist :create))
+            (format t "~&Successfully generated: ~A~%" destination))
           nil))))
 
 (defun migration-file-version (file)

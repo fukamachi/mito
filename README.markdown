@@ -389,6 +389,7 @@ Options:
     -s, --system SYSTEM             ASDF system to load (several -s's allowed)
     -D, --directory DIRECTORY       Directory path to keep migration SQL files (default: "/Users/nitro_idiot/Programs/lib/mito/db/")
     --dry-run                       List SQL expressions to migrate
+    -f, --force                     Create a new empty migration file even when it's unnecessary.
 ```
 
 ### Inheritance and Mixin
