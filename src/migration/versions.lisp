@@ -30,7 +30,9 @@
 (defun schema-migrations-table-definition ()
   (sxql:create-table (:schema_migrations :if-not-exists t)
       ((version :type '(:varchar 255)
-                :primary-key t))))
+                :primary-key t)
+       (applied_at :type :timestamptz
+                   :default (sxql.sql-type:make-sql-keyword "CURRENT_TIMESTAMP")))))
 
 (defun initialize-migrations-table ()
   (check-connected)
