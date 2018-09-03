@@ -74,6 +74,7 @@
                                         :col-type ,(if not-null
                                                        col-type
                                                        `(or ,col-type :null))
+                                        :primary-key ,(getf column :primary-key)
                                         :references (,col-type ,pk-name))))
                                   pk-names)))
                 collect column))
