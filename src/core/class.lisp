@@ -46,9 +46,7 @@
               (mapcan (lambda (index)
                         (cond
                           ((getf (cdr index) :primary-key)
-                           (if (cdr (getf (cdr index) :columns))
-                               (list (sxql:primary-key (mapcar #'sxql:make-sql-symbol (getf (cdr index) :columns))))
-                               nil))
+                           (list (sxql:primary-key (mapcar #'sxql:make-sql-symbol (getf (cdr index) :columns)))))
                           ((getf (cdr index) :unique-key)
                            (if (eq driver-type :postgres)
                                (progn
