@@ -221,9 +221,13 @@
                      (sxql:order-by :version)))))
         (file-versions (mapcar #'migration-file-version (migration-files directory))))
     (format t "~& Status   Migration ID~%--------------------------~%")
+    (loop while (and file-versions
+                     db-versions
+                     (string< (first file-versions) (first db-versions)))
+          do (pop file-versions))
     (loop for db-version in db-versions
           do (loop while (string< (first file-versions) db-version)
-                   do (pop file-versions))
+                   do (format t "~&  down    ~A~%" (pop file-versions)))
              (if (string= db-version (first file-versions))
                  (progn
                    (pop file-versions)
