@@ -217,22 +217,22 @@
 (defun migrate (directory &key dry-run)
   (multiple-value-bind (current-version last-applied-at)
       (current-migration-version)
-    (let ((schema.sql (merge-pathnames #P"schema.sql" directory))
-          (sql-files-to-apply
-            (if current-version
-                (if last-applied-at
-                    (mapcar #'cdr
-                            (remove :up
-                                    (%migration-status directory)
-                                    :key #'car))
-                    ;; XXX: for backward-compatibility (apply all non-applied files since e18d942ba0e556b1533d5a5ac5a9775e7c6abe93)
-                    (remove-if-not (lambda (version)
-                                     (and version
-                                          (string< current-version version)))
-                                   (migration-files directory)
-                                   :key #'migration-file-version))
-                (and (probe-file schema.sql)
-                     (list schema.sql)))))
+    (let* ((schema.sql (merge-pathnames #P"schema.sql" directory))
+           (sql-files-to-apply
+             (if current-version
+                 (if last-applied-at
+                     (mapcar #'cdr
+                             (remove :up
+                                     (%migration-status directory)
+                                     :key #'car))
+                     ;; XXX: for backward-compatibility (apply all non-applied files since e18d942ba0e556b1533d5a5ac5a9775e7c6abe93)
+                     (remove-if-not (lambda (version)
+                                      (and version
+                                           (string< current-version version)))
+                                    (migration-files directory)
+                                    :key #'migration-file-version))
+                 (and (probe-file schema.sql)
+                      (list schema.sql)))))
       (cond
         (sql-files-to-apply
          (dbi:with-transaction *connection*
