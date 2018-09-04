@@ -175,38 +175,43 @@
 
 (defun %migration-status (directory)
   (let ((db-versions
-          (mapcar (lambda (row)
-                    (getf row :version))
-                  (retrieve-by-sql
-                   (sxql:select :version
-                     (sxql:from :schema_migrations)
-                     (sxql:order-by :version)))))
+          (retrieve-by-sql
+           (sxql:select (:version :applied_at)
+             (sxql:from :schema_migrations)
+             (sxql:order-by :version))))
         (files (migration-files directory)))
     (loop while (and files
                      db-versions
-                     (string< (migration-file-version (first files)) (first db-versions)))
+                     (string< (migration-file-version (first files))
+                              (getf (first db-versions) :version)))
           do (pop files))
     (let (results)
       (loop for db-version in db-versions
-            do (loop while (string< (migration-file-version (first files)) db-version)
-                     do (push (cons :down (pop files)) results))
-               (if (string= db-version (migration-file-version (first files)))
-                   (push (cons :up (pop files)) results)
-                   (push (cons :up db-version) results)))
+            do (destructuring-bind (&key version applied-at) db-version
+                 (loop while (string< (migration-file-version (first files)) version)
+                       for file = (pop files)
+                       do (push (list :down :version (migration-file-version file) :file file)
+                                results))
+                 (if (string= version (migration-file-version (first files)))
+                     (push (list :up :version version :file (pop files))
+                           results)
+                     (push (list :up :version version) results))))
       (nconc (nreverse results)
-             (mapcar (lambda (file) (cons :down file)) files)))))
+             (mapcar (lambda (file)
+                       (list :down :version (migration-file-version file) :file file))
+                     files)))))
 
 (defun migration-status (directory)
   (initialize-migrations-table)
   (format t "~& Status   Migration ID~%--------------------------~%")
   (dolist (result (%migration-status directory))
-    (destructuring-bind (type . version) result
+    (destructuring-bind (type &key version file) result
       (ecase type
-        (:up   (format t "~&   up    "))
-        (:down (format t "~&  down   ")))
-      (etypecase version
-        (string format t " ~A   (NO FILE)~%" version)
-        (pathname (format t " ~A~%" (migration-file-version version)))))))
+        (:up   (format t "~&   up     ~A" version))
+        (:down (format t "~&  down    ~A" version)))
+      (etypecase file
+        (null (format t "   (NO FILE)~%"))
+        (pathname (format t "~%"))))))
 
 (defun migrate (directory &key dry-run)
   (let* ((current-version (current-migration-version))
