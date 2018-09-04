@@ -191,10 +191,11 @@
              (dolist (stmt (parse-statements content))
                (format t "~&-> ~A~%" stmt)
                (let ((mito.logger::*mito-logger-stream* nil))
-                 (execute-sql stmt)))))
-         (let ((version (migration-file-version (first (last sql-files)))))
+                 (execute-sql stmt))))
            (when current-version
-             (update-migration-version version))
+             (let ((version (migration-file-version file)))
+               (update-migration-version version))))
+         (let ((version (migration-file-version (first (last sql-files)))))
            (if dry-run
                (format t "~&No problems were found while migration.~%")
                (format t "~&Successfully updated to the version ~S.~%" version)))
