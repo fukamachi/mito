@@ -218,15 +218,16 @@
                   (retrieve-by-sql
                    (sxql:select :version
                      (sxql:from :schema_migrations)
-                     (sxql:order-by (:desc :version))))))
-        (file-versions (mapcar #'migration-file-version (migration-files directory :sort-by #'string>))))
+                     (sxql:order-by :version)))))
+        (file-versions (mapcar #'migration-file-version (migration-files directory))))
     (format t "~& Status   Migration ID~%--------------------------~%")
     (loop for db-version in db-versions
-          do (loop while (string< db-version (first file-versions))
-                   for version = (pop file-versions)
-                   do (format t "~&  down    ~A~%" version))
+          do (loop while (string< (first file-versions) db-version)
+                   do (pop file-versions))
              (if (string= db-version (first file-versions))
                  (progn
                    (pop file-versions)
                    (format t "~&   up     ~A~%" db-version))
-                 (format t "~&   up     ~A   (NO FILE)~%" db-version)))))
+                 (format t "~&   up     ~A   (NO FILE)~%" db-version)))
+    (loop for file-version in file-versions
+          do (format t "~&  down    ~A~%" file-version))))
