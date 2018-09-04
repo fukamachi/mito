@@ -393,6 +393,12 @@ Options:
     -f, --force                     Create a new empty migration file even when it's unnecessary.
 ```
 
+#### Example
+
+```
+mito --database postgres --username fukamachi --pasword c0mmon-l1sp
+```
+
 ### Inheritance and Mixin
 
 A subclass of DAO-CLASS is allowed to be inherited. This may be useful when you need classes which have similar columns:
@@ -474,15 +480,14 @@ Since `insert-dao`, `update-dao` and `delete-dao` are defined as generic functio
 
 ## Installation
 
-```
-$ mkdir -p ~/common-lisp
-$ cd ~/common-lisp
-$ git clone https://github.com/fukamachi/mito
-$ ros -L ~/common-lisp/mito/mito.asd install mito
-```
-
 ```common-lisp
 (ql:quickload :mito)
+```
+
+Or, with Roswell:
+
+```
+ros install mito
 ```
 
 ## See Also

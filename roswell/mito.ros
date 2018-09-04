@@ -93,7 +93,7 @@ Options:
           *default-migration-directory*))
 
 (defun main (&optional command &rest argv)
-  (unless (find command '("generate-migrations" "migrate") :test #'string=)
+  (unless (find command '("generate-migrations" "migrate" "migration-status") :test #'string=)
     (when command
       (format *error-output* "~&Invalid command: ~A~%" command))
     (print-usage)
@@ -104,6 +104,9 @@ Options:
         (error (e) (format *error-output* "~&~A~%" e) (uiop:quit -1)))
     (when (null (first connect-args))
       (format *error-output* "~&--type is required.~%")
+      (uiop:quit -1))
+    (unless (getf (cdr connect-args) :database-name)
+      (format *error-output* "~&--database is required.~%")
       (uiop:quit -1))
 
     (dolist (system systems)
