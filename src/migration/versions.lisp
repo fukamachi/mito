@@ -24,7 +24,8 @@
            #:current-migration-version
            #:update-migration-version
            #:generate-migrations
-           #:migrate))
+           #:migrate
+           #:migration-status))
 (in-package :mito.migration.versions)
 
 (defun schema-migrations-table-definition ()
@@ -166,12 +167,15 @@
                (every #'digit-char-p version))
       version)))
 
+(defun migration-files (base-directory &key (sort-by #'string<))
+  (sort (uiop:directory-files (merge-pathnames #P"migrations/" base-directory)
+                              "*.up.sql")
+        sort-by
+        :key #'pathname-name))
+
 (defun migrate (directory &key dry-run)
   (let* ((current-version (current-migration-version))
-         (sql-files (sort (uiop:directory-files (merge-pathnames #P"migrations/" directory)
-                                                "*.up.sql")
-                          #'string<
-                          :key #'pathname-name))
+         (sql-files (migration-files directory))
          (schema.sql (merge-pathnames #P"schema.sql" directory))
          (sql-files-to-apply
            (if current-version
@@ -205,3 +209,24 @@
        (format t "~&Version ~S is up to date.~%" current-version))
       (t
        (format t "~&Nothing to migrate.~%")))))
+
+(defun migration-status (directory)
+  (initialize-migrations-table)
+  (let ((db-versions
+          (mapcar (lambda (row)
+                    (getf row :version))
+                  (retrieve-by-sql
+                   (sxql:select :version
+                     (sxql:from :schema_migrations)
+                     (sxql:order-by (:desc :version))))))
+        (file-versions (mapcar #'migration-file-version (migration-files directory :sort-by #'string>))))
+    (format t "~& Status   Migration ID~%--------------------------~%")
+    (loop for db-version in db-versions
+          do (loop while (string< db-version (first file-versions))
+                   for version = (pop file-versions)
+                   do (format t "~&  down    ~A~%" version))
+             (if (string= db-version (first file-versions))
+                 (progn
+                   (pop file-versions)
+                   (format t "~&   up     ~A~%" db-version))
+                 (format t "~&   up     ~A   (NO FILE)~%" db-version)))))
