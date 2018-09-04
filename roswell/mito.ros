@@ -78,6 +78,7 @@ exec ros -Q -- $0 "$@"
 Commands:
     generate-migrations
     migrate
+    migration-status
 
 Options:
     -t, --type DRIVER-TYPE          DBI driver type (one of \"mysql\", \"postgres\" or \"sqlite3\")
@@ -123,7 +124,9 @@ Options:
             ("generate-migrations"
              (mito.migration:generate-migrations directory :force force))
             ("migrate"
-             (mito.migration:migrate directory :dry-run dry-run))))
+             (mito.migration:migrate directory :dry-run dry-run))
+            ("migration-status"
+             (mito.migration:migration-status directory))))
       (dbi:<dbi-database-error> (e)
         (format *error-output* "~&~A~%" e)
         (uiop:quit -1)))))

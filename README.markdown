@@ -380,6 +380,7 @@ Usage: mito command [option...]
 Commands:
     generate-migrations
     migrate
+    migration-status
 
 Options:
     -t, --type DRIVER-TYPE          DBI driver type (one of "mysql", "postgres" or "sqlite3")
