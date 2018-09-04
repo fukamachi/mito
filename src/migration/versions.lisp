@@ -73,12 +73,13 @@
 
 (defun current-migration-version ()
   (initialize-migrations-table)
-  (getf (first (retrieve-by-sql
-                (sxql:select :version
-                  (sxql:from :schema_migrations)
-                  (sxql:order-by (:desc :version))
-                  (sxql:limit 1))))
-        :version))
+  (let ((row (first (retrieve-by-sql
+                     (sxql:select (:version :applied_at)
+                       (sxql:from :schema_migrations)
+                       (sxql:order-by (:desc :version))
+                       (sxql:limit 1))))))
+    (values (getf row :version)
+            (getf row :applied-at))))
 
 (defun update-migration-version (version)
   (execute-sql
@@ -214,36 +215,44 @@
         (pathname (format t "~%"))))))
 
 (defun migrate (directory &key dry-run)
-  (let* ((current-version (current-migration-version))
-         (schema.sql (merge-pathnames #P"schema.sql" directory))
-         (sql-files-to-apply
-           (if current-version
-               (mapcar #'cdr
-                       (remove :up
-                               (%migration-status directory)
-                               :key #'car))
-               (and (probe-file schema.sql)
-                    (list schema.sql)))))
-    (cond
-      (sql-files-to-apply
-       (dbi:with-transaction *connection*
-         (dolist (file sql-files-to-apply)
-           (format t "~&Applying '~A'...~%" file)
-           (let ((content (uiop:read-file-string file)))
-             (dolist (stmt (parse-statements content))
-               (format t "~&-> ~A~%" stmt)
-               (let ((mito.logger::*mito-logger-stream* nil))
-                 (execute-sql stmt))))
-           (when current-version
-             (let ((version (migration-file-version file)))
-               (update-migration-version version))))
-         (let ((version (migration-file-version (first (last sql-files-to-apply)))))
-           (if dry-run
-               (format t "~&No problems were found while migration.~%")
-               (format t "~&Successfully updated to the version ~S.~%" version)))
-         (when dry-run
-           (dbi:rollback *connection*))))
-      (current-version
-       (format t "~&Version ~S is up to date.~%" current-version))
-      (t
-       (format t "~&Nothing to migrate.~%")))))
+  (multiple-value-bind (current-version last-applied-at)
+      (current-migration-version)
+    (let ((schema.sql (merge-pathnames #P"schema.sql" directory))
+          (sql-files-to-apply
+            (if current-version
+                (if last-applied-at
+                    (mapcar #'cdr
+                            (remove :up
+                                    (%migration-status directory)
+                                    :key #'car))
+                    ;; XXX: for backward-compatibility (apply all non-applied files since e18d942ba0e556b1533d5a5ac5a9775e7c6abe93)
+                    (remove-if-not (lambda (version)
+                                     (and version
+                                          (string< current-version version)))
+                                   (migration-files directory)
+                                   :key #'migration-file-version))
+                (and (probe-file schema.sql)
+                     (list schema.sql)))))
+      (cond
+        (sql-files-to-apply
+         (dbi:with-transaction *connection*
+           (dolist (file sql-files-to-apply)
+             (format t "~&Applying '~A'...~%" file)
+             (let ((content (uiop:read-file-string file)))
+               (dolist (stmt (parse-statements content))
+                 (format t "~&-> ~A~%" stmt)
+                 (let ((mito.logger::*mito-logger-stream* nil))
+                   (execute-sql stmt))))
+             (when current-version
+               (let ((version (migration-file-version file)))
+                 (update-migration-version version))))
+           (let ((version (migration-file-version (first (last sql-files-to-apply)))))
+             (if dry-run
+                 (format t "~&No problems were found while migration.~%")
+                 (format t "~&Successfully updated to the version ~S.~%" version)))
+           (when dry-run
+             (dbi:rollback *connection*))))
+        (current-version
+         (format t "~&Version ~S is up to date.~%" current-version))
+        (t
+         (format t "~&Nothing to migrate.~%"))))))
