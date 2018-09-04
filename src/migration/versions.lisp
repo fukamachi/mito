@@ -173,17 +173,50 @@
         sort-by
         :key #'pathname-name))
 
+(defun %migration-status (directory)
+  (let ((db-versions
+          (mapcar (lambda (row)
+                    (getf row :version))
+                  (retrieve-by-sql
+                   (sxql:select :version
+                     (sxql:from :schema_migrations)
+                     (sxql:order-by :version)))))
+        (files (migration-files directory)))
+    (loop while (and files
+                     db-versions
+                     (string< (migration-file-version (first files)) (first db-versions)))
+          do (pop files))
+    (let (results)
+      (loop for db-version in db-versions
+            do (loop while (string< (migration-file-version (first files)) db-version)
+                     do (push (cons :down (pop files)) results))
+               (if (string= db-version (migration-file-version (first files)))
+                   (push (cons :up (pop files)) results)
+                   (push (cons :up db-version) results)))
+      (nconc (nreverse results)
+             (mapcar (lambda (file) (cons :down file)) files)))))
+
+(defun migration-status (directory)
+  (initialize-migrations-table)
+  (format t "~& Status   Migration ID~%--------------------------~%")
+  (dolist (result (%migration-status directory))
+    (destructuring-bind (type . version) result
+      (ecase type
+        (:up   (format t "~&   up    "))
+        (:down (format t "~&  down   ")))
+      (etypecase version
+        (string format t " ~A   (NO FILE)~%" version)
+        (pathname (format t " ~A~%" (migration-file-version version)))))))
+
 (defun migrate (directory &key dry-run)
   (let* ((current-version (current-migration-version))
-         (sql-files (migration-files directory))
          (schema.sql (merge-pathnames #P"schema.sql" directory))
          (sql-files-to-apply
            (if current-version
-               (remove-if-not (lambda (version)
-                                (and version
-                                     (string< current-version version)))
-                              sql-files
-                              :key #'migration-file-version)
+               (mapcar #'cdr
+                       (remove :up
+                               (%migration-status directory)
+                               :key #'car))
                (and (probe-file schema.sql)
                     (list schema.sql)))))
     (cond
@@ -199,7 +232,7 @@
            (when current-version
              (let ((version (migration-file-version file)))
                (update-migration-version version))))
-         (let ((version (migration-file-version (first (last sql-files)))))
+         (let ((version (migration-file-version (first (last sql-files-to-apply)))))
            (if dry-run
                (format t "~&No problems were found while migration.~%")
                (format t "~&Successfully updated to the version ~S.~%" version)))
@@ -209,29 +242,3 @@
        (format t "~&Version ~S is up to date.~%" current-version))
       (t
        (format t "~&Nothing to migrate.~%")))))
-
-(defun migration-status (directory)
-  (initialize-migrations-table)
-  (let ((db-versions
-          (mapcar (lambda (row)
-                    (getf row :version))
-                  (retrieve-by-sql
-                   (sxql:select :version
-                     (sxql:from :schema_migrations)
-                     (sxql:order-by :version)))))
-        (file-versions (mapcar #'migration-file-version (migration-files directory))))
-    (format t "~& Status   Migration ID~%--------------------------~%")
-    (loop while (and file-versions
-                     db-versions
-                     (string< (first file-versions) (first db-versions)))
-          do (pop file-versions))
-    (loop for db-version in db-versions
-          do (loop while (string< (first file-versions) db-version)
-                   do (format t "~&  down    ~A~%" (pop file-versions)))
-             (if (string= db-version (first file-versions))
-                 (progn
-                   (pop file-versions)
-                   (format t "~&   up     ~A~%" db-version))
-                 (format t "~&   up     ~A   (NO FILE)~%" db-version)))
-    (loop for file-version in file-versions
-          do (format t "~&  down    ~A~%" file-version))))
