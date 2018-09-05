@@ -189,11 +189,11 @@
     (let (results)
       (loop for db-version in db-versions
             do (destructuring-bind (&key version applied-at) db-version
-                 (loop while (string< (migration-file-version (first files)) version)
+                 (loop while (and files (string< (migration-file-version (first files)) version))
                        for file = (pop files)
                        do (push (list :down :version (migration-file-version file) :file file)
                                 results))
-                 (if (string= version (migration-file-version (first files)))
+                 (if (and files (string= version (migration-file-version (first files))))
                      (push (list :up :version version :file (pop files))
                            results)
                      (push (list :up :version version) results))))
@@ -221,7 +221,8 @@
            (sql-files-to-apply
              (if current-version
                  (if last-applied-at
-                     (mapcar #'cdr
+                     (mapcar (lambda (result)
+                               (getf (cdr result) :file))
                              (remove :up
                                      (%migration-status directory)
                                      :key #'car))
