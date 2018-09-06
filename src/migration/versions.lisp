@@ -183,7 +183,7 @@
 (defun %migration-status (directory)
   (let ((db-versions
           (retrieve-by-sql
-           (sxql:select (:version :applied_at)
+           (sxql:select (:version)
              (sxql:from :schema_migrations)
              (sxql:order-by :version))))
         (files (migration-files directory)))
@@ -194,7 +194,7 @@
           do (pop files))
     (let (results)
       (loop for db-version in db-versions
-            do (destructuring-bind (&key version applied-at) db-version
+            do (destructuring-bind (&key version) db-version
                  (loop while (and files (string< (migration-file-version (first files)) version))
                        for file = (pop files)
                        do (push (list :down :version (migration-file-version file) :file file)
