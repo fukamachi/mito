@@ -73,11 +73,17 @@
 
 (defun current-migration-version ()
   (initialize-migrations-table)
-  (let ((row (first (retrieve-by-sql
-                     (sxql:select (:version :applied_at)
-                       (sxql:from :schema_migrations)
-                       (sxql:order-by (:desc :version))
-                       (sxql:limit 1))))))
+  (let ((row (first (or (handler-case (retrieve-by-sql
+                                       (sxql:select (:version :applied_at)
+                                         (sxql:from :schema_migrations)
+                                         (sxql:order-by (:desc :version))
+                                         (sxql:limit 1)))
+                          (dbi:<dbi-programming-error> () nil))
+                        (retrieve-by-sql
+                         (sxql:select (:version)
+                           (sxql:from :schema_migrations)
+                           (sxql:order-by (:desc :version))
+                           (sxql:limit 1)))))))
     (values (getf row :version)
             (getf row :applied-at))))
 
