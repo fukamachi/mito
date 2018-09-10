@@ -20,6 +20,8 @@
                 #:execute-sql
                 #:retrieve-by-sql
                 #:table-exists-p)
+  (:import-from #:cl-dbi
+                #:connection-driver-type)
   (:export #:all-migration-expressions
            #:current-migration-version
            #:update-migration-version
@@ -28,12 +30,17 @@
            #:migration-status))
 (in-package :mito.migration.versions)
 
-(defun schema-migrations-table-definition ()
-  (sxql:create-table (:schema_migrations :if-not-exists t)
-      ((version :type '(:varchar 255)
-                :primary-key t)
-       (applied_at :type :timestamptz
-                   :default (sxql.sql-type:make-sql-keyword "CURRENT_TIMESTAMP")))))
+(defun schema-migrations-table-definition (&optional (driver-type (connection-driver-type *connection*)))
+  ;; Add applied_at only for PostgreSQL because TIMESTAMPTZ is allowed.
+  (if (eq driver-type :postgres)
+      (sxql:create-table (:schema_migrations :if-not-exists t)
+        ((version :type '(:varchar 255)
+                  :primary-key t)
+         (applied_at :type :timestamptz
+                     :default (sxql.sql-type:make-sql-keyword "CURRENT_TIMESTAMP"))))
+      (sxql:create-table (:schema_migrations :if-not-exists t)
+        ((version :type '(:varchar 255)
+                  :primary-key t)))))
 
 (defun initialize-migrations-table ()
   (check-connected)
