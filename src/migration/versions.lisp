@@ -189,10 +189,16 @@
 
 (defun %migration-status (directory)
   (let ((db-versions
-          (retrieve-by-sql
-           (sxql:select (:version)
-             (sxql:from :schema_migrations)
-             (sxql:order-by :version))))
+          (or (handler-case (retrieve-by-sql
+                             (sxql:select (:version)
+                               (sxql:from :schema_migrations)
+                               (sxql:where (:not-null :applied_at))
+                               (sxql:order-by :version)))
+                (dbi:<dbi-programming-error> () nil))
+              (retrieve-by-sql
+               (sxql:select (:version)
+                            (sxql:from :schema_migrations)
+                            (sxql:order-by :version)))))
         (files (migration-files directory)))
     (loop while (and files
                      db-versions
