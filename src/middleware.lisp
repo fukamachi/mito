@@ -10,6 +10,8 @@
 
 (defparameter *lack-middleware-mito*
   (lambda (app db-config)
-    (lambda (env)
-      (let ((mito:*connection* (apply #'dbi:connect-cached db-config)))
-        (funcall app env)))))
+    (if db-config
+        (lambda (env)
+          (let ((mito:*connection* (apply #'dbi:connect-cached db-config)))
+            (funcall app env)))
+        app)))
