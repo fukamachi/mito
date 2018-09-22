@@ -10,7 +10,9 @@
   :depends-on (:mito-core
                :mito-migration
                :cl-reexport)
-  :components ((:file "src/mito"))
+  :serial t
+  :components ((:file "src/mito")
+               (:file "src/middleware"))
   :description "Abstraction layer for DB schema"
   :long-description
   #.(with-open-file (stream (merge-pathnames
