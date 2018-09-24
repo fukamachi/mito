@@ -76,9 +76,9 @@ As Mito's dao table class is defined as a CLOS metaclass, you can define a table
 
 It's quite clear how to use since its grammar is same as `cl:defclass`. However, the definition is a little bit redundant.
 
-`mito:deftable` is a thin macro to define a table class.
+`mito:deftable` is a thin macro to define a table class with less typing.
 
-For example, the above example equivalents to the following definition which uses `deftable`.
+For example, the above example can be rewritten like the following definition by using `deftable`.
 
 ```common-lisp
 (mito:deftable user ()
