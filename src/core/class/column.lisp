@@ -60,9 +60,17 @@
   (:method ((column table-column-class))
     (unlispify (symbol-name-literally (c2mop:slot-definition-name column)))))
 
-(defmethod initialize-instance :around ((class table-column-class) &rest initargs)
-  (declare (ignore initargs))
-  (let ((class (call-next-method)))
+(defmethod initialize-instance :around ((class table-column-class) &rest rest-initargs
+                                        &key name initargs ghost
+                                        &allow-other-keys)
+
+  (when (and (not ghost)
+             (not (find (symbol-name name) initargs :test #'string=)))
+    ;; Add the default initarg.
+    (push (intern (symbol-name name) :keyword)
+          (getf rest-initargs :initargs)))
+
+  (let ((class (apply #'call-next-method class rest-initargs)))
     (unless (slot-boundp class 'col-type)
       (if (or (ghost-slot-p class)
               (slot-value class 'references))

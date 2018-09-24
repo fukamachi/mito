@@ -12,6 +12,8 @@
            #:deflate-for-col-type))
 (in-package :mito.dao.column)
 
+(defparameter *conc-name* nil)
+
 (defclass dao-table-column-class (table-column-class)
   ((inflate :type (or function null)
             :initarg :inflate)
@@ -19,13 +21,14 @@
             :initarg :deflate)))
 
 (defmethod initialize-instance :around ((object dao-table-column-class) &rest rest-initargs
-                                        &key name initargs ghost inflate deflate
+                                        &key name readers writers inflate deflate
                                         &allow-other-keys)
-  (when (and (not ghost)
-             (not (find (symbol-name name) initargs :test #'string=)))
-    ;; Add the default initarg.
-    (push (intern (symbol-name name) :keyword)
-          (getf rest-initargs :initargs)))
+  (when *conc-name*
+    (let ((accessor (intern (format nil "~A~A" *conc-name* name) (symbol-package name))))
+      (pushnew accessor readers)
+      (pushnew `(setf ,accessor) writers)
+      (setf (getf rest-initargs :readers) readers)
+      (setf (getf rest-initargs :writers) writers)))
 
   (when inflate
     (setf (getf rest-initargs :inflate) (eval inflate)))
