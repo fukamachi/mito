@@ -23,27 +23,17 @@ Should work fine with MySQL, PostgreSQL and SQLite3 on SBCL/Clozure CL.
 (mito:connect-toplevel :mysql :database-name "myapp" :username "fukamachi" :password "c0mon-1isp")
 ;=> #<DBD.MYSQL:<DBD-MYSQL-CONNECTION> {100691BFF3}>
 
-(defclass user ()
-  ((name :col-type (:varchar 64)
-         :initarg :name
-         :accessor user-name)
-   (email :col-type (or (:varchar 128) :null)
-          :initarg :email
-          :accessor user-email))
-  (:metaclass mito:dao-table-class))
+(mito:deftable user ()
+  ((name :col-type (:varchar 64))
+   (email :col-type (or (:varchar 128) :null))))
 ;=> #<MITO.DAO.TABLE:DAO-TABLE-CLASS COMMON-LISP-USER::USER>
 
 (mito:table-definition 'user)
 ;=> (#<SXQL-STATEMENT: CREATE TABLE user (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(64) NOT NULL, email VARCHAR(128))>)
 
-(defclass tweet ()
-  ((status :col-type :text
-           :initarg :status
-           :accessor tweet-status)
-   (user :col-type user
-         :initarg :user
-         :accessor tweet-user))
-  (:metaclass mito:dao-table-class))
+(mito:deftable tweet ()
+  ((status :col-type :text)
+   (user :col-type user)))
 ;=> #<MITO.DAO.TABLE:DAO-TABLE-CLASS COMMON-LISP-USER::TWEET>
 
 (mito:table-definition 'tweet)
@@ -71,6 +61,47 @@ If you want to use a connection lexically, just bind it:
     (dbi:disconnect mito:*connection*)))
 ```
 
+### deftable macro
+
+As Mito's dao table class is defined as a CLOS metaclass, you can define a table class like this:
+
+```common-lisp
+(defclass user ()
+  ((name :col-type (:varchar 64)
+         :accessor user-name)
+   (email :col-type (or (:varchar 128) :null)
+          :accessor user-email))
+  (:metaclass mito:dao-table-class))
+```
+
+It's quite clear how to use since its grammar is same as `cl:defclass`. However, the definition is a little bit redundant.
+
+`mito:deftable` is a thin macro to define a table class.
+
+For example, the above example equivalents to the following definition which uses `deftable`.
+
+```common-lisp
+(mito:deftable user ()
+  ((name :col-type (:varchar 64))
+   (email :col-type (or (:varchar 128) :null))))
+```
+
+It adds `:metaclass mito:dao-table-class` and adds the default accessors which starts with `<class-name>-` by default like `defstruct`.
+
+You can change the accessors prefix with `:conc-name` class option:
+
+```common-lisp
+(mito:deftable user ()
+  ((name :col-type (:varchar 64))
+   (email :col-type (or (:varchar 128) :null)))
+  (:conc-name my-))
+
+(my-name (make-instance 'user :name "fukamachi"))
+;=> "fukamachi"
+```
+
+If `:conc-name` is NIL, it never adds the default accessors.
+
 ### Class Definitions
 
 In Mito, you can define a class which corresponds to a database table by specifying `(:metaclass mito:dao-table-class)`.
@@ -78,10 +109,8 @@ In Mito, you can define a class which corresponds to a database table by specify
 ```common-lisp
 (defclass user ()
   ((name :col-type (:varchar 64)
-         :initarg :name
          :accessor user-name)
    (email :col-type (or (:varchar 128) :null)
-          :initarg :email
           :accessor user-email))
   (:metaclass mito:dao-table-class))
 ```
@@ -108,10 +137,12 @@ col-type ::= { keyword |
 class-option ::= {:primary-key symbol*} |
                  {:unique-keys {symbol | (symbol*)}*} |
                  {:keys {symbol | (symbol*)}*} |
-                 {:table-name table-name}
-                 {:auto-pk auto-pk-mixin-class-name}
-                 {:record-timestamps boolean}
+                 {:table-name table-name} |
+                 {:auto-pk auto-pk-mixin-class-name} |
+                 {:record-timestamps boolean} |
+                 {:conc-name conc-name}
 auto-pk-mixin-class-name ::= {:serial | :uuid}
+conc-name ::= {null | string-designator}
 ```
 
 Note the class automatically adds some slots -- a primary key named `id` if there's no primary keys, `created_at` and `updated_at` for recording timestamps. To disable these behaviors, specify `:auto-pk nil` or `:record-timestamps nil` to defclass forms.
@@ -207,24 +238,14 @@ Use `select-dao` to build custom queries with sxql (examples below).
 To define a relationship, use `:references` at the slot:
 
 ```common-lisp
-(defclass user ()
-  ((name :col-type (:varchar 64)
-         :initarg :name
-         :accessor user-name)
-   (email :col-type (or (:varchar 128) :null)
-          :initarg :email
-          :accessor user-email))
-  (:metaclass mito:dao-table-class))
+(mito:deftable user ()
+  ((name :col-type (:varchar 64))
+   (email :col-type (or (:varchar 128) :null))))
 
-(defclass tweet ()
-  ((status :col-type :text
-           :initarg :status
-           :accessor tweet-status)
+(mito:deftable tweet ()
+  ((status :col-type :text)
    ;; This slot refers to USER class
-   (user-id :references (user id)
-            :initarg :user-id
-            :accessor tweet-user-id))
-  (:metaclass mito:dao-table-class))
+   (user-id :references (user id))))
 
 ;; The :col-type of USER-ID column is retrieved from the foreign class.
 (table-definition (find-class 'tweet))
@@ -240,15 +261,10 @@ To define a relationship, use `:references` at the slot:
 You can also specify another foreign class at `:col-type` for defining a relationship:
 
 ```common-lisp
-(defclass tweet ()
-  ((status :col-type :text
-           :initarg :status
-           :accessor tweet-status)
+(mito:deftable tweet ()
+  ((status :col-type :text)
    ;; This slot refers to USER class
-   (user :col-type user
-         :initarg :user
-         :accessor tweet-user))
-  (:metaclass mito:dao-table-class))
+   (user :col-type user)))
 
 (table-definition (find-class 'tweet))
 ;=> (#<SXQL-STATEMENT: CREATE TABLE tweet (
@@ -275,21 +291,15 @@ Mito doesn't add foreign key constraints for refering tables since I'm not sure 
 Inflation/Deflation is a function to convert values between Mito and RDBMS.
 
 ```common-lisp
-(defclass user-report ()
-  ((title :col-type (:varchar 100)
-          :initarg :title
-          :accessor report-title)
+(mito:deftable user-report ()
+  ((title :col-type (:varchar 100))
    (body :col-type :text
-         :initarg :body
-         :initform ""
-         :accessor report-body)
+         :initform "")
    (reported-at :col-type :timestamp
-                :initarg :reported-at
                 :initform (local-time:now)
-                :accessor report-reported-at
                 :inflate #'local-time:universal-to-timestamp
                 :deflate #'local-time:timestamp-to-universal))
-  (:metaclass mito:dao-table-class))
+  (:conc-name report-))
 ```
 
 ### Eager loading
@@ -349,14 +359,9 @@ To prevent this performance issue, add `includes` to the above query which only 
 (mito:migration-expressions 'user)
 ;=> NIL
 
-(defclass user ()
-  ((name :col-type (:varchar 64)
-         :initarg :name
-         :accessor user-name)
-   (email :col-type (:varchar 128)
-          :initarg :email
-          :accessor user-email))
-  (:metaclass mito:dao-table-class)
+(mito:deftable user ()
+  ((name :col-type (:varchar 64))
+   (email :col-type (:varchar 128)))
   (:unique-keys email))
 
 (mito:migration-expressions 'user)
@@ -404,21 +409,13 @@ mito --database postgres --username fukamachi --pasword c0mmon-l1sp
 A subclass of DAO-CLASS is allowed to be inherited. This may be useful when you need classes which have similar columns:
 
 ```common-lisp
-(defclass user ()
-  ((name :col-type (:varchar 64)
-         :initarg :name
-         :accessor user-name)
-   (email :col-type (:varchar 128)
-          :initarg :email
-          :accessor user-email))
-  (:metaclass mito:dao-table-class)
+(mito:deftable user ()
+  ((name :col-type (:varchar 64))
+   (email :col-type (:varchar 128)))
   (:unique-keys email))
 
-(defclass temporary-user (user)
-  ((registered-at :col-type :timestamp
-                  :initarg :registered-at
-                  :accessor temporary-user-registered-at))
-  (:metaclass mito:dao-table-class))
+(mito:deftable temporary-user (user)
+  ((registered-at :col-type :timestamp)))
 
 (mito:table-definition 'temporary-user)
 ;=> (#<SXQL-STATEMENT: CREATE TABLE temporary_user (
@@ -437,17 +434,13 @@ If you need a 'template' for tables which doesn't related to any database tables
 ```common-lisp
 (defclass has-email ()
   ((email :col-type (:varchar 128)
-          :initarg :email
           :accessor object-email))
   (:metaclass mito:dao-table-mixin)
   (:unique-keys email))
 ;=> #<MITO.DAO.MIXIN:DAO-TABLE-MIXIN COMMON-LISP-USER::HAS-EMAIL>
 
-(defclass user (has-email)
-  ((name :col-type (:varchar 64)
-         :initarg :name
-         :accessor user-name))
-  (:metaclass mito:dao-table-class))
+(mito:deftable user (has-email)
+  ((name :col-type (:varchar 64))))
 ;=> #<MITO.DAO.TABLE:DAO-TABLE-CLASS COMMON-LISP-USER::USER>
 
 (mito:table-definition 'user)

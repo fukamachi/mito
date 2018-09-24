@@ -52,7 +52,8 @@
                #:retrieve-dao
                #:count-dao
                #:recreate-table
-               #:ensure-table-exists))))
+               #:ensure-table-exists
+               #:deftable))))
 (in-package :mito.dao)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -378,3 +379,11 @@
       (when exists
         (execute-sql (sxql:drop-table (sxql:make-sql-symbol (table-name class)))))
       (mapc #'execute-sql (table-definition class)))))
+
+(defmacro deftable (name direct-superclasses direct-slots &rest options)
+  `(defclass ,name ,direct-superclasses
+     ,direct-slots
+     (:metaclass dao-table-class)
+     ,@(unless (find :conc-name options :key #'car)
+         `((:conc-name ,(intern (format nil "~A-" name) (symbol-package name)))))
+     ,@options))

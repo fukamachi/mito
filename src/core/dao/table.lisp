@@ -19,6 +19,7 @@
                 #:find-slot-by-name
                 #:find-child-columns)
   (:import-from #:mito.dao.column
+                #:*conc-name*
                 #:dao-table-column-class
                 #:dao-table-column-inflate)
   (:import-from #:mito.dao.mixin
@@ -171,7 +172,7 @@
      :test #'eq)))
 
 (defmethod initialize-instance :around ((class dao-table-class) &rest initargs
-                                        &key direct-superclasses &allow-other-keys)
+                                        &key direct-superclasses conc-name &allow-other-keys)
   (when (and (initargs-enables-record-timestamps initargs)
              (not (contains-class-or-subclasses 'record-timestamps-mixin direct-superclasses)))
     (setf (getf initargs :direct-superclasses)
@@ -195,12 +196,13 @@
                                                direct-superclasses))))
           (push (find-class auto-pk-class) (getf initargs :direct-superclasses))))))
 
-  (let ((class (apply #'call-next-method class initargs)))
-    (add-relational-readers class initargs)
-    class))
+  (let ((*conc-name* (first conc-name)))
+    (let ((class (apply #'call-next-method class initargs)))
+      (add-relational-readers class initargs)
+      class)))
 
 (defmethod reinitialize-instance :around ((class dao-table-class) &rest initargs
-                                                                    &key direct-superclasses &allow-other-keys)
+                                          &key direct-superclasses conc-name &allow-other-keys)
   (when (and (initargs-enables-record-timestamps initargs)
              (not (contains-class-or-subclasses 'record-timestamps-mixin direct-superclasses)))
     (setf (getf initargs :direct-superclasses)
@@ -221,9 +223,10 @@
                                                direct-superclasses))))
           (push (find-class auto-pk-class) (getf initargs :direct-superclasses))))))
 
-  (let ((class (apply #'call-next-method class initargs)))
-    (add-relational-readers class initargs)
-    class))
+  (let ((*conc-name* (first conc-name)))
+    (let ((class (apply #'call-next-method class initargs)))
+      (add-relational-readers class initargs)
+      class)))
 
 (defmethod c2mop:ensure-class-using-class :around ((class dao-table-class) name &rest keys
                                                    &key direct-superclasses &allow-other-keys)

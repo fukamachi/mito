@@ -39,7 +39,9 @@
                                       #:retrieve-dao
                                       #:count-dao
                                       #:recreate-table
-                                      #:ensure-table-exists))
+                                      #:ensure-table-exists
+
+                                      #:deftable))
 (cl-reexport:reexport-from :mito.db
                            :include '(#:execute-sql
                                       #:retrieve-by-sql))
