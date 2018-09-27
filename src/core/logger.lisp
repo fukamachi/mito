@@ -5,7 +5,8 @@
                 #:delete-from-plist)
   (:export #:*mito-logger-stream*
            #:with-sql-logging
-           #:trace-sql))
+           #:trace-sql
+           #:*trace-sql-hooks*))
 (in-package :mito.logger)
 
 (defvar *mito-logger-stream* nil)
@@ -46,7 +47,7 @@
           finally (return (when prev-stack
                             (stack-call prev-stack))))))
 
-(defun trace-sql (sql params &optional results)
+(defun default-trace-sql-hook (sql params results)
   (when *mito-logger-stream*
     (format *mito-logger-stream*
             "~&~<;; ~@; ~A (~{~S~^, ~}) [~D row~:P]~:[~;~:* | ~S~]~:>~%"
@@ -58,3 +59,9 @@
                           params)
                   (length results)
                   (get-prev-stack)))))
+
+(defvar *trace-sql-hooks* (list #'default-trace-sql-hook))
+
+(defun trace-sql (sql params &optional results)
+  (dolist (hook *trace-sql-hooks*)
+    (funcall hook sql params results)))
