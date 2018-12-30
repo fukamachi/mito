@@ -61,6 +61,8 @@ exec ros -Q -- $0 "$@"
                 (nconcf connect-args (list :username (pop args))))
                (("-p" "--password")
                 (nconcf connect-args (list :password (pop args))))
+               (("-H" "--host")
+                (nconcf connect-args (list :host (pop args))))
                (("-s" "--system")
                 (push (pop args) systems))
                (("-D" "--directory")
