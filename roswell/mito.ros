@@ -86,6 +86,8 @@ Commands:
 
 Options:
     -t, --type DRIVER-TYPE          DBI driver type (one of \"mysql\", \"postgres\" or \"sqlite3\")
+    -H, --host DATABASE-HOST        Database host to use (default is 127.0.0.1)
+    -P, --port DATABASE-PORT        Database port to use (default is depends on the driver type)
     -d, --database DATABASE-NAME    Database name to use
     -u, --username USERNAME         Username for RDBMS
     -p, --password PASSWORD         Password for RDBMS
