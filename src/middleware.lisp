@@ -1,7 +1,7 @@
 (defpackage #:mito.middleware
   (:nicknames #:lack.middleware.mito)
   (:use #:cl)
-  (:import-from #:mito
+  (:import-from #:mito.core
                 #:*connection*)
   (:import-from #:dbi
                 #:connect-cached)
@@ -12,6 +12,6 @@
   (lambda (app db-config)
     (if db-config
         (lambda (env)
-          (let ((mito:*connection* (apply #'dbi:connect-cached db-config)))
+          (let ((mito.core:*connection* (apply #'dbi:connect-cached db-config)))
             (funcall app env)))
         app)))

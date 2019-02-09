@@ -9,10 +9,9 @@
   :license "LLGPL"
   :depends-on (:mito-core
                :mito-migration
+               :mito-middleware
                :cl-reexport)
-  :serial t
-  :components ((:file "src/mito")
-               (:file "src/middleware"))
+  :components ((:file "src/mito"))
   :description "Abstraction layer for DB schema"
   :long-description
   #.(with-open-file (stream (merge-pathnames
