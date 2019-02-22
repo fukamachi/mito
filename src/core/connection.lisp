@@ -8,6 +8,7 @@
                 #:connection-driver-type)
   (:export #:*connection*
            #:driver-type
+           #:connection-database-name
            #:connected-p
            #:check-connected
            #:connect-toplevel
@@ -17,6 +18,10 @@
 (in-package :mito.connection)
 
 (defvar *connection*)
+
+(defun connection-database-name (&optional conn)
+  "Return the name of the current connection, or the one given as argument."
+  (dbi:connection-database-name (or conn *connection*)))
 
 (defun connected-p ()
   (and (boundp '*connection*)

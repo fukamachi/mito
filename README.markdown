@@ -61,6 +61,9 @@ If you want to use a connection lexically, just bind it:
     (dbi:disconnect mito:*connection*)))
 ```
 
+Use `connection-database-name` to get the name of the current
+connection, or of the one given as parameter.
+
 ### deftable macro
 
 As Mito's dao table class is defined as a CLOS metaclass, you can define a table class like this:
