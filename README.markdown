@@ -375,6 +375,12 @@ To prevent this performance issue, add `includes` to the above query which only 
 ;    #<SXQL-STATEMENT: CREATE UNIQUE INDEX unique_user_email ON user (email)>)
 ```
 
+#### Auto migrations
+
+If `mito:*auto-migration-mode*` is set to `t`, and
+given you are connected to a database, Mito will run migrations after
+a change to the model definitions.
+
 ### Schema versioning
 
 ```
