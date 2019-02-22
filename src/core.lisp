@@ -47,5 +47,6 @@
                                       #:retrieve-by-sql))
 (cl-reexport:reexport-from :mito.logger
                            :include '(#:*mito-logger-stream*
+                                      #:*mito-migration-logger-stream*
                                       #:*trace-sql-hooks*))
 (cl-reexport:reexport-from :mito.error)
