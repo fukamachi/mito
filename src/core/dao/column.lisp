@@ -24,11 +24,14 @@
                                         &key name readers writers inflate deflate
                                         &allow-other-keys)
   (when *conc-name*
-    (let ((accessor (intern (format nil "~A~A" *conc-name* name) (symbol-package name))))
-      (pushnew accessor readers)
-      (pushnew `(setf ,accessor) writers)
-      (setf (getf rest-initargs :readers) readers)
-      (setf (getf rest-initargs :writers) writers)))
+    (flet ((intern-proper-case (a b)
+             (intern (format nil "~:@(~a-~a~)" a b))))
+      (let ((accessor (intern-proper-case
+                       (format nil "~A~A" *conc-name* name) (symbol-package name))))
+        (pushnew accessor readers)
+        (pushnew `(setf ,accessor) writers)
+        (setf (getf rest-initargs :readers) readers)
+        (setf (getf rest-initargs :writers) writers))))
 
   (when inflate
     (setf (getf rest-initargs :inflate) (eval inflate)))

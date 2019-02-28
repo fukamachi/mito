@@ -38,7 +38,7 @@
 
 (defun rel-column-name (name pk-name)
   (intern
-   (format nil "~A-~A" name pk-name)
+   (format nil "~:@(~A-~A~)" name pk-name)
    (symbol-package name)))
 
 (defun add-referencing-slots (initargs)
