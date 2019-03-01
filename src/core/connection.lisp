@@ -16,11 +16,10 @@
            #:with-quote-char))
 (in-package :mito.connection)
 
-(defvar *connection*)
+(defvar *connection* nil)
 
 (defun connected-p ()
-  (and (boundp '*connection*)
-       (not (null *connection*))))
+  (not (null *connection*)))
 
 (defun check-connected ()
   (or (connected-p)
