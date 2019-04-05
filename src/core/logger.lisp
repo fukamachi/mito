@@ -4,6 +4,7 @@
   (:import-from #:alexandria
                 #:delete-from-plist)
   (:export #:*mito-logger-stream*
+           #:*mito-migration-logger-stream*
            #:with-sql-logging
            #:trace-sql
            #:*trace-sql-hooks*))
@@ -11,8 +12,11 @@
 
 (defvar *mito-logger-stream* nil)
 
+(defvar *mito-migration-logger-stream* (make-synonym-stream '*standard-output*)
+  "Stream to output sql generated during migrations.")
+
 (defmacro with-sql-logging (&body body)
-  `(let ((*mito-logger-stream* *standard-output*))
+  `(let ((*mito-logger-stream* *mito-migration-logger-stream*))
      ,@body))
 
 (defun get-prev-stack ()
