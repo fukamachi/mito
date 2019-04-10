@@ -4,7 +4,6 @@
         #:mito.util
         #:sxql)
   (:import-from #:dbi
-                #:prepare
                 #:execute
                 #:fetch
                 #:fetch-all)
@@ -15,17 +14,17 @@
 
 (defun table-info (conn table-name)
   (let* ((sql (format nil "PRAGMA table_info(\"~A\")" table-name)))
-    (or (dbi:fetch-all (dbi:execute (dbi:prepare conn sql)))
-        (error "Table \"~A\" doesn't exist." table-name))))
+    (with-prepared-query query (conn sql)
+      (or (dbi:fetch-all (dbi:execute query))
+          (error "Table \"~A\" doesn't exist." table-name)))))
 
 (defun last-insert-id (conn table-name)
   (declare (ignore table-name))
-  (getf (dbi:fetch
-         (dbi:execute
-          (dbi:prepare conn
-                       "SELECT last_insert_rowid() AS last_insert_id")))
-        :|last_insert_id|
-        0))
+  (with-prepared-query query (conn "SELECT last_insert_rowid() AS last_insert_id")
+    (getf (dbi:fetch
+           (dbi:execute query))
+          :|last_insert_id|
+          0)))
 
 (defun column-definitions (conn table-name)
   (labels ((column-primary-key-p (column)
@@ -60,28 +59,28 @@
                      (table-info conn table-name))))
 
 (defun table-indices (conn table-name)
-  (let ((primary-keys (table-primary-keys conn table-name))
-        (query (dbi:execute
-                (dbi:prepare conn (format nil "PRAGMA index_list(\"~A\")" table-name)))))
-    (append
-     (loop for index = (dbi:fetch query)
-           while index
-           collect
-           (let* ((columns (mapcar
-                            (lambda (info) (getf info :|name|))
-                            (dbi:fetch-all
-                             (dbi:execute (dbi:prepare conn (format nil "PRAGMA index_info(\"~A\")"
-                                                                    (getf index :|name|)))))))
-                  (unique-key (= (getf index :|unique|) 1))
-                  (primary-key (and unique-key
-                                    primary-keys
-                                    (equal columns primary-keys))))
-             (when primary-key
-               (setf primary-keys nil))
-             (list (getf index :|name|)
-                   :unique-key unique-key
-                   :primary-key primary-key
-                   :columns columns)))
-     (if primary-keys
-         (list (list "PRIMARY" :unique-key t :primary-key t :columns primary-keys))
-         nil))))
+  (let ((primary-keys (table-primary-keys conn table-name)))
+    (with-prepared-query query (conn (format nil "PRAGMA index_list(\"~A\")" table-name))
+      (append
+       (loop with results = (dbi:execute query)
+             for index = (dbi:fetch results)
+             while index
+             collect
+             (let* ((columns (mapcar
+                              (lambda (info) (getf info :|name|))
+                              (dbi:fetch-all
+                               (dbi:execute (dbi:prepare conn (format nil "PRAGMA index_info(\"~A\")"
+                                                                      (getf index :|name|)))))))
+                    (unique-key (= (getf index :|unique|) 1))
+                    (primary-key (and unique-key
+                                      primary-keys
+                                      (equal columns primary-keys))))
+               (when primary-key
+                 (setf primary-keys nil))
+               (list (getf index :|name|)
+                     :unique-key unique-key
+                     :primary-key primary-key
+                     :columns columns)))
+       (if primary-keys
+           (list (list "PRIMARY" :unique-key t :primary-key t :columns primary-keys))
+           nil)))))

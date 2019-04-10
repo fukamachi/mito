@@ -4,7 +4,6 @@
         #:sxql
         #:mito.util)
   (:import-from #:dbi
-                #:prepare
                 #:execute
                 #:fetch
                 #:fetch-all)
@@ -16,36 +15,37 @@
 
 (defun last-insert-id (conn table-name serial-key-name)
   (handler-case
-      (getf (dbi:fetch
-             (dbi:execute
-              (dbi:prepare conn
-                           (format nil "SELECT currval(pg_get_serial_sequence('~A', '~A')) AS last_insert_id"
-                                   table-name
-                                   serial-key-name))))
-            :|last_insert_id|
-            0)
+      (with-prepared-query query
+          (conn (format nil
+                        "SELECT currval(pg_get_serial_sequence('~A', '~A')) AS last_insert_id"
+                        table-name
+                        serial-key-name))
+        (getf (dbi:fetch
+               (dbi:execute query))
+              :|last_insert_id|
+              0))
     (dbi:<dbi-error> () 0)))
 
 (defun get-serial-keys (conn table-name)
   (remove-if-not
    (lambda (column)
-     (let ((seq (getf
-                 (first
-                  (dbi:fetch-all
-                   (dbi:execute
-                    (dbi:prepare conn
-                                 (format nil "SELECT pg_get_serial_sequence('~A', '~A')" table-name column)))))
-                 :|pg_get_serial_sequence|)))
-       (if (eq seq :null)
-           nil
-           seq)))
-   (mapcar (lambda (row)
-             (getf row :|column_name|))
-           (dbi:fetch-all
-            (dbi:execute
-             (dbi:prepare conn
-                          (format nil "SELECT column_name FROM information_schema.columns WHERE table_name = '~A'"
-                                  table-name)))))))
+     (with-prepared-query query
+         (conn (format nil "SELECT pg_get_serial_sequence('~A', '~A')" table-name column))
+       (let ((seq (getf
+                   (first
+                    (dbi:fetch-all
+                     (dbi:execute query)))
+                   :|pg_get_serial_sequence|)))
+         (if (eq seq :null)
+             nil
+             seq))))
+   (with-prepared-query query
+       (conn (format nil "SELECT column_name FROM information_schema.columns WHERE table_name = '~A'"
+                     table-name))
+     (mapcar (lambda (row)
+               (getf row :|column_name|))
+             (dbi:fetch-all
+              (dbi:execute query))))))
 
 (defun column-definitions (conn table-name)
   (let* ((serial-keys (get-serial-keys conn table-name))
@@ -64,78 +64,79 @@
                         ~%    AND c.relname = '~A'~
                         ~%    AND f.attnum > 0~
                         ~%    AND f.atttypid != 0~
-                        ~%ORDER BY f.attnum, p.contype" table-name))
-         (query (dbi:execute (dbi:prepare conn sql)))
-         (definitions
-           (delete-duplicates
-            (loop for column = (dbi:fetch query)
-                  while column
-                  collect (list (getf column :|name|)
-                                :type (getf column :|type|)
-                                :auto-increment (not (null (member (getf column :|name|)
-                                                                   serial-keys
-                                                                   :test #'string=)))
-                                :primary-key (getf column :|primary|)
-                                :not-null (or (getf column :|primary|)
-                                              (getf column :|notnull|))))
-            :key #'car
-            :test #'string=
-            :from-end t)))
-    ;; Set :primary-key NIL if there's a composite primary key.
-    (if (< 1 (count-if (lambda (def)
-                         (getf (cdr def) :primary-key))
-                       definitions))
-        (mapc (lambda (def)
-                (setf (getf (cdr def) :primary-key) nil))
-              definitions)
-        definitions)))
+                        ~%ORDER BY f.attnum, p.contype" table-name)))
+    (with-prepared-query query (conn sql)
+      (let ((definitions
+              (delete-duplicates
+               (loop with results = (dbi:execute query)
+                     for column = (dbi:fetch results)
+                     while column
+                     collect (list (getf column :|name|)
+                                   :type (getf column :|type|)
+                                   :auto-increment (not (null (member (getf column :|name|)
+                                                                      serial-keys
+                                                                      :test #'string=)))
+                                   :primary-key (getf column :|primary|)
+                                   :not-null (or (getf column :|primary|)
+                                                 (getf column :|notnull|))))
+               :key #'car
+               :test #'string=
+               :from-end t)))
+        ;; Set :primary-key NIL if there's a composite primary key.
+        (if (< 1 (count-if (lambda (def)
+                             (getf (cdr def) :primary-key))
+                           definitions))
+            (mapc (lambda (def)
+                    (setf (getf (cdr def) :primary-key) nil))
+                  definitions)
+            definitions)))))
 
 (defun table-indices (conn table-name)
-  (let ((query (dbi:execute (dbi:prepare conn
-                                         (format nil
-                                                 "SELECT~
-                                                ~%    i.relname AS index_name,~
-                                                ~%    ARRAY(~
-                                                ~%        SELECT pg_get_indexdef(ix.indexrelid, k + 1, TRUE)~
-                                                ~%        FROM~
-                                                ~%          generate_subscripts(ix.indkey, 1) AS k~
-                                                ~%        ORDER BY k~
-                                                ~%    ) AS column_names,~
-                                                ~%    ix.indisunique AS is_unique,~
-                                                ~%    ix.indisprimary AS is_primary~
-                                                ~%FROM~
-                                                ~%    pg_class t,~
-                                                ~%    pg_class i,~
-                                                ~%    pg_index ix,~
-                                                ~%    pg_attribute a~
-                                                ~%WHERE~
-                                                ~%    t.oid = ix.indrelid~
-                                                ~%    and i.oid = ix.indexrelid~
-                                                ~%    and a.attrelid = t.oid~
-                                                ~%    and a.attnum = ANY(ix.indkey)~
-                                                ~%    and t.relkind = 'r'~
-                                                ~%    and t.relname = '~A'~
-                                                ~%GROUP BY~
-                                                ~%    t.relname, i.relname, ix.indexrelid, ix.indkey, ix.indisunique, ix.indisprimary~
-                                                ~%ORDER BY t.relname, i.relname" table-name)))))
-    (mapcar #'(lambda (plist)
-                (destructuring-bind (&key |index_name| |column_names| |is_unique| |is_primary|) plist
-                  (list |index_name|
-                        :unique-key |is_unique|
-                        :primary-key |is_primary|
-                        :columns (map 'list (lambda (column)
-                                              (if (and (char= (aref column 0) #\")
-                                                       (char= (aref column (1- (length column))) #\"))
-                                                  (read-from-string column)
-                                                  column))
-                                      |column_names|))))
-            (dbi:fetch-all query))))
+  (with-prepared-query query (conn (format nil
+                                           "SELECT~
+                                          ~%    i.relname AS index_name,~
+                                          ~%    ARRAY(~
+                                          ~%        SELECT pg_get_indexdef(ix.indexrelid, k + 1, TRUE)~
+                                          ~%        FROM~
+                                          ~%          generate_subscripts(ix.indkey, 1) AS k~
+                                          ~%        ORDER BY k~
+                                          ~%    ) AS column_names,~
+                                          ~%    ix.indisunique AS is_unique,~
+                                          ~%    ix.indisprimary AS is_primary~
+                                          ~%FROM~
+                                          ~%    pg_class t,~
+                                          ~%    pg_class i,~
+                                          ~%    pg_index ix,~
+                                          ~%    pg_attribute a~
+                                          ~%WHERE~
+                                          ~%    t.oid = ix.indrelid~
+                                          ~%    and i.oid = ix.indexrelid~
+                                          ~%    and a.attrelid = t.oid~
+                                          ~%    and a.attnum = ANY(ix.indkey)~
+                                          ~%    and t.relkind = 'r'~
+                                          ~%    and t.relname = '~A'~
+                                          ~%GROUP BY~
+                                          ~%    t.relname, i.relname, ix.indexrelid, ix.indkey, ix.indisunique, ix.indisprimary~
+                                          ~%ORDER BY t.relname, i.relname" table-name))
+    (let ((results (dbi:execute query)))
+      (mapcar #'(lambda (plist)
+                  (destructuring-bind (&key |index_name| |column_names| |is_unique| |is_primary|) plist
+                    (list |index_name|
+                          :unique-key |is_unique|
+                          :primary-key |is_primary|
+                          :columns (map 'list (lambda (column)
+                                                (if (and (char= (aref column 0) #\")
+                                                         (char= (aref column (1- (length column))) #\"))
+                                                    (read-from-string column)
+                                                    column))
+                                        |column_names|))))
+              (dbi:fetch-all results)))))
 
 (defun table-view-query (conn table-name)
-  (let ((query (dbi:execute (dbi:prepare conn
-                                         (format nil "SELECT pg_get_viewdef('~A'::regclass) AS def" table-name)))))
-    (string-right-trim
-     '(#\Space #\;)
-     (string-left-trim
-      '(#\Space)
-      (getf (first (dbi:fetch-all query)) :|def|)))))
+  (with-prepared-query query (conn (format nil "SELECT pg_get_viewdef('~A'::regclass) AS def" table-name))
+    (let ((results (dbi:execute query)))
+      (string-right-trim
+       '(#\Space #\;)
+       (string-left-trim
+        '(#\Space)
+        (getf (first (dbi:fetch-all results)) :|def|))))))

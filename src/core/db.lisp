@@ -9,11 +9,11 @@
   (:import-from #:mito.logger
                 #:trace-sql)
   (:import-from #:mito.util
-                #:lispify)
+                #:lispify
+                #:with-prepared-query)
   (:import-from #:dbi
                 #:connection-driver-type
                 #:do-sql
-                #:prepare
                 #:execute
                 #:fetch-all)
   (:import-from #:sxql
@@ -97,9 +97,10 @@
             (sxql:where (:and (:= :name table-name)
                               (:= :type "table")))
             (sxql:limit 1)))))
-    (and (dbi:fetch-all
-          (apply #'dbi:execute (dbi:prepare conn sql) binds))
-         t)))
+    (with-prepared-query query (conn sql)
+      (and (dbi:fetch-all
+            (apply #'dbi:execute query binds))
+           t))))
 
 (defgeneric execute-sql (sql &optional binds)
   (:method :before (sql &optional binds)
@@ -151,24 +152,25 @@
     (declare (ignore sql binds))
     (check-connected))
   (:method ((sql string) &key binds)
-    (let* ((results
-             (dbi:fetch-all
-              (apply #'dbi:execute (dbi:prepare *connection* sql)
-                     binds)))
-           (results
-             (loop for result in results
-                   collect
-                   (loop for (k v) on result by #'cddr
-                         collect (lispify k)
-                         collect (cond ((eq v :null) nil)
-                                       ((and v (listp v))
-                                        (list-convert-nulls-to-nils v))
-                                       ((arrayp v)
-                                        (array-convert-nulls-to-nils v))
-                                       (t v))))))
+    (with-prepared-query query (*connection* sql)
+      (let* ((results
+               (dbi:fetch-all
+                (apply #'dbi:execute query
+                       binds)))
+             (results
+               (loop for result in results
+                     collect
+                     (loop for (k v) on result by #'cddr
+                           collect (lispify k)
+                           collect (cond ((eq v :null) nil)
+                                         ((and v (listp v))
+                                          (list-convert-nulls-to-nils v))
+                                         ((arrayp v)
+                                          (array-convert-nulls-to-nils v))
+                                         (t v))))))
 
-      (trace-sql sql binds results)
-      results))
+        (trace-sql sql binds results)
+        results)))
   (:method ((sql sql-statement) &key binds)
     (declare (ignore binds))
     (with-quote-char
