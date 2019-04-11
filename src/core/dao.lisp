@@ -319,7 +319,7 @@
                (let ((,results (select-by-sql ,class ,sql)))
                  (dolist (,foreign-class ,include-classes)
                    (include-foreign-objects ,foreign-class ,results))
-                 ,results))))))))
+                 (values ,results ,sql)))))))))
 
 (defun where-and (fields-and-values class)
   (when fields-and-values
