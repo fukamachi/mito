@@ -2,13 +2,17 @@
 (defpackage mito.util
   (:use #:cl)
   (:import-from #:closer-mop)
+  (:import-from #:dbi
+                #:prepare
+                #:free-query-resources)
   (:export #:group-by-plist
            #:list-diff
            #:lispify
            #:unlispify
            #:symbol-name-literally
            #:contains-class-or-subclasses
-           #:ensure-class))
+           #:ensure-class
+           #:with-prepared-query))
 (in-package :mito.util)
 
 (defun group-by-plist (plists &key key (test #'equal))
@@ -110,3 +114,12 @@ Note this can be applied for a list of string-designators."
   (etypecase class-or-class-name
     (symbol (find-class class-or-class-name))
     (standard-class class-or-class-name)))
+
+(defun call-with-prepared-query (conn sql thunk)
+  (let ((query (dbi:prepare conn sql)))
+    (unwind-protect
+         (funcall thunk query)
+      (dbi:free-query-resources query))))
+
+(defmacro with-prepared-query (query (conn sql) &body body)
+  `(call-with-prepared-query ,conn ,sql (lambda (,query) ,@body)))
