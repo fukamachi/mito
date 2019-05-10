@@ -339,7 +339,8 @@
                                                                    (c2mop:slot-definition-name
                                                                     (table-column-references-column child)))))))))
                     else
-                      collect `(:= ,(unlispify field) ,value))))
+                      collect `(:= ,(unlispify field)
+                                   ,(dao-table-column-deflate slot value)))))
       (when op
         (sxql:where `(:and ,@op))))))
 

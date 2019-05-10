@@ -4,7 +4,10 @@
         #:prove
         #:mito.dao
         #:mito.connection
-        #:mito-test.util))
+        #:mito-test.util)
+  (:import-from #:alexandria
+                #:make-keyword
+                #:compose))
 (in-package :mito-test.dao)
 
 (plan nil)
@@ -265,22 +268,34 @@
              :initarg :name)
        (is-admin :col-type :boolean
                  :initform nil
-                 :initarg :is-admin))
+                 :initarg :is-admin)
+       (role :col-type (:varchar 12)
+             :initarg :role
+             :deflate #'string-downcase
+             :inflate (compose #'make-keyword #'string-upcase)))
       (:metaclass dao-table-class))
     (mito:execute-sql
      (sxql:drop-table :user :if-exists t))
     (mito:ensure-table-exists 'user)
 
     (let ((mito:*mito-logger-stream* t))
-      (mito:create-dao 'user :name "Admin User A" :is-admin t)
-      (mito:create-dao 'user :name "User B" :is-admin nil)
+      (mito:create-dao 'user
+                       :name "Admin User A"
+                       :is-admin t
+                       :role :manager)
+      (mito:create-dao 'user
+                       :name "User B"
+                       :is-admin nil
+                       :role :end-user)
 
       (let ((user (mito:find-dao 'user :id 1)))
         (is (slot-value user 'is-admin) t)
         (is-type (mito:object-created-at user) 'local-time:timestamp))
       (let ((user (mito:find-dao 'user :id 2)))
         (is (slot-value user 'is-admin) nil)
-        (is-type (mito:object-created-at user) 'local-time:timestamp)))
+        (is-type (mito:object-created-at user) 'local-time:timestamp))
+      (let ((user (mito:find-dao 'user :role :manager)))
+        (ok user)))
     (disconnect-toplevel)))
 
 (subtest "timestamp with milliseconds (PostgreSQL)"
