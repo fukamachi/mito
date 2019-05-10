@@ -242,7 +242,9 @@ To define a relationship, use `:references` at the slot:
 
 ```common-lisp
 (mito:deftable user ()
-  ((name :col-type (:varchar 64))
+  ((id :col-type (:varchar 36)
+       :primary-key t)
+   (name :col-type (:varchar 64))
    (email :col-type (or (:varchar 128) :null))))
 
 (mito:deftable tweet ()
@@ -251,14 +253,14 @@ To define a relationship, use `:references` at the slot:
    (user-id :references (user id))))
 
 ;; The :col-type of USER-ID column is retrieved from the foreign class.
-(table-definition (find-class 'tweet))
+(mito:table-definition (find-class 'tweet))
 ;=> (#<SXQL-STATEMENT: CREATE TABLE tweet (
-;        id BIGSERIAL NOT NULL PRIMARY KEY,
-;        status TEXT NOT NULL,
-;        user_id BIGINT NOT NULL,
-;        created_at TIMESTAMP,
-;        updated_at TIMESTAMP
-;    )>)
+;       id BIGSERIAL NOT NULL PRIMARY KEY,
+;       status TEXT NOT NULL,
+;       user_id VARCHAR(36) NOT NULL,
+;       created_at TIMESTAMPTZ,
+;       updated_at TIMESTAMPTZ
+;   )>)
 ```
 
 You can also specify another foreign class at `:col-type` for defining a relationship:
@@ -269,11 +271,11 @@ You can also specify another foreign class at `:col-type` for defining a relatio
    ;; This slot refers to USER class
    (user :col-type user)))
 
-(table-definition (find-class 'tweet))
+(mito:table-definition (find-class 'tweet))
 ;=> (#<SXQL-STATEMENT: CREATE TABLE tweet (
 ;        id BIGSERIAL NOT NULL PRIMARY KEY,
 ;        status TEXT NOT NULL,
-;        user_id BIGINT NOT NULL,
+;        user_id VARCHAR(36) NOT NULL,
 ;        created_at TIMESTAMP,
 ;        updated_at TIMESTAMP
 ;    )>)
