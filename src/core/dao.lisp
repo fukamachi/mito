@@ -46,6 +46,7 @@
                #:delete-by-values
                #:save-dao
                #:select-dao
+               #:select-by-sql
                #:includes
                #:include-foreign-objects
                #:find-dao
@@ -191,10 +192,10 @@
         (update-dao obj)
         (insert-dao obj))))
 
-(defun select-by-sql (class sql)
+(defun select-by-sql (class sql &key binds)
   (mapcar (lambda (result)
             (apply #'make-dao-instance class result))
-          (retrieve-by-sql sql)))
+          (retrieve-by-sql sql :binds binds)))
 
 (defun include-foreign-objects (foreign-class records)
   (when records
