@@ -61,6 +61,15 @@ If you want to use a connection lexically, just bind it:
     (dbi:disconnect mito:*connection*)))
 ```
 
+In most cases `dbi:connect-cached` is a better option since it's reusing a connection for each threads.
+
+```common-lisp
+(let ((mito:*connection* (dbi:connect-cached :sqlite3 :database-name #P"/tmp/myapp.db")))
+  (unwind-protect (progn ...)
+    ;; Ensure that the connection is closed.
+    ))
+```
+
 Use `connection-database-name` to get the name of the current
 connection, or of the one given as parameter.
 
