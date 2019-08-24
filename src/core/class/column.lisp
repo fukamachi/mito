@@ -64,8 +64,7 @@
                                         &key name initargs ghost
                                         &allow-other-keys)
 
-  (when (and (not ghost)
-             (not (find (symbol-name name) initargs :test #'string=)))
+  (unless (find (symbol-name name) initargs :test #'string=)
     ;; Add the default initarg.
     (push (intern (symbol-name name) :keyword)
           (getf rest-initargs :initargs)))
