@@ -103,7 +103,10 @@
        (error "Unexpected value for boolean column: ~S" value)))))
 
 (defvar *db-datetime-format*
-  '((:year 4) #\- (:month 2) #\- (:day 2) #\Space (:hour 2) #\: (:min 2) #\: (:sec 2) #\. (:nsec 9) :gmt-offset-or-z))
+  '((:year 4) #\- (:month 2) #\- (:day 2) #\Space (:hour 2) #\: (:min 2) #\: (:sec 2) #\. (:usec 6) :gmt-offset-or-z))
+
+(defvar *db-datetime-format-with-out-timezone*
+  '((:year 4) #\- (:month 2) #\- (:day 2) #\Space (:hour 2) #\: (:min 2) #\: (:sec 2) #\. (:usec 6)))
 
 (defvar *db-date-format*
   '((:year 4) #\- (:month 2) #\- (:day 2)))
@@ -117,25 +120,15 @@
   (:method ((col-type (eql :datetime)) value)
     (etypecase value
       (integer
-       (local-time:format-timestring nil (local-time:universal-to-timestamp value)
-                                     :format *db-datetime-format*
-                                     :timezone local-time:+gmt-zone+))
+        (local-time:universal-to-timestamp value))
       (local-time:timestamp
-       (local-time:format-timestring nil value
-                                     :format *db-datetime-format*
-                                     :timezone local-time:+gmt-zone+))
+        value)
       (string value)
       (null nil)))
   (:method ((col-type (eql :date)) value)
     (etypecase value
-      (integer
-       (local-time:format-timestring nil (local-time:universal-to-timestamp value)
-                                     :format *db-date-format*
-                                     :timezone local-time:+gmt-zone+))
       (local-time:timestamp
-       (local-time:format-timestring nil value
-                                     :format *db-date-format*
-                                     :timezone local-time:+gmt-zone+))
+        value)
       (string value)
       (null nil)))
   (:method ((col-type (eql :timestamp)) value)

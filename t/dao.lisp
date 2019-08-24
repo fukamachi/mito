@@ -151,6 +151,7 @@
       (slot-makunbound (first tweets) 'user)
       ;; related foreign object is nil
       (is (tweet-user (first tweets)) nil)
+      (slot-makunbound (first tweets) 'user)
       (setf (tweet-status (first tweets)) "Hello, World")
 
       ;; can update

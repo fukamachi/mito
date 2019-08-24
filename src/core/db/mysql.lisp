@@ -28,7 +28,9 @@
 
 (defun table-indices (conn table-name)
   (with-prepared-query query
-      (conn (format nil "SELECT index_name, column_name, non_unique
+      (conn (format nil
+                    ;; Ensure the field names are downcased
+                    "SELECT index_name AS index_name, column_name AS column_name, non_unique AS non_unique
                      FROM information_schema.statistics
                      WHERE table_schema = '~A'
                        AND table_name = '~A'
@@ -49,6 +51,12 @@
                               :key :|index_name|
                               :test #'string=)))))
 
+(defun ensure-string (val)
+  (etypecase val
+    ((vector (unsigned-byte 8))
+     (map 'string #'code-char val))
+    (string val)))
+
 (defun column-definitions (conn table-name)
   (let ((sql (format nil "SHOW FULL FIELDS FROM `~A`" table-name)))
     (with-prepared-query query (conn sql)
@@ -57,7 +65,7 @@
                (loop for column = (dbi:fetch results)
                      while column
                      collect (list (getf column :|Field|)
-                                   :type (getf column :|Type|)
+                                   :type (ensure-string (getf column :|Type|))
                                    :auto-increment (string= (getf column :|Extra|) "auto_increment")
                                    :primary-key (string= (getf column :|Key|) "PRI")
                                    :not-null (or (string= (getf column :|Key|) "PRI")
