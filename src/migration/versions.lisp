@@ -153,9 +153,7 @@
                                 (mapcar #'sxql:yield (table-definition class)))
                               (all-dao-classes)))
               (format out "~2&~A;~%"
-                      (sxql:yield (schema-migrations-table-definition))))
-            (format out "~&INSERT INTO schema_migrations (version) VALUES ('~A');~%"
-                    version))
+                      (sxql:yield (schema-migrations-table-definition)))))
           (format t "~&Successfully generated: ~A~%" destination)
           destination)
         (progn
@@ -253,7 +251,12 @@
            (when current-version
              (let ((version (migration-file-version file)))
                (update-migration-version version))))
-         (let ((version (migration-file-version (first (last sql-files-to-apply)))))
+         (let ((version (migration-file-version
+                          (first (last (if current-version
+                                           sql-files-to-apply
+                                           (migration-files directory)))))))
+           (unless current-version
+             (update-migration-version version))
            (if dry-run
                (format t "~&No problems were found while migration.~%")
                (format t "~&Successfully updated to the version ~S.~%" version)))
