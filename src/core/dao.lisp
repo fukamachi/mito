@@ -414,5 +414,5 @@
      ,direct-slots
      (:metaclass dao-table-class)
      ,@(unless (find :conc-name options :key #'car)
-               `((:conc-name ,(intern (format nil "~@:(~A~)" name) (symbol-package name)))))
+               `((:conc-name ,(intern (format nil "~@:(~A-~)" name) (symbol-package name)))))
      ,@options))
