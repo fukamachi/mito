@@ -7,7 +7,7 @@
                 #:connection-quote-character
                 #:check-connected)
   (:import-from #:mito.logger
-                #:trace-sql)
+                #:with-trace-sql)
   (:import-from #:mito.util
                 #:lispify
                 #:with-prepared-query)
@@ -107,15 +107,14 @@
     (declare (ignore sql binds))
     (check-connected))
   (:method ((sql string) &optional binds)
-    (trace-sql sql binds)
-    (apply #'dbi:do-sql *connection* sql binds))
+    (with-trace-sql
+      (apply #'dbi:do-sql *connection* sql binds)))
   (:method ((sql sql-statement) &optional binds)
     (declare (ignore binds))
     (with-quote-char
       (multiple-value-bind (sql binds)
           (sxql:yield sql)
-        (trace-sql sql binds)
-        (apply #'dbi:do-sql *connection* sql binds)))))
+        (with-trace-sql (apply #'dbi:do-sql *connection* sql binds))))))
 
 (defun array-convert-nulls-to-nils (results-array)
   (let ((darray (make-array (array-total-size results-array)
@@ -155,8 +154,8 @@
     (with-prepared-query query (*connection* sql)
       (let* ((results
                (dbi:fetch-all
-                (apply #'dbi:execute query
-                       binds)))
+                (with-trace-sql
+                  (apply #'dbi:execute query binds))))
              (results
                (loop for result in results
                      collect
@@ -169,7 +168,6 @@
                                           (array-convert-nulls-to-nils v))
                                          (t v))))))
 
-        (trace-sql sql binds results)
         results)))
   (:method ((sql sql-statement) &key binds)
     (declare (ignore binds))
