@@ -25,8 +25,10 @@
                (typecase call
                  (symbol call)
                  (cons
-                  (when (eq (first call) :method)
-                    (second call))))))
+                   (case (first call)
+                     (:method (second call))
+                     (lambda nil)
+                     (otherwise (second call)))))))
            #+sbcl
            (sbcl-package-p (package)
              (let ((name (package-name package)))
@@ -36,25 +38,24 @@
                (let ((package (symbol-package call)))
                  (or #+sbcl (sbcl-package-p package)
                      (find (package-name package)
-                           '(:common-lisp :mito.logger)
+                           '(:common-lisp :mito.logger :mito.db :mito.dao :mito.util)
                            :test #'string=)))))
            (users-stack-p (stack)
              (let ((call (stack-call stack)))
                (and call
-                    (not (system-call-p call))))))
+                    (or (not (symbolp call))
+                        (not (system-call-p call)))))))
 
     (loop with prev-stack = nil
-          repeat 5
+          repeat 10
           for stack in (dissect:stack)
           when (users-stack-p stack)
-            do (setf prev-stack stack)
-          finally (return (when prev-stack
-                            (stack-call prev-stack))))))
+            do (return (stack-call stack)))))
 
 (defun default-trace-sql-hook (sql params results)
   (when *mito-logger-stream*
     (format *mito-logger-stream*
-            "~&~<;; ~@; ~A (~{~S~^, ~}) [~D row~:P]~:[~;~:* | ~S~]~:>~%"
+            "~&~<;; ~@;~A (~{~S~^, ~}) [~D row~:P]~:[~;~:* | ~S~]~:>~%"
             (list sql
                   (mapcar (lambda (param)
                             (if (typep param '(simple-array (unsigned-byte 8) (*)))
