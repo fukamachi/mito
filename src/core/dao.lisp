@@ -95,15 +95,18 @@
       (t 1)
       ('nil 0)))
   (:method ((driver-type (eql :mysql)) (col-type (eql :datetime)) value)
-    (local-time:format-timestring nil value
-                                  :format *db-datetime-format-without-timezone*))
+    (when value
+      (local-time:format-timestring nil value
+                                    :format *db-datetime-format-without-timezone*)))
   (:method (driver-type (col-type (eql :datetime)) value)
-    (local-time:format-timestring nil value
-                                  :format *db-datetime-format*
-                                  :timezone local-time:+gmt-zone+))
+    (when value
+      (local-time:format-timestring nil value
+                                    :format *db-datetime-format*
+                                    :timezone local-time:+gmt-zone+)))
   (:method (driver-type (col-type (eql :date)) value)
-    (local-time:format-timestring nil value
-                                  :format *db-date-format*))
+    (when value
+      (local-time:format-timestring nil value
+                                    :format *db-date-format*)))
   (:method (driver-type (col-type (eql :timestamp)) value)
     (convert-for-driver-type driver-type :datetime value))
   (:method (driver-type (col-type (eql :timestamptz)) value)
