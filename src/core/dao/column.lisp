@@ -26,7 +26,7 @@
   (when *conc-name*
     (let ((accessor (intern
                       (format nil "~:@(~A~A~)" *conc-name* name)
-                      (symbol-package name))))
+                      *package*)))
       (pushnew accessor readers)
       (pushnew `(setf ,accessor) writers)
       (setf (getf rest-initargs :readers) readers)
