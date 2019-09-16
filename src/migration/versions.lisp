@@ -251,10 +251,12 @@
            (when current-version
              (let ((version (migration-file-version file)))
                (update-migration-version version))))
-         (let ((version (migration-file-version
-                          (first (last (if current-version
-                                           sql-files-to-apply
-                                           (migration-files directory)))))))
+         (let* ((latest-migration-file (first (last (if current-version
+                                                        sql-files-to-apply
+                                                        (migration-files directory)))))
+                (version (if latest-migration-file
+                             (migration-file-version latest-migration-file)
+                             (generate-version))))
            (unless current-version
              (update-migration-version version))
            (if dry-run
