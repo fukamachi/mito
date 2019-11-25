@@ -343,8 +343,8 @@
              (flet ((includes (&rest classes)
                       (setf ,include-classes (mapcar #'ensure-class classes))
                       nil)
-                    (related (&rest classes)
-                      (setf ,related-classes (mapcar #'ensure-class classes))
+                    (related (class &key key)
+                      (push (list (ensure-class class) key) ,related-classes)
                       nil))
                (dolist (,clause (list ,@clauses))
                  (when ,clause
@@ -359,11 +359,12 @@
     (dolist (foreign-class include-classes)
       (include-foreign-objects foreign-class records))
     (let ((place (make-array (length related-classes))))
-      (loop :for related-class :in related-classes
+      (loop :for (related-class key) :in related-classes
             :for i :from 0
             :do (setf (aref place i)
                       (mapcar (lambda (result)
-                                (apply #'make-dao-instance related-class result))
+                                (when (getf result key)
+                                  (apply #'make-dao-instance related-class result)))
                               results)))
       (values records sql place))))
 
