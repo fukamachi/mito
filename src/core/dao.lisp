@@ -49,6 +49,7 @@
                #:select-by-sql
                #:includes
                #:include-foreign-objects
+               #:related
                #:find-dao
                #:retrieve-dao
                #:count-dao
@@ -327,7 +328,7 @@
       (otherwise object))))
 
 (defmacro select-dao (class &body clauses)
-  (with-gensyms (sql clause results include-classes foreign-class)
+  (with-gensyms (sql clause include-classes related-classes)
     (once-only (class)
       `(progn
          (setf ,class (ensure-class ,class))
@@ -335,19 +336,36 @@
                 (,sql
                   (sxql:select :*
                     (sxql:from (sxql:make-sql-symbol (table-name ,class)))))
-                (,include-classes '()))
+                (,include-classes '())
+                (,related-classes '()))
            (macrolet ((where (expression)
                         `(sxql:make-clause :where ,(expand-op expression ',class))))
              (flet ((includes (&rest classes)
                       (setf ,include-classes (mapcar #'ensure-class classes))
+                      nil)
+                    (related (&rest classes)
+                      (setf ,related-classes (mapcar #'ensure-class classes))
                       nil))
                (dolist (,clause (list ,@clauses))
                  (when ,clause
                    (add-child ,sql ,clause)))
-               (let ((,results (select-by-sql ,class ,sql)))
-                 (dolist (,foreign-class ,include-classes)
-                   (include-foreign-objects ,foreign-class ,results))
-                 (values ,results ,sql)))))))))
+               (select-dao-aux ,class ,sql ,include-classes ,related-classes))))))))
+
+(defun select-dao-aux (class sql include-classes related-classes)
+  (let* ((results (retrieve-by-sql sql))
+         (records (mapcar (lambda (result)
+                            (apply #'make-dao-instance class result))
+                          results)))
+    (dolist (foreign-class include-classes)
+      (include-foreign-objects foreign-class records))
+    (let ((place (make-array (length related-classes))))
+      (loop :for related-class :in related-classes
+            :for i :from 0
+            :do (setf (aref place i)
+                      (mapcar (lambda (result)
+                                (apply #'make-dao-instance related-class result))
+                              results)))
+      (values records sql place))))
 
 (defun where-and (fields-and-values class)
   (when fields-and-values
