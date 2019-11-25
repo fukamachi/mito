@@ -35,6 +35,7 @@
                                       #:save-dao
                                       #:select-dao
                                       #:includes
+                                      #:related
                                       #:include-foreign-objects
                                       #:find-dao
                                       #:retrieve-dao
