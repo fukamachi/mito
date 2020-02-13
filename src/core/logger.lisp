@@ -26,7 +26,7 @@
                  (cons
                    (case (first call)
                      (:method (second call))
-                     (lambda nil)
+                     ((lambda flet labels) nil)
                      (otherwise (second call)))))))
            #+sbcl
            (sbcl-package-p (package)
