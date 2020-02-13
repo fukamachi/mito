@@ -1,7 +1,6 @@
 # Mito
 
-[![Build Status](https://travis-ci.org/fukamachi/mito.svg?branch=master)](https://travis-ci.org/fukamachi/mito)
-[![Coverage Status](https://coveralls.io/repos/fukamachi/mito/badge.svg?branch=master&service=github)](https://coveralls.io/github/fukamachi/mito?branch=master)
+[![Build Status](https://github.com/fukamachi/mito/workflows/CI/badge.svg)](https://github.com/fukamachi/mito/actions?query=workflow%3ACI)
 [![Quicklisp dist](http://quickdocs.org/badge/mito.svg)](http://quickdocs.org/mito/)
 
 Mito is yet another object relational mapper and it aims to be a successor of [Integral](https://github.com/fukamachi/integral).
