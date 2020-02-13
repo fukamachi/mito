@@ -3,7 +3,7 @@
   :author "Eitaro Fukamachi"
   :license "LLGPL"
   :depends-on ("mito-core"
-               "cl-dbi")
+               "dbi")
   :components ((:module "src"
                 :components
                 ((:file "middleware")))))
