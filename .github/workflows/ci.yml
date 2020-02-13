@@ -1,0 +1,19 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    name: ${{ matrix.lisp }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        lisp: [sbcl, ccl]
+
+    steps:
+      - uses: actions/checkout@v1
+      - name: Run tests
+        env:
+          LISP: ${{ matrix.lisp }}
+        run: |
+          docker-compose up --exit-code-from tests tests

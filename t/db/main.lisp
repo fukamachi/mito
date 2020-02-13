@@ -14,7 +14,7 @@
     (is (column-definitions conn "tweets")
         (ecase (dbi:connection-driver-type conn)
           (:mysql
-           '(("id" :type "int(11)" :auto-increment t :primary-key t :not-null t)
+           '(("id" :type "int" :auto-increment t :primary-key t :not-null t)
              ("status" :type "text" :auto-increment nil :primary-key nil  :not-null t)
              ("user" :type "varchar(64)" :auto-increment nil :primary-key nil :not-null t)))
           (:postgres
