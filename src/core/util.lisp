@@ -115,11 +115,15 @@ Note this can be applied for a list of string-designators."
     (symbol (find-class class-or-class-name))
     (standard-class class-or-class-name)))
 
-(defun call-with-prepared-query (conn sql thunk)
-  (let ((query (dbi:prepare conn sql)))
+(defun call-with-prepared-query (conn sql thunk &key use-prepare-cached)
+  (let ((query (funcall (if use-prepare-cached
+                            'dbi::prepare-cached
+                            #'dbi:prepare)
+                        conn sql)))
     (unwind-protect
          (funcall thunk query)
-      (dbi:free-query-resources query))))
+      (unless use-prepare-cached
+        (dbi:free-query-resources query)))))
 
-(defmacro with-prepared-query (query (conn sql) &body body)
-  `(call-with-prepared-query ,conn ,sql (lambda (,query) ,@body)))
+(defmacro with-prepared-query (query (conn sql &key use-prepare-cached) &body body)
+  `(call-with-prepared-query ,conn ,sql (lambda (,query) ,@body) :use-prepare-cached ,use-prepare-cached))
