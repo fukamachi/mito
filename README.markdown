@@ -3,7 +3,7 @@
 [![Build Status](https://github.com/fukamachi/mito/workflows/CI/badge.svg)](https://github.com/fukamachi/mito/actions?query=workflow%3ACI)
 [![Quicklisp dist](http://quickdocs.org/badge/mito.svg)](http://quickdocs.org/mito/)
 
-Mito is yet another object relational mapper and it aims to be a successor of [Integral](https://github.com/fukamachi/integral).
+Mito is yet another object relational mapper, and it aims to be a successor of [Integral](https://github.com/fukamachi/integral).
 
 * Supports MySQL, PostgreSQL and SQLite3
 * Adds `id` (serial/uuid primary key), `created_at` and `updated_at` by default like Ruby's ActiveRecord
@@ -12,9 +12,9 @@ Mito is yet another object relational mapper and it aims to be a successor of [I
 
 ## Warning
 
-This software is still ALPHA quality. The APIs will be likely to change.
+This software is still ALPHA quality. The APIs likely change.
 
-Should work fine with MySQL, PostgreSQL and SQLite3 on SBCL/Clozure CL.
+This software should work fine with MySQL, PostgreSQL and SQLite3 on SBCL/Clozure CL.
 
 ## Usage
 
@@ -41,17 +41,17 @@ Should work fine with MySQL, PostgreSQL and SQLite3 on SBCL/Clozure CL.
 
 ### Connecting to DB
 
-Mito provides a function `connect-toplevel` and `disconnect-toplevel` to establish a connection to RDBMS.
+Mito provides the functions `connect-toplevel` and `disconnect-toplevel` to establish and sever a connection to RDBMS.
 
-`connect-toplevel` takes the same arguments as `dbi:connect`, typically the driver-type, the database name to connect, user name and password.
+`connect-toplevel` takes the same arguments as `dbi:connect`: typically the driver-type, the database name to connect, user name and password.
 
 ```common-lisp
 (mito:connect-toplevel :mysql :database-name "myapp" :username "fukamachi" :password "c0mon-1isp")
 ```
 
-`connect-toplevel` sets `*connection*` the new connection and returns it.
+`connect-toplevel` sets `*connection*` to a new connection and returns it.
 
-If you want to use a connection lexically, just bind it:
+To use a connection lexically, just bind it:
 
 ```common-lisp
 (let ((mito:*connection* (dbi:connect :sqlite3 :database-name #P"/tmp/myapp.db")))
@@ -60,7 +60,7 @@ If you want to use a connection lexically, just bind it:
     (dbi:disconnect mito:*connection*)))
 ```
 
-In most cases `dbi:connect-cached` is a better option since it's reusing a connection for each threads.
+In most cases `dbi:connect-cached` is a better option, since it reuses a connection for multiple threads.
 
 ```common-lisp
 (let ((mito:*connection* (dbi:connect-cached :sqlite3 :database-name #P"/tmp/myapp.db")))
@@ -69,12 +69,11 @@ In most cases `dbi:connect-cached` is a better option since it's reusing a conne
     ))
 ```
 
-Use `connection-database-name` to get the name of the current
-connection, or of the one given as parameter.
+Use `connection-database-name` to get the name of the current connection, or of one named via parameter.
 
 ### deftable macro
 
-As Mito's dao table class is defined as a CLOS metaclass, you can define a table class like this:
+As Mito's dao table class is defined as a CLOS metaclass, a table class can be defined like this:
 
 ```common-lisp
 (defclass user ()
@@ -85,11 +84,11 @@ As Mito's dao table class is defined as a CLOS metaclass, you can define a table
   (:metaclass mito:dao-table-class))
 ```
 
-It's quite clear how to use since its grammar is same as `cl:defclass`. However, the definition is a little bit redundant.
+`deftable`'s syntax is the same as that of `cl:defclass`. However, the definition is a little bit redundant.
 
-`mito:deftable` is a thin macro to define a table class with less typing.
+`mito:deftable` is a thin macro, to allow definion of a table class with less typing.
 
-For example, the above example can be rewritten like the following definition by using `deftable`.
+For example, the above example can be rewritten, using `deftable` as follows.
 
 ```common-lisp
 (mito:deftable user ()
@@ -97,9 +96,9 @@ For example, the above example can be rewritten like the following definition by
    (email :col-type (or (:varchar 128) :null))))
 ```
 
-It adds `:metaclass mito:dao-table-class` and adds the default accessors which starts with `<class-name>-` by default like `defstruct`.
+It adds `:metaclass mito:dao-table-class`, and adds default accessors that start with `<class-name>-` by default, like `defstruct` does.
 
-You can change the accessors prefix with `:conc-name` class option:
+The prefix for accessors can be changed with the `:conc-name` class option:
 
 ```common-lisp
 (mito:deftable user ()
@@ -111,11 +110,11 @@ You can change the accessors prefix with `:conc-name` class option:
 ;=> "fukamachi"
 ```
 
-If `:conc-name` is NIL, it never adds the default accessors.
+If `:conc-name` is NIL, default accessors will NOT be defined.
 
 ### Class Definitions
 
-In Mito, you can define a class which corresponds to a database table by specifying `(:metaclass mito:dao-table-class)`.
+In Mito, a class corresponding to a database table is defined by specifying `(:metaclass mito:dao-table-class)`.
 
 ```common-lisp
 (defclass user ()
@@ -126,7 +125,7 @@ In Mito, you can define a class which corresponds to a database table by specify
   (:metaclass mito:dao-table-class))
 ```
 
-The above defines a Common Lisp normal class except that it allows additional options.
+The above defines a Common Lisp normal class, except that it allows additional options.
 
 ```
 (defclass {class-name} ()
@@ -156,7 +155,7 @@ auto-pk-mixin-class-name ::= {:serial | :uuid}
 conc-name ::= {null | string-designator}
 ```
 
-Note the class automatically adds some slots -- a primary key named `id` if there's no primary keys, `created_at` and `updated_at` for recording timestamps. To disable these behaviors, specify `:auto-pk nil` or `:record-timestamps nil` to defclass forms.
+Note: the class automatically adds some slots -- a primary key named `id` if there is no primary key, `created_at` and `updated_at` for recording timestamps. To disable these behaviors, specify `:auto-pk nil` or `:record-timestamps nil` to defclass forms.
 
 ```common-lisp
 (mito.class:table-column-slots (find-class 'user))
@@ -167,7 +166,7 @@ Note the class automatically adds some slots -- a primary key named `id` if ther
 ;    #<MITO.DAO.COLUMN:DAO-TABLE-COLUMN-CLASS MITO.DAO.MIXIN::UPDATED-AT>)
 ```
 
-The class inherits `mito:dao-class` implicitly.
+This class inherits `mito:dao-class` implicitly.
 
 ```common-lisp
 (find-class 'user)
@@ -177,7 +176,7 @@ The class inherits `mito:dao-class` implicitly.
 ;=> (#<STANDARD-CLASS MITO.DAO.TABLE:DAO-CLASS>)
 ```
 
-This may be useful when you define methods which can be applied for all table classes.
+This may be useful to define methods that can be applied for many or all table classes.
 
 ### Generating Table Definitions
 
@@ -246,7 +245,7 @@ Use `select-dao` to build custom queries with sxql (examples below).
 
 ### Relationship
 
-To define a relationship, use `:references` at the slot:
+To define a relationship, use `:references` on the slot:
 
 ```common-lisp
 (mito:deftable user ()
@@ -271,7 +270,7 @@ To define a relationship, use `:references` at the slot:
 ;   )>)
 ```
 
-You can also specify another foreign class at `:col-type` for defining a relationship:
+You can also specify another foreign class at `:col-type` to define a relationship:
 
 ```common-lisp
 (mito:deftable tweet ()
@@ -295,9 +294,9 @@ You can also specify another foreign class at `:col-type` for defining a relatio
 (mito:find-dao 'tweet :user *user*)
 ```
 
-The later example allows you to create/retrieve `TWEET` by a `USER` object, not a `USER-ID`.
+The latter example allows you to create/retrieve `TWEET` by a `USER` object, not a `USER-ID`.
 
-Mito doesn't add foreign key constraints for refering tables since I'm not sure it's still handful while using with ORMs.
+Mito doesn't add foreign key constraints for referring tables, since I'm not sure it's still handful while using with ORMs.
 
 ### Inflation/Deflation
 
@@ -317,7 +316,7 @@ Inflation/Deflation is a function to convert values between Mito and RDBMS.
 
 ### Eager loading
 
-One of the pains in the neck to use ORMs is "N+1 query" problem.
+One of the pains in the neck to use ORMs is the "N+1 query" problem.
 
 ```common-lisp
 ;; BAD EXAMPLE
@@ -334,9 +333,9 @@ One of the pains in the neck to use ORMs is "N+1 query" problem.
         *tweets-contain-japan*)
 ```
 
-This example sends a query to retrieve a user like "SELECT * FROM user WHERE id = ?" for each iterations.
+This example sends a query to retrieve a user, like "SELECT * FROM user WHERE id = ?" for each iteration.
 
-To prevent this performance issue, add `includes` to the above query which only sends a single WHERE IN query instead of N queries:
+To prevent this performance issue, add `includes` to the above query, which sends only a single WHERE IN query instead of N queries:
 
 ```common-lisp
 ;; GOOD EXAMPLE with eager loading
@@ -390,9 +389,8 @@ To prevent this performance issue, add `includes` to the above query which only 
 
 #### Auto migrations
 
-If `mito:*auto-migration-mode*` is set to `t`, and
-given you are connected to a database, Mito will run migrations after
-a change to the model definitions.
+If `mito:*auto-migration-mode*` is set to `t`, and you are connected to a database, Mito will run migrations after
+each change to model definitions.
 
 ### Schema versioning
 
@@ -425,7 +423,7 @@ mito --database postgres --username fukamachi --pasword c0mmon-l1sp
 
 ### Inheritance and Mixin
 
-A subclass of DAO-CLASS is allowed to be inherited. This may be useful when you need classes which have similar columns:
+A subclass of DAO-CLASS is allowed to be inherited. This may be useful when you need classes that have similar columns:
 
 ```common-lisp
 (mito:deftable user ()
@@ -448,7 +446,7 @@ A subclass of DAO-CLASS is allowed to be inherited. This may be useful when you 
 ;    )>)
 ```
 
-If you need a 'template' for tables which doesn't related to any database tables, you can use `DAO-TABLE-MIXIN`:
+If you need a 'template' for tables, not related to any specific database table, you can use `DAO-TABLE-MIXIN`:
 
 ```common-lisp
 (defclass has-email ()
@@ -478,7 +476,7 @@ If you need a 'template' for tables which doesn't related to any database tables
 
 ### Triggers
 
-Since `insert-dao`, `update-dao` and `delete-dao` are defined as generic functions, you can define `:before`, `:after` or `:around` methods to those.
+Since `insert-dao`, `update-dao` and `delete-dao` are defined as generic functions, you can define `:before`, `:after` or `:around` methods on those.
 
 ```common-lisp
 (defmethod mito:insert-dao :before ((object user))
