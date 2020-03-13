@@ -99,7 +99,7 @@
             (sxql:limit 1)))))
     (with-prepared-query query (conn sql)
       (and (dbi:fetch-all
-            (apply #'dbi:execute query binds))
+            (dbi:execute query binds))
            t))))
 
 (defgeneric execute-sql (sql &optional binds)
@@ -108,13 +108,13 @@
     (check-connected))
   (:method ((sql string) &optional binds)
     (with-trace-sql
-      (apply #'dbi:do-sql *connection* sql binds)))
+      (dbi:do-sql *connection* sql binds)))
   (:method ((sql sql-statement) &optional binds)
     (declare (ignore binds))
     (with-quote-char
       (multiple-value-bind (sql binds)
           (sxql:yield sql)
-        (with-trace-sql (apply #'dbi:do-sql *connection* sql binds))))))
+        (with-trace-sql (dbi:do-sql *connection* sql binds))))))
 
 (defun array-convert-nulls-to-nils (results-array)
   (let ((darray (make-array (array-total-size results-array)
@@ -155,7 +155,7 @@
       (let* ((results
                (dbi:fetch-all
                 (with-trace-sql
-                  (apply #'dbi:execute query binds))))
+                  (dbi:execute query binds))))
              (results
                (loop for result in results
                      collect
