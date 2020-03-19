@@ -19,15 +19,14 @@
   "Stream to output sql generated during migrations.")
 
 (defun get-prev-stack ()
-  (labels ((stack-call (stack)
-             (let ((call (dissect:call stack)))
-               (typecase call
-                 (symbol call)
-                 (cons
-                   (case (first call)
-                     (:method (second call))
-                     ((lambda flet labels) nil)
-                     (otherwise (second call)))))))
+  (labels ((normalize-call (call)
+             (typecase call
+               (symbol call)
+               (cons
+                 (case (first call)
+                   (:method (second call))
+                   ((lambda flet labels) nil)
+                   (otherwise (second call))))))
            #+sbcl
            (sbcl-package-p (package)
              (let ((name (package-name package)))
@@ -39,34 +38,38 @@
                      (find (package-name package)
                            '(:common-lisp :mito.logger :mito.db :mito.dao :mito.util :dbi.logger :dbi.driver)
                            :test #'string=)))))
-           (users-stack-p (stack)
-             (let ((call (stack-call stack)))
-               (and call
-                    (or (not (symbolp call))
-                        (not (system-call-p call)))))))
+           (users-call-p (call)
+             (and call
+                  (or (not (symbolp call))
+                      (not (system-call-p call))))))
 
     #+sbcl
     (do ((frame (sb-di:frame-down (sb-di:top-frame))
                 (sb-di:frame-down frame)))
         ((null frame))
-      (let ((stack (dissect::make-call frame)))
-        (when (users-stack-p stack)
-          (return (stack-call stack)))))
+      (multiple-value-bind (call args info)
+          (sb-debug::frame-call frame)
+        (let ((call (normalize-call call)))
+          (when (users-call-p call)
+            (return call)))))
     #+ccl
     (block nil
       (let ((i 0))
         (ccl:map-call-frames
           (lambda (pointer context)
-            (let ((stack (dissect::make-call i pointer context)))
-              (when (users-stack-p stack)
-                (return (stack-call stack))))
+            (let* ((call (ccl:frame-function pointer context))
+                   (call (normalize-call (or (ccl:function-name function) function))))
+              (when (users-call-p call)
+                (return call)))
             (incf i))
           :start-frame-number 1)))
     #-(or sbcl ccl)
     (loop with prev-stack = nil
           for stack in (dissect:stack)
-          when (users-stack-p stack)
-            do (return (stack-call stack)))))
+          for call = (let ((call (dissect:call stack)))
+                       (normalize-call call))
+          when (users-call-p call)
+          do (return call))))
 
 (defun mito-sql-logger (sql params row-count took-ms prev-stack)
   (when *mito-logger-stream*
