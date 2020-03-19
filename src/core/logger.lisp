@@ -45,6 +45,24 @@
                     (or (not (symbolp call))
                         (not (system-call-p call)))))))
 
+    #+sbcl
+    (do ((frame (sb-di:frame-down (sb-di:top-frame))
+                (sb-di:frame-down frame)))
+        ((null frame))
+      (let ((stack (dissect::make-call frame)))
+        (when (users-stack-p stack)
+          (return (stack-call stack)))))
+    #+ccl
+    (block nil
+      (let ((i 0))
+        (ccl:map-call-frames
+          (lambda (pointer context)
+            (let ((stack (dissect::make-call i pointer context)))
+              (when (users-stack-p stack)
+                (return (stack-call stack))))
+            (incf i))
+          :start-frame-number 1)))
+    #-(or sbcl ccl)
     (loop with prev-stack = nil
           for stack in (dissect:stack)
           when (users-stack-p stack)
