@@ -107,7 +107,7 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
             (sxql:limit 1)))))
     (with-prepared-query query (conn sql)
       (and (dbi:fetch-all
-            (apply #'dbi:execute query binds))
+            (dbi:execute query binds))
            t))))
 
 (defgeneric execute-sql (sql &optional binds)
@@ -118,9 +118,9 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
     (with-trace-sql
       (if *use-prepare-cached*
           (let ((query (funcall 'dbi::prepare-cached *connection* sql)))
-            (apply #'dbi:execute query binds)
+            (dbi:execute query binds)
             (query-row-count query))
-          (apply #'dbi:do-sql *connection* sql binds))))
+          (dbi:do-sql *connection* sql binds))))
   (:method ((sql sql-statement) &optional binds)
     (declare (ignore binds))
     (with-quote-char
@@ -167,7 +167,7 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
       (let* ((results
                (dbi:fetch-all
                 (with-trace-sql
-                  (apply #'dbi:execute query binds))))
+                  (dbi:execute query binds))))
              (results
                (loop for result in results
                      collect
