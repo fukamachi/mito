@@ -71,7 +71,7 @@
           when (users-call-p call)
           do (return call))))
 
-(defun mito-sql-logger (sql params row-count took-ms prev-stack)
+(defun mito-sql-logger (sql params row-count took-usec prev-stack)
   (when *mito-logger-stream*
     (format *mito-logger-stream*
             "~&~<;; ~@;~A (~{~S~^, ~}) ~@[[~D row~:P]~]~@[ (~Dms)~]~:[~;~:* | ~S~]~:>~%"
@@ -82,16 +82,16 @@
                                 param))
                           params)
                   row-count
-                  took-ms
+                  took-usec
                   prev-stack))))
 
 (defvar *trace-sql-hooks* (list #'mito-sql-logger))
 
-(defun trace-sql (sql params row-count took-ms)
+(defun trace-sql (sql params row-count took-usec)
   (when *trace-sql-hooks*
     (let ((prev-stack (get-prev-stack)))
       (dolist (hook *trace-sql-hooks*)
-        (funcall hook sql params row-count took-ms prev-stack)))))
+        (funcall hook sql params row-count took-usec prev-stack)))))
 
 (defmacro with-trace-sql (&body body)
   `(let ((dbi:*sql-execution-hooks* (cons #'trace-sql
