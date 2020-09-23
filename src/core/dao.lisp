@@ -139,7 +139,8 @@
   (:method :before ((obj record-timestamps-mixin))
     (let ((now (local-time:now)))
       (setf (object-created-at obj) now)
-      (setf (object-updated-at obj) now))))
+      (setf (object-updated-at obj) now)))
+  (:documentation "Insert the object OBJ into the DB."))
 
 (defgeneric create-dao (class &rest initargs)
   (:method ((class-name symbol) &rest initargs)
@@ -147,7 +148,20 @@
   (:method ((class dao-table-class) &rest initargs)
     (let ((obj (apply #'make-instance class initargs)))
       (setf (dao-synced obj) nil)
-      (save-dao obj))))
+      (save-dao obj)))
+  (:documentation "Create an object of class CLASS with INITARGS and save it into the DB.
+
+Example:
+
+(mito:create-dao 'user :name \"Eitaro Fukamachi\" :email \"e.arrows@gmail.com\")
+
+same as:
+
+(defvar me
+  (make-instance 'user :name \"Eitaro Fukamachi\" :email \"e.arrows@gmail.com\"))
+;=> USER
+
+(mito:insert-dao me)"))
 
 (defgeneric update-dao (obj &key columns)
   (:method ((obj dao-class) &key columns)
@@ -167,7 +181,8 @@
   (:method :before ((obj record-timestamps-mixin) &key columns)
     (declare (ignore columns))
     (let ((now (local-time:now)))
-      (setf (object-updated-at obj) now))))
+      (setf (object-updated-at obj) now)))
+  (:documentation "Update the object OBJ into the DB."))
 
 (defgeneric delete-dao (obj)
   (:method ((obj dao-class))
@@ -184,7 +199,8 @@
                                  `(:= ,(unlispify key) ,(slot-value obj key)))
                                primary-key)))))
         (setf (dao-synced obj) nil)))
-    (values)))
+    (values))
+  (:documentation "Delete the object OBJ from the DB."))
 
 (defgeneric delete-by-values (class &rest fields-and-values)
   (:method ((class symbol) &rest fields-and-values)
@@ -194,13 +210,16 @@
       (execute-sql
        (sxql:delete-from (sxql:make-sql-symbol (table-name class))
          (where-and fields-and-values class))))
-    (values)))
+    (values))
+  (:documentation "Delete the records of class CLASS matching FIELDS-AND-VALUES from the DB.
+For example: (mito:delete-by-values 'user :id 1)"))
 
 (defgeneric save-dao (obj)
   (:method ((obj dao-class))
     (if (dao-synced obj)
         (update-dao obj)
-        (insert-dao obj))))
+        (insert-dao obj)))
+  (:documentation "Save the object OBJ into the DB."))
 
 (defstruct mito-cursor
   cursor
@@ -342,6 +361,23 @@
 (defparameter *want-cursor* nil)
 
 (defmacro select-dao (class &body clauses)
+  "Build custom queries with SxQL.
+
+Example:
+
+  (select-dao 'tweet
+    (where (:like :status \"%Japan%\")))
+
+You can use \"includes\" to eagerly load another table and prevent the \"N+1 query\" performance problem.
+
+Example:
+
+  (defvar *tweets-contain-japan*
+    (select-dao 'tweet
+      (includes 'user)
+      (where (:like :status \"%Japan%\"))))
+
+See the SxQL documentation for the available clauses and operators."
   (with-gensyms (sql clause results include-classes foreign-class)
     (once-only (class)
       `(#+sb-package-locks locally #+sb-package-locks (declare (sb-ext:disable-package-locks sxql:where))
