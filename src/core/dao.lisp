@@ -167,7 +167,8 @@
   (:method :before ((obj record-timestamps-mixin))
     (let ((now (local-time:now)))
       (setf (object-created-at obj) now)
-      (setf (object-updated-at obj) now))))
+      (setf (object-updated-at obj) now)))
+  (:documentation "Insert the object OBJ into the DB."))
 
 (defgeneric create-dao (class &rest initargs)
   (:method ((class-name symbol) &rest initargs)
@@ -175,7 +176,8 @@
   (:method ((class dao-table-class) &rest initargs)
     (let ((obj (apply #'make-instance class initargs)))
       (setf (dao-synced obj) nil)
-      (save-dao obj))))
+      (save-dao obj)))
+  (:documentation "Create an object of class CLASS with INITARGS and save it into the DB."))
 
 (defgeneric update-dao (obj)
   (:method ((obj dao-class))
@@ -194,7 +196,8 @@
     (values))
   (:method :before ((obj record-timestamps-mixin))
     (let ((now (local-time:now)))
-      (setf (object-updated-at obj) now))))
+      (setf (object-updated-at obj) now)))
+  (:documentation "Update the object OBJ into the DB."))
 
 (defgeneric delete-dao (obj)
   (:method ((obj dao-class))
@@ -211,7 +214,8 @@
                                  `(:= ,(unlispify key) ,(slot-value obj key)))
                                primary-key)))))
         (setf (dao-synced obj) nil)))
-    (values)))
+    (values))
+  (:documentation "Delete the object OBJ from the DB."))
 
 (defgeneric delete-by-values (class &rest fields-and-values)
   (:method ((class symbol) &rest fields-and-values)
@@ -221,13 +225,16 @@
       (execute-sql
        (sxql:delete-from (sxql:make-sql-symbol (table-name class))
          (where-and fields-and-values class))))
-    (values)))
+    (values))
+  (:documentation "Delete the records of class CLASS matching FIELDS-AND-VALUES from the DB.
+For example: (mito:delete-by-values 'user :id 1)"))
 
 (defgeneric save-dao (obj)
   (:method ((obj dao-class))
     (if (dao-synced obj)
         (update-dao obj)
-        (insert-dao obj))))
+        (insert-dao obj)))
+  (:documentation "Save the object OBJ into the DB."))
 
 (defun select-by-sql (class sql &key binds)
   (mapcar (lambda (result)
