@@ -10,7 +10,8 @@
                 #:with-trace-sql)
   (:import-from #:mito.util
                 #:lispify
-                #:with-prepared-query)
+                #:with-prepared-query
+                #:execute-with-retry)
   (:import-from #:dbi
                 #:connection-driver-type
                 #:do-sql
@@ -107,7 +108,7 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
             (sxql:limit 1)))))
     (with-prepared-query query (conn sql)
       (and (dbi:fetch-all
-            (dbi:execute query binds))
+            (execute-with-retry query binds))
            t))))
 
 (defgeneric execute-sql (sql &optional binds)
@@ -116,11 +117,9 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
     (check-connected))
   (:method ((sql string) &optional binds)
     (with-trace-sql
-      (if *use-prepare-cached*
-          (let ((query (funcall 'dbi::prepare-cached *connection* sql)))
-            (dbi:execute query binds)
-            (query-row-count query))
-          (dbi:do-sql *connection* sql binds))))
+      (with-prepared-query query (*connection* sql :use-prepare-cached *use-prepare-cached*)
+        (setf query (execute-with-retry query binds))
+        (query-row-count query))))
   (:method ((sql sql-statement) &optional binds)
     (declare (ignore binds))
     (with-quote-char
@@ -167,7 +166,7 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
       (let* ((results
                (dbi:fetch-all
                 (with-trace-sql
-                  (dbi:execute query binds))))
+                  (execute-with-retry query binds))))
              (results
                (loop for result in results
                      collect
