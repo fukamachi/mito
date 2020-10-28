@@ -5,6 +5,7 @@
       (:use #:cl
             #:sxql
             #:mito.class)
+      (:shadow :where)
       (:import-from #:mito.dao.column
                     #:dao-table-column-deflate)
       (:import-from #:mito.connection
