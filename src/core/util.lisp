@@ -129,18 +129,24 @@ Note this can be applied for a list of string-designators."
 (defmacro with-prepared-query (query (conn sql &key use-prepare-cached) &body body)
   `(call-with-prepared-query ,conn ,sql (lambda (,query) ,@body) :use-prepare-cached ,use-prepare-cached))
 
+(defun obsolete-prepared-statement-p (conn e)
+  (and (eq (dbi:connection-driver-type conn) :postgres)
+       (equal (dbi:database-error-code e) "0A000")
+       (equal (dbi:database-error-message e) "cached plan must not change result type")))
+
 (defun execute-with-retry (query binds)
   "Same as DBI:EXECUTE except will recreate a prepared statement when getting DBI:DBI-DATABASE-ERROR."
   (let ((retried nil))
     (tagbody retry
       (handler-bind ((dbi:dbi-database-error
                        (lambda (e)
-                         (declare (ignore e))
-                         (when (and (not retried)
-                                    (dbi:query-cached-p query))
-                           (dbi:free-query-resources query)
-                           (setf query (dbi:prepare-cached (dbi:query-connection query)
-                                                           (dbi:query-sql query)))
-                           (setf retried t)
-                           (go retry)))))
+                         (let ((conn (dbi:query-connection query)))
+                           (when (and (not retried)
+                                      (dbi:query-cached-p query)
+                                      (obsolete-prepared-statement-p conn e))
+                             (dbi:free-query-resources query)
+                             (setf query (dbi:prepare-cached conn
+                                                             (dbi:query-sql query)))
+                             (setf retried t)
+                             (go retry))))))
         (return-from execute-with-retry (dbi:execute query binds))))))
