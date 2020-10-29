@@ -11,7 +11,7 @@
                :mito-migration
                :lack-middleware-mito
                :cl-reexport
-               :cl-package-locks)
+               #-sb-package-locks :cl-package-locks)
   :components ((:file "src/mito"))
   :description "Abstraction layer for DB schema"
   :long-description
