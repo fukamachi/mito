@@ -4,7 +4,8 @@
         #:prove
         #:mito.dao
         #:mito.connection
-        #:mito-test.util)
+        #:mito-test.util
+        #:sxql)
   (:import-from #:alexandria
                 #:make-keyword
                 #:compose))
@@ -195,10 +196,10 @@
              "Can find an object by a foreign object")
     (ok
      (mito.dao:select-dao 'tweet
-       (mito.dao::where (:= :user user))))
+       (where (:= :user user))))
     (ok
      (mito.dao:select-dao 'tweet
-       (mito.dao::where (:in :user (list user))))))
+       (where (:in :user (list user))))))
 
   (is (user-setting (mito:find-dao 'user)) nil)
 
