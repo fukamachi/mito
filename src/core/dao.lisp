@@ -148,7 +148,12 @@
       (execute-sql
        (sxql:insert-into (sxql:make-sql-symbol (table-name (class-of obj)))
          (make-set-clause obj)))
-      (when serial-key
+      (when (and serial-key
+                 ;; We only want to retrieve last-insert-id
+                 ;; in case if user didn't set it manually
+                 ;; for the inserted object:
+                 (or (not (slot-boundp obj serial-key))
+                     (null (slot-value obj serial-key))))
         (setf (slot-value obj serial-key)
               (last-insert-id *connection* (table-name (class-of obj))
                               (unlispify (symbol-name-literally serial-key)))))
