@@ -1,6 +1,7 @@
 (defpackage #:mito.migration.sql-parse
   (:use #:cl
         #:esrap)
+  (:shadow #:space)
   (:export #:parse-statements))
 (in-package #:mito.migration.sql-parse)
 
