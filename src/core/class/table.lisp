@@ -284,7 +284,8 @@
              (rec ()
                (let ((class (first fifo-queue-of-classes)))
                  (when class
-                   (or (gethash name (slot-value class 'parent-column-map))
+                   (or (and (slot-exists-p class 'parent-column-map)
+                            (gethash name (slot-value class 'parent-column-map)))
                        (progn
                          (map nil #'enqueue-last (c2mop:class-direct-superclasses class))
                          (pop fifo-queue-of-classes)
