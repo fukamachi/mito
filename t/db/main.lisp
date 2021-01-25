@@ -8,7 +8,7 @@
 (in-package :mito-test.db.main)
 
 (defun run-db-tests (conn)
-  (plan 3)
+  (plan 4)
 
   (subtest "column-definitions"
     (is (column-definitions conn "tweets")
@@ -47,5 +47,21 @@
     (dbi:do-sql conn "INSERT INTO users (first_name, family_name) VALUES ('Rudolph', 'Miller')")
     (is (last-insert-id conn "users" "id") 2
         "Should be 2 after inserting once more."))
+
+  (subtest "Retry DBI:DBI-DATABASE-ERROR when using prepared cache"
+    (let ((mito:*connection* conn))
+      (mito:execute-sql
+        "DROP TABLE IF EXISTS prepared_cache_retry")
+      (mito:execute-sql
+        "CREATE TABLE IF NOT EXISTS prepared_cache_retry (id VARCHAR(32))")
+      (let ((mito:*use-prepare-cached* t))
+        (is (mito:retrieve-by-sql
+              "SELECT * FROM prepared_cache_retry")
+            nil)
+        (mito:execute-sql
+          "ALTER TABLE prepared_cache_retry ADD COLUMN name VARCHAR(64)")
+        (is (mito:retrieve-by-sql
+              "SELECT * FROM prepared_cache_retry")
+            nil))))
 
   (finalize))

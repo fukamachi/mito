@@ -44,7 +44,8 @@
 
                                       #:deftable))
 (cl-reexport:reexport-from :mito.db
-                           :include '(#:execute-sql
+                           :include '(#:*use-prepare-cached*
+                                      #:execute-sql
                                       #:retrieve-by-sql))
 (cl-reexport:reexport-from :mito.logger
                            :include '(#:*mito-logger-stream*

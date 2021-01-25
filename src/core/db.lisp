@@ -10,12 +10,15 @@
                 #:with-trace-sql)
   (:import-from #:mito.util
                 #:lispify
-                #:with-prepared-query)
+                #:with-prepared-query
+                #:execute-with-retry)
   (:import-from #:dbi
                 #:connection-driver-type
                 #:do-sql
                 #:execute
                 #:fetch-all)
+  (:import-from #:dbi.driver
+                #:query-row-count)
   (:import-from #:sxql
                 #:*quote-character*
                 #:yield)
@@ -23,7 +26,8 @@
                 #:sql-statement)
   (:import-from #:sxql.composed-statement
                 #:composed-statement)
-  (:export #:last-insert-id
+  (:export #:*use-prepare-cached*
+           #:last-insert-id
            #:table-indices
            #:column-definitions
            #:table-view-query
@@ -31,6 +35,11 @@
            #:execute-sql
            #:retrieve-by-sql))
 (in-package :mito.db)
+
+(defvar *use-prepare-cached* nil
+  "EXPERIMENTAL FEATURE: If this is T, Mito uses DBI:PREPARE-CACHED
+to retrieve/execute SQLs instead of DBI:PREPARE. The default value is NIL.
+Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
 
 (defun last-insert-id (conn table-name serial-key-name)
   (check-type serial-key-name string)
@@ -99,7 +108,7 @@
             (sxql:limit 1)))))
     (with-prepared-query query (conn sql)
       (and (dbi:fetch-all
-            (dbi:execute query binds))
+            (execute-with-retry query binds))
            t))))
 
 (defgeneric execute-sql (sql &optional binds)
@@ -108,13 +117,15 @@
     (check-connected))
   (:method ((sql string) &optional binds)
     (with-trace-sql
-      (dbi:do-sql *connection* sql binds)))
+      (with-prepared-query query (*connection* sql :use-prepare-cached *use-prepare-cached*)
+        (setf query (execute-with-retry query binds))
+        (query-row-count query))))
   (:method ((sql sql-statement) &optional binds)
     (declare (ignore binds))
     (with-quote-char
       (multiple-value-bind (sql binds)
           (sxql:yield sql)
-        (with-trace-sql (dbi:do-sql *connection* sql binds))))))
+        (execute-sql sql binds)))))
 
 (defun array-convert-nulls-to-nils (results-array)
   (let ((darray (make-array (array-total-size results-array)
@@ -151,11 +162,11 @@
     (declare (ignore sql binds))
     (check-connected))
   (:method ((sql string) &key binds)
-    (with-prepared-query query (*connection* sql)
+    (with-prepared-query query (*connection* sql :use-prepare-cached *use-prepare-cached*)
       (let* ((results
                (dbi:fetch-all
                 (with-trace-sql
-                  (dbi:execute query binds))))
+                  (execute-with-retry query binds))))
              (results
                (loop for result in results
                      collect
