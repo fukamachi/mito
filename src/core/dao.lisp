@@ -125,12 +125,15 @@
               (let ((slot-name (c2mop:slot-definition-name slot)))
                 (cond
                   ((table-column-references-column slot)
-                   (multiple-value-bind (value win)
-                       (foreign-value obj slot)
-                     (if win
-                         (list (sxql:make-sql-symbol (table-column-name slot))
-                               value)
-                         nil)))
+                   (if (slot-boundp obj slot-name)
+                       (list (sxql:make-sql-symbol (table-column-name slot))
+                             (slot-value obj slot-name))
+                       (multiple-value-bind (value win)
+                           (foreign-value obj slot)
+                         (if win
+                             (list (sxql:make-sql-symbol (table-column-name slot))
+                                   value)
+                             nil))))
                   ((not (slot-boundp obj slot-name))
                    nil)
                   (t
