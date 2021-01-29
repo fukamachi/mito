@@ -9,6 +9,7 @@
   (:import-from #:mito.dao
                 #:dao-class
                 #:dao-table-class
+                #:dao-table-view
                 #:table-definition)
   (:import-from #:mito.connection
                 #:*connection*
@@ -63,12 +64,15 @@
                (let ((subclasses (c2mop:class-direct-subclasses class)))
                  (loop for class in subclasses
                        append (cons class (class-subclasses class))))))
-      (mapcan (lambda (class)
-                (append (depending-classes class)
-                        (if (new-class-p class)
-                            (list class)
-                            '())))
-              (class-subclasses (find-class 'dao-class))))))
+      (remove-if-not (lambda (class)
+                       (or (typep class 'dao-table-class)
+                           (typep class 'dao-table-view)))
+                     (mapcan (lambda (class)
+                               (append (depending-classes class)
+                                       (if (new-class-p class)
+                                           (list class)
+                                           '())))
+                             (class-subclasses (find-class 'dao-class)))))))
 
 (defun all-migration-expressions ()
   (check-connected)
