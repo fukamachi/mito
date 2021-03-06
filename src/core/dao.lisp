@@ -349,6 +349,8 @@
                  (,include-classes '()))
             (macrolet ((where (expression)
                          `(sxql:make-clause :where ,(expand-op expression ',class))))
+              ;; ignore compiler-note when includes is not used
+              #+sbcl (declare (sb-ext:muffle-conditions sb-ext:code-deletion-note))
               (flet ((includes (&rest classes)
                        (setf ,include-classes (mapcar #'ensure-class classes))
                        nil))
