@@ -2,6 +2,8 @@
 (defpackage mito.dao.mixin
   (:use #:cl
         #:mito.util)
+  (:import-from #:mito.class.column
+                #:parse-col-type)
   (:import-from #:mito.class
                 #:table-class
                 #:table-name
@@ -113,13 +115,7 @@
 
 (defun add-relational-readers (class initargs)
   (loop for column in (copy-seq (getf initargs :direct-slots)) ;; Prevent infinite-loop
-        for (col-type . not-null) = (let ((col-type (getf column :col-type)))
-                                      (optima:match col-type
-                                        ((or (list 'or :null x)
-                                             (list 'or x :null))
-                                         (cons x t))
-                                        (otherwise
-                                         (cons col-type nil))))
+        for col-type = (parse-col-type column)
         when (and (symbolp col-type)
                   (not (null col-type))
                   (not (keywordp col-type)))
