@@ -7,7 +7,7 @@
                "cl-ppcre"
                "closer-mop"
                "dissect"
-               "optima"
+               "trivia"
                "cl-reexport"
                "local-time"
                "uuid"

@@ -18,7 +18,6 @@
                 #:*conc-name*)
   (:import-from #:uuid
                 #:make-v4-uuid)
-  (:import-from #:optima)
   (:import-from #:sxql)
   (:export #:dao-table-mixin
            #:dao-class

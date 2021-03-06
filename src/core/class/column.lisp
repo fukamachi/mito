@@ -22,7 +22,7 @@
   '(or null symbol (cons symbol (or null (cons symbol null)))))
 
 (defun parse-col-type (col-type)
-  (optima:match col-type
+  (trivia:match col-type
     ((or (list 'or :null x)
          (list 'or x :null))
      (values x nil))
