@@ -3,6 +3,7 @@
   (:use #:cl
         #:mito.util)
   (:import-from #:mito.class.column
+                #:parse-col-type
                 #:table-column-class
                 #:table-column-type
                 #:table-column-name
@@ -45,13 +46,7 @@
   (let ((parent-column-map (make-hash-table :test 'eq)))
     (setf (getf initargs :direct-slots)
           (loop for column in (getf initargs :direct-slots)
-                for (col-type . not-null) = (let ((col-type (getf column :col-type)))
-                                              (optima:match col-type
-                                                ((or (list 'or :null x)
-                                                     (list 'or x :null))
-                                                 (cons x nil))
-                                                (otherwise
-                                                 (cons col-type t))))
+                for (col-type not-null) = (multiple-value-list (parse-col-type (getf column :col-type)))
 
                 if (typep col-type '(and symbol (not null) (not keyword)))
                   append

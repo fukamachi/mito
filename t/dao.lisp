@@ -1,5 +1,11 @@
 (in-package :cl-user)
 (defpackage mito-test.dao
+  (:use #:cl))
+(in-package :mito-test.dao)
+
+;;; separate packages to avoid conflicting defclasses for testing
+
+(defpackage mito-test.dao.1
   (:use #:cl
         #:prove
         #:mito.dao
@@ -9,7 +15,7 @@
   (:import-from #:alexandria
                 #:make-keyword
                 #:compose))
-(in-package :mito-test.dao)
+(in-package :mito-test.dao.1)
 
 (plan nil)
 
@@ -87,6 +93,21 @@
     user INTEGER NOT NULL
 )"
                   "auto-pk is nil"))
+
+
+(defpackage mito-test.dao.2
+  (:use #:cl
+        #:prove
+        #:mito.dao
+        #:mito.connection
+        #:mito-test.util
+        #:sxql)
+  (:import-from #:alexandria
+                #:make-keyword
+                #:compose))
+(in-package :mito-test.dao.2)
+
+(plan nil)
 
 (subtest "relation"
   (setf *connection* (connect-to-testdb :mysql))
@@ -222,6 +243,20 @@
 
   (disconnect-toplevel))
 
+(defpackage mito-test.dao.3
+  (:use #:cl
+        #:prove
+        #:mito.dao
+        #:mito.connection
+        #:mito-test.util
+        #:sxql)
+  (:import-from #:alexandria
+                #:make-keyword
+                #:compose))
+(in-package :mito-test.dao.3)
+
+(plan nil)
+
 (subtest "foreign slots"
   (setf *connection* (connect-to-testdb :mysql))
   (defclass user ()
@@ -259,6 +294,20 @@
 )"))
 
   (disconnect-toplevel))
+
+(defpackage mito-test.dao.4
+  (:use #:cl
+        #:prove
+        #:mito.dao
+        #:mito.connection
+        #:mito-test.util
+        #:sxql)
+  (:import-from #:alexandria
+                #:make-keyword
+                #:compose))
+(in-package :mito-test.dao.4)
+
+(plan nil)
 
 (dolist (driver '(:mysql :postgres :sqlite3))
   (subtest (format nil "inflate & deflate (~A)" driver)
@@ -299,6 +348,20 @@
       (let ((user (mito:find-dao 'user :role :manager)))
         (ok user)))
     (disconnect-toplevel)))
+
+(defpackage mito-test.dao.5
+  (:use #:cl
+        #:prove
+        #:mito.dao
+        #:mito.connection
+        #:mito-test.util
+        #:sxql)
+  (:import-from #:alexandria
+                #:make-keyword
+                #:compose))
+(in-package :mito-test.dao.5)
+
+(plan nil)
 
 (subtest "timestamp with milliseconds (PostgreSQL)"
   (setf *connection* (connect-to-testdb :postgres))
