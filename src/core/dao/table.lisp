@@ -60,17 +60,14 @@
      :from-end t
      :test #'eq)))
 
-(defmethod initialize-instance :around ((class dao-table-class) &rest initargs
-                                        &key direct-superclasses &allow-other-keys)
+(defun append-record-timestamp-mixin-to-direct-superclasses-if-needed (initargs direct-superclasses)
   (when (and (initargs-enables-record-timestamps initargs)
              (not (contains-class-or-subclasses 'record-timestamps-mixin direct-superclasses)))
     (setf (getf initargs :direct-superclasses)
           (append (getf initargs :direct-superclasses)
-                  (list (find-class 'record-timestamps-mixin)))))
+                  (list (find-class 'record-timestamps-mixin))))))
 
-  (unless (contains-class-or-subclasses 'dao-class direct-superclasses)
-    (push (find-class 'dao-class) (getf initargs :direct-superclasses)))
-
+(defun append-auto-pk-class-to-direct-superclasses-if-needed (initargs direct-superclasses)
   (let ((auto-pk-type (initargs-enables-auto-pk initargs)))
     (when auto-pk-type
       (let ((auto-pk-class (ecase auto-pk-type
@@ -83,32 +80,20 @@
                                 (remove-if-not (lambda (c)
                                                  (typep c 'table-class))
                                                direct-superclasses))))
-          (push (find-class auto-pk-class) (getf initargs :direct-superclasses))))))
+          (push (find-class auto-pk-class) (getf initargs :direct-superclasses)))))))
 
+(defmethod initialize-instance :around ((class dao-table-class) &rest initargs
+                                                                &key direct-superclasses &allow-other-keys)
+  (append-record-timestamp-mixin-to-direct-superclasses-if-needed initargs direct-superclasses)
+  (unless (contains-class-or-subclasses 'dao-class direct-superclasses)
+    (push (find-class 'dao-class) (getf initargs :direct-superclasses)))
+  (append-auto-pk-class-to-direct-superclasses-if-needed initargs direct-superclasses)
   (apply #'call-next-method class initargs))
 
 (defmethod reinitialize-instance :around ((class dao-table-class) &rest initargs
                                           &key direct-superclasses &allow-other-keys)
-  (when (and (initargs-enables-record-timestamps initargs)
-             (not (contains-class-or-subclasses 'record-timestamps-mixin direct-superclasses)))
-    (setf (getf initargs :direct-superclasses)
-          (append (getf initargs :direct-superclasses)
-                  (list (find-class 'record-timestamps-mixin)))))
-
-  (let ((auto-pk-type (initargs-enables-auto-pk initargs)))
-    (when auto-pk-type
-      (let ((auto-pk-class (ecase auto-pk-type
-                             (:serial 'serial-pk-mixin)
-                             (:uuid 'uuid-pk-mixin)
-                             ('t 'serial-pk-mixin))))
-        (when (and (not (initargs-contains-primary-key initargs))
-                   (not (contains-class-or-subclasses auto-pk-class direct-superclasses))
-                   (not (mapcan #'table-primary-key
-                                (remove-if-not (lambda (c)
-                                                 (typep c 'table-class))
-                                               direct-superclasses))))
-          (push (find-class auto-pk-class) (getf initargs :direct-superclasses))))))
-
+  (append-record-timestamp-mixin-to-direct-superclasses-if-needed initargs direct-superclasses)
+  (append-auto-pk-class-to-direct-superclasses-if-needed initargs direct-superclasses)
   (apply #'call-next-method class initargs))
 
 (defmethod c2mop:ensure-class-using-class :around ((class dao-table-class) name &rest keys
