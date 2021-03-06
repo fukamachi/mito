@@ -31,7 +31,7 @@
                     #:unlispify
                     #:symbol-name-literally
                     #:ensure-class)
-      (:import-from #:optima
+      (:import-from #:trivia
                     #:match
                     #:guard)
       (:import-from #:alexandria
@@ -287,7 +287,7 @@
   (let ((obj (gensym "OBJ"))
         (children (gensym "CHILDREN"))
         (expected-type (gensym "EXPECTED-TYPE")))
-    (optima:match object
+    (trivia:match object
       ((or (cons (guard op (or (eql op :=)
                                (eql op :!=)))
                  (cons (guard x (keywordp x)) (cons y nil)))
@@ -328,7 +328,7 @@
                                      (slot-foreign-value ,obj ,class (first ,children)))
                                    ,y)))
             (t (sxql:make-op ,op ,x ,y)))))
-      ((cons (optima:guard op (keywordp op))
+      ((cons (trivia:guard op (keywordp op))
              args)
        `(sxql:make-op ,op
                       ,@(mapcar (lambda (arg)

@@ -36,17 +36,6 @@
 (defmethod c2mop:direct-slot-definition-class ((class dao-table-class) &key)
   'dao-table-column-class)
 
-(defun check-col-type (col-type)
-  (etypecase col-type
-    ((or null keyword) t)
-    (symbol (typep (find-class col-type nil) 'dao-table-class))
-    (cons
-     (optima:ematch col-type
-       ((or (list 'or :null (or (keyword) (cons (keyword) _)))
-            (list 'or (or (keyword) (cons (keyword) _)) :null)
-            (cons (keyword) _))
-        t)))))
-
 (defun initargs-enables-auto-pk (initargs)
   (first (or (getf initargs :auto-pk) '(:serial))))
 
