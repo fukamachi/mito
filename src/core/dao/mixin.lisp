@@ -114,7 +114,7 @@
 
 (defun add-relational-readers (class initargs)
   (loop for column in (copy-seq (getf initargs :direct-slots)) ;; Prevent infinite-loop
-        for col-type = (parse-col-type column)
+        for col-type = (parse-col-type (getf column :col-type))
         when (and (symbolp col-type)
                   (not (null col-type))
                   (not (keywordp col-type)))
