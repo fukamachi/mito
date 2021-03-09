@@ -380,4 +380,39 @@
       (ok (/= 0 (local-time:nsec-of (slot-value user 'registered-at))))))
   (disconnect-toplevel))
 
+(defpackage mito-test.dao.6
+  (:use #:cl
+        #:prove
+        #:mito.dao
+        #:mito.connection
+        #:mito-test.util
+        #:sxql)
+  (:import-from #:alexandria
+                #:make-keyword
+                #:compose))
+(in-package :mito-test.dao.6)
+
+(plan nil)
+
+(defclass parent ()
+  ()
+  (:metaclass dao-table-class))
+
+(defclass child ()
+  ((parent :col-type parent
+           :initarg :parent
+           :accessor child-parent))
+  (:metaclass dao-table-class))
+
+(subtest "accessor"
+  (setf *connection* (connect-to-testdb :postgres))
+  (mito:execute-sql (sxql:drop-table :parent :if-exists t))
+  (mito:execute-sql (sxql:drop-table :child :if-exists t))
+  (mito:ensure-table-exists 'parent)
+  (mito:ensure-table-exists 'child)
+  (mito:create-dao 'child :parent (mito:create-dao 'parent))
+  (child-parent (mito:find-dao 'child))
+  (ok (object= (child-parent (mito:find-dao 'child))
+               (mito:find-dao 'parent))))
+
 (finalize)
