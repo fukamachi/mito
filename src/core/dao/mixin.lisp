@@ -3,7 +3,9 @@
   (:use #:cl
         #:mito.util)
   (:import-from #:mito.class.column
-                #:parse-col-type)
+                #:table-column-type)
+  (:import-from #:mito.class.table
+                #:table-direct-column-slots)
   (:import-from #:mito.class
                 #:table-class
                 #:table-name
@@ -113,16 +115,16 @@
                                     (slot-value object slot-name) foreign-object)))))))))
 
 (defun add-relational-readers (class initargs)
-  (loop for column in (copy-seq (getf initargs :direct-slots)) ;; Prevent infinite-loop
-        for col-type = (parse-col-type (getf column :col-type))
+  (loop for column in (table-direct-column-slots class)
+        for col-type = (table-column-type column)
         when (and (symbolp col-type)
                   (not (null col-type))
                   (not (keywordp col-type)))
-          do (let* ((name (getf column :name))
-                    ;; FIXME: find-class returns NIL if the class is this same class
-                    (rel-class (find-class col-type)))
-               (dolist (reader (getf column :readers))
-                 (make-relational-reader-method reader class name rel-class)))))
+        do (let* ((name (c2mop:slot-definition-name column))
+                  ;; FIXME: find-class returns NIL if the class is this same class
+                  (rel-class (find-class col-type)))
+             (dolist (reader (c2mop:slot-definition-readers column))
+               (make-relational-reader-method reader class name rel-class)))))
 
 (defmethod initialize-instance :around ((class dao-table-mixin) &rest initargs
                                         &key conc-name &allow-other-keys)
