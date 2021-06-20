@@ -40,11 +40,14 @@
   (:import-from #:alexandria
                 #:ensure-list)
   (:export #:*auto-migration-mode*
+           #:*migration-keep-temp-tables*
            #:migrate-table
            #:migration-expressions))
 (in-package :mito.migration.table)
 
 (defvar *auto-migration-mode* nil)
+
+(defvar *migration-keep-temp-tables* t)
 
 (defgeneric migrate-table (class)
   (:method ((class symbol))
@@ -274,7 +277,7 @@
                                  (list-diff db-indices table-indices :key #'cdr
                                                                      :test #'equalp
                                                                      :sort-fn (constantly t))))))
-      (list
+      (list*
        (sxql:alter-table (sxql:make-sql-symbol table-name)
          (sxql:rename-to tmp-table-name))
 
@@ -288,7 +291,9 @@
          (sxql:insert-into (sxql:make-sql-symbol table-name) same
            (sxql:select
                (apply #'sxql:make-clause :fields same)
-             (sxql:from tmp-table-name))))))))
+             (sxql:from tmp-table-name))))
+       (unless *migration-keep-temp-tables*
+         (list (sxql:drop-table tmp-table-name)))))))
 
 (defun migration-expressions (class &optional (driver-type (driver-type *connection*)))
   (setf class (ensure-class class))
