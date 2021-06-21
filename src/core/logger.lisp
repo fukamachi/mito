@@ -34,10 +34,11 @@
            (system-call-p (call)
              (when call
                (let ((package (symbol-package call)))
-                 (or #+sbcl (sbcl-package-p package)
-                     (find (package-name package)
-                           '(:common-lisp :mito.logger :mito.db :mito.dao :mito.util :dbi.logger :dbi.driver)
-                           :test #'string=)))))
+                 (and package
+                      (or #+sbcl (sbcl-package-p package)
+                          (find (package-name package)
+                                '(:common-lisp :mito.logger :mito.db :mito.dao :mito.util :dbi.logger :dbi.driver)
+                                :test #'string=))))))
            (users-call-p (call)
              (and call
                   (or (not (symbolp call))
