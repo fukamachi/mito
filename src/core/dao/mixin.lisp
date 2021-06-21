@@ -46,26 +46,22 @@
 (defmethod c2mop:direct-slot-definition-class ((class dao-table-mixin) &key)
   'dao-table-column-class)
 
-(defun make-dao-instance (class &rest initargs)
-  (setf class (ensure-class class))
-
-  (assert (and class
-               (typep class 'table-class)))
-
-  (let* ((list (loop for (k v) on initargs by #'cddr
-                     for column = (find-if (lambda (initargs)
-                                             (find k initargs :test #'eq))
-                                           (table-column-slots class)
-                                           :key #'c2mop:slot-definition-initargs)
-                     if column
-                       append (list k
-                                    (dao-table-column-inflate column v))
-                     else
-                       append (list k v)))
-         (obj (allocate-instance class))
-         (obj (apply #'shared-initialize obj nil list)))
-    (setf (dao-synced obj) t)
-    obj))
+(defgeneric make-dao-instance (class &rest initargs)
+  (:method ((class table-class) &rest initargs)
+    (let* ((list (loop for (k v) on initargs by #'cddr
+                       for column = (find-if (lambda (initargs)
+                                               (find k initargs :test #'eq))
+                                             (table-column-slots class)
+                                             :key #'c2mop:slot-definition-initargs)
+                       if column
+                         append (list k
+                                      (dao-table-column-inflate column v))
+                       else
+                         append (list k v)))
+           (obj (allocate-instance class))
+           (obj (apply #'shared-initialize obj nil list)))
+      (setf (dao-synced obj) t)
+      obj)))
 
 (defun make-relational-reader-method (func-name class slot-name rel-class)
   (let ((generic-function
