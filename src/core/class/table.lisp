@@ -39,8 +39,7 @@
 
 (defun rel-column-name (name pk-name)
   (intern
-   (format nil "~:@(~A-~A~)" name pk-name)
-   (symbol-package name)))
+   (format nil "~:@(~A-~A~)" name pk-name)))
 
 (defun add-referencing-slots (initargs)
   (let ((parent-column-map (make-hash-table :test 'eq)))
