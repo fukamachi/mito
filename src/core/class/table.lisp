@@ -71,7 +71,7 @@
                                         :primary-key ,(getf column :primary-key)
                                         :references (,col-type ,pk-name))))
                                   pk-names)))
-                collect column))
+                  else collect column))
     (values initargs parent-column-map)))
 
 (defun expand-relational-keys (class slot-name)
