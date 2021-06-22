@@ -287,13 +287,38 @@
                                     (column-definitions *connection* table-name)))
               (slot-names (mapcar #'car table-columns))
               (same (list-diff column-names slot-names))
-              (same (mapcar #'sxql:make-sql-symbol same)))
-         (sxql:insert-into (sxql:make-sql-symbol table-name) same
-           (sxql:select
-               (apply #'sxql:make-clause :fields same)
-             (sxql:from tmp-table-name))))
+              (same-names (mapcar #'sxql:make-sql-symbol same))
+              (new (set-difference slot-names column-names :test #'string-equal)))
+         (multiple-value-bind (new-names defaults)
+             (slot-defaults class table-columns new)
+           (sxql:insert-into (sxql:make-sql-symbol table-name) (append same-names new-names)
+             (sxql:select
+                 (apply #'sxql:make-clause :fields (append same-names defaults))
+               (sxql:from tmp-table-name)))))
        (unless *migration-keep-temp-tables*
          (list (sxql:drop-table tmp-table-name)))))))
+
+(defun slot-defaults (class table-columns new-fields)
+  (let (new-names defaults)
+    (dolist (new-field new-fields)
+      (let ((slot
+              (find-slot-by-name class (lispify (string-upcase new-field))
+                                 :test #'string-equal)))
+        (cond
+          ((c2mop:slot-definition-initfunction slot)
+           (push (sxql:make-sql-symbol new-field) new-names)
+           (push
+            (convert-for-driver-type
+             :sqlite3
+             (table-column-type slot)
+             (dao-table-column-deflate slot
+                                       (funcall (c2mop:slot-definition-initfunction slot))))
+            defaults))
+          (t
+           (when (getf (cdr (find new-field table-columns :key #'first)) :not-null)
+             (warn "Adding a non-null column ~S but there's no :initform to set default"
+                   new-field))))))
+    (values new-names defaults)))
 
 (defun migration-expressions (class &optional (driver-type (driver-type *connection*)))
   (setf class (ensure-class class))
