@@ -47,7 +47,9 @@
 
 (defvar *auto-migration-mode* nil)
 
-(defvar *migration-keep-temp-tables* t)
+(defvar *migration-keep-temp-tables* t
+  "SQLite3 migration creates temporary tables with pre-migration data.
+If this variable is T they won't be deleted after migration.")
 
 (defgeneric migrate-table (class)
   (:method ((class symbol))

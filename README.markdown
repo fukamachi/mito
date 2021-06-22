@@ -387,6 +387,9 @@ To prevent this performance issue, add `includes` to the above query, which send
 ;    #<SXQL-STATEMENT: CREATE UNIQUE INDEX unique_user_email ON user (email)>)
 ```
 
+SQLite3 migration creates temporary tables with pre-migration data. To delete them after migration is complete set
+`mito:*migration-keep-temp-tables*` to `nil`. It has no effect on other drivers.
+
 #### Auto migrations
 
 If `mito:*auto-migration-mode*` is set to `t`, and you are connected to a database, Mito will run migrations after
