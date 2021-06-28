@@ -23,7 +23,8 @@
                 #:*quote-character*
                 #:yield)
   (:import-from #:sxql.sql-type
-                #:sql-statement)
+                #:sql-statement
+                #:conjunctive-op)
   (:import-from #:sxql.composed-statement
                 #:composed-statement)
   (:export #:*use-prepare-cached*
@@ -187,6 +188,13 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
           (sxql:yield sql)
         (retrieve-by-sql sql :binds binds))))
   (:method ((sql composed-statement) &key binds)
+    (declare (ignore binds))
+    (with-quote-char
+      (multiple-value-bind (sql binds)
+          (sxql:yield sql)
+        (retrieve-by-sql sql :binds binds))))
+  ;; For UNION [ALL]
+  (:method ((sql conjunctive-op) &key binds)
     (declare (ignore binds))
     (with-quote-char
       (multiple-value-bind (sql binds)
