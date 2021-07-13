@@ -47,6 +47,11 @@
   'dao-table-column-class)
 
 (defgeneric make-dao-instance (class &rest initargs)
+  (:method ((class-name symbol) &rest initargs)
+    (apply #'make-dao-instance
+           (find-class class-name)
+           initargs))
+  
   (:method ((class table-class) &rest initargs)
     (let* ((list (loop for (k v) on initargs by #'cddr
                        for column = (find-if (lambda (initargs)
