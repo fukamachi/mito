@@ -35,6 +35,7 @@
                     #:match
                     #:guard)
       (:import-from #:alexandria
+                    #:appendf
                     #:ensure-list
                     #:once-only
                     #:with-gensyms)
@@ -352,13 +353,13 @@
               ;; ignore compiler-note when includes is not used
               #+sbcl (declare (sb-ext:muffle-conditions sb-ext:code-deletion-note))
               (flet ((includes (&rest classes)
-                       (setf ,include-classes (mapcar #'ensure-class classes))
+                       (appendf ,include-classes (mapcar #'ensure-class classes))
                        nil))
                 (dolist (,clause (list ,@clauses))
                   (when ,clause
                     (add-child ,sql ,clause)))
                 (let ((,results (select-by-sql ,class ,sql)))
-                  (dolist (,foreign-class ,include-classes)
+                  (dolist (,foreign-class (remove-duplicates ,include-classes))
                     (include-foreign-objects ,foreign-class ,results))
                   (values ,results ,sql))))))))))
 
