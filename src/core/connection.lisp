@@ -43,7 +43,7 @@
 (defun disconnect-toplevel ()
   (when (connected-p)
     (dbi:disconnect *connection*)
-    (makunbound '*connection*)))
+    (setf *connection* nil)))
 
 (defun connection-quote-character (conn)
   (ecase (connection-driver-type conn)
