@@ -58,7 +58,7 @@
       (let ((i 0))
         (ccl:map-call-frames
           (lambda (pointer context)
-            (let* ((call (ccl:frame-function pointer context))
+            (let* ((function (ccl:frame-function pointer context))
                    (call (normalize-call (or (ccl:function-name function) function))))
               (when (users-call-p call)
                 (return call)))
