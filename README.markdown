@@ -178,6 +178,24 @@ This class inherits `mito:dao-class` implicitly.
 
 This may be useful to define methods that can be applied for many or all table classes.
 
+#### :col-type Options
+
+The following are the valid keywords for :col-type
+
+```common-lisp
+:serial
+:bigserial
+:timestamptz
+:integer
+:bytea
+:timestamp
+:bigint
+:unsigned
+:int
+:binary
+:datetime
+```
+
 ### Generating Table Definitions
 
 ```common-lisp
