@@ -201,9 +201,9 @@ Besides the above keywords, there are other keywords that are valid, however the
 An example of this is that `:json` and `:jsonb` work for PostgreSQL but don't work on an old version of MySQL which doesn't support those types.
 
 A complete list of valid `:col-type` options is dependent on the database system. Here's a link for the current Data Types for:
-- PostgreSQL [PostgreSQL Data Types][https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet#links] 
-- MySQL [MySQL Data Types][https://dev.mysql.com/doc/refman/8.0/en/data-types.html]
-- SQLite3 [SQLite3 Data Types][https://www.sqlite.org/datatype3.html]
+- PostgreSQL [PostgreSQL Data Types](https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet#links)
+- MySQL [MySQL Data Types](https://dev.mysql.com/doc/refman/8.0/en/data-types.html)
+- SQLite3 [SQLite3 Data Types](https://www.sqlite.org/datatype3.html)
 
 The symbols are not defined directly in the system, rather they are the symbol equivalent of the string which is the name for the data type. Therefore, for any data type name, just preprend a colon to the name `:data-type` in order to use it as a `col-type`.
 
