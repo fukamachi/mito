@@ -255,14 +255,19 @@
            (when current-version
              (let ((version (migration-file-version file)))
                (update-migration-version version))))
-         (let* ((latest-migration-file (first (last (if current-version
+         (let* ((migration-files (migration-files directory))
+                (latest-migration-file (first (last (if current-version
                                                         sql-files-to-apply
-                                                        (migration-files directory)))))
+                                                        migration-files))))
                 (version (if latest-migration-file
                              (migration-file-version latest-migration-file)
                              (generate-version))))
            (unless current-version
-             (update-migration-version version))
+             (if migration-files
+                 ;; Record all versions on the first table creation
+                 (dolist (file migration-files)
+                   (update-migration-version (migration-file-version version)))
+                 (update-migration-version version)))
            (if dry-run
                (format t "~&No problems were found while migration.~%")
                (format t "~&Successfully updated to the version ~S.~%" version)))
