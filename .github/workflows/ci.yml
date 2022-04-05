@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        lisp: [sbcl, ccl]
+        lisp: [sbcl]
 
     steps:
       - uses: actions/checkout@v1
