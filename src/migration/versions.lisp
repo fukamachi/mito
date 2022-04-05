@@ -6,6 +6,8 @@
                 #:migration-expressions)
   (:import-from #:mito.migration.sql-parse
                 #:parse-statements)
+  (:import-from #:mito.migration.util
+                #:generate-advisory-lock-id)
   (:import-from #:mito.dao
                 #:dao-class
                 #:dao-table-class
@@ -20,7 +22,9 @@
   (:import-from #:mito.db
                 #:execute-sql
                 #:retrieve-by-sql
-                #:table-exists-p)
+                #:table-exists-p
+                #:acquire-advisory-lock
+                #:release-advisory-lock)
   (:import-from #:cl-dbi
                 #:connection-driver-type)
   (:export #:all-migration-expressions
@@ -231,49 +235,55 @@
         (pathname (format t "~%"))))))
 
 (defun migrate (directory &key dry-run)
-  (let* ((current-version (current-migration-version))
-         (schema.sql (merge-pathnames #P"schema.sql" directory))
-         (sql-files-to-apply
-           (if current-version
-               (mapcar (lambda (result)
-                         (getf (cdr result) :file))
-                       (remove :up
-                               (%migration-status directory)
-                               :key #'car))
-               (and (probe-file schema.sql)
-                    (list schema.sql)))))
-    (cond
-      (sql-files-to-apply
-       (dbi:with-transaction *connection*
-         (dolist (file sql-files-to-apply)
-           (format t "~&Applying '~A'...~%" file)
-           (let ((content (uiop:read-file-string file)))
-             (dolist (stmt (parse-statements content))
-               (format t "~&-> ~A~%" stmt)
-               (let ((mito.logger::*mito-logger-stream* nil))
-                 (execute-sql stmt))))
-           (when current-version
-             (let ((version (migration-file-version file)))
-               (update-migration-version version))))
-         (let* ((migration-files (migration-files directory))
-                (latest-migration-file (first (last (if current-version
-                                                        sql-files-to-apply
-                                                        migration-files))))
-                (version (if latest-migration-file
-                             (migration-file-version latest-migration-file)
-                             (generate-version))))
-           (unless current-version
-             (if migration-files
-                 ;; Record all versions on the first table creation
-                 (dolist (file migration-files)
-                   (update-migration-version (migration-file-version version)))
-                 (update-migration-version version)))
-           (if dry-run
-               (format t "~&No problems were found while migration.~%")
-               (format t "~&Successfully updated to the version ~S.~%" version)))
-         (when dry-run
-           (dbi:rollback *connection*))))
-      (current-version
-       (format t "~&Version ~S is up to date.~%" current-version))
-      (t
-       (format t "~&Nothing to migrate.~%")))))
+  (let ((lock-id (generate-advisory-lock-id (dbi:connection-database-name *connection*))))
+    (when (eq (connection-driver-type *connection*) :postgres)
+      (acquire-advisory-lock *connection* lock-id))
+    (unwind-protect
+        (let* ((current-version (current-migration-version))
+               (schema.sql (merge-pathnames #P"schema.sql" directory))
+               (sql-files-to-apply
+                 (if current-version
+                     (mapcar (lambda (result)
+                               (getf (cdr result) :file))
+                             (remove :up
+                                     (%migration-status directory)
+                                     :key #'car))
+                     (and (probe-file schema.sql)
+                          (list schema.sql)))))
+          (cond
+            (sql-files-to-apply
+             (dbi:with-transaction *connection*
+               (dolist (file sql-files-to-apply)
+                 (format t "~&Applying '~A'...~%" file)
+                 (let ((content (uiop:read-file-string file)))
+                   (dolist (stmt (parse-statements content))
+                     (format t "~&-> ~A~%" stmt)
+                     (let ((mito.logger::*mito-logger-stream* nil))
+                       (execute-sql stmt))))
+                 (when current-version
+                   (let ((version (migration-file-version file)))
+                     (update-migration-version version))))
+               (let* ((migration-files (migration-files directory))
+                      (latest-migration-file (first (last (if current-version
+                                                              sql-files-to-apply
+                                                              migration-files))))
+                      (version (if latest-migration-file
+                                   (migration-file-version latest-migration-file)
+                                   (generate-version))))
+                 (unless current-version
+                   (if migration-files
+                       ;; Record all versions on the first table creation
+                       (dolist (file migration-files)
+                         (update-migration-version (migration-file-version version)))
+                       (update-migration-version version)))
+                 (if dry-run
+                     (format t "~&No problems were found while migration.~%")
+                     (format t "~&Successfully updated to the version ~S.~%" version)))
+               (when dry-run
+                 (dbi:rollback *connection*))))
+            (current-version
+             (format t "~&Version ~S is up to date.~%" current-version))
+            (t
+             (format t "~&Nothing to migrate.~%"))))
+      (when (eq (connection-driver-type *connection*) :postgres)
+        (release-advisory-lock *connection* lock-id)))))
