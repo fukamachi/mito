@@ -34,7 +34,9 @@
            #:table-view-query
            #:table-exists-p
            #:execute-sql
-           #:retrieve-by-sql))
+           #:retrieve-by-sql
+           #:acquire-advisory-lock
+           #:release-advisory-lock))
 (in-package :mito.db)
 
 (defvar *use-prepare-cached* nil
@@ -200,3 +202,15 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
       (multiple-value-bind (sql binds)
           (sxql:yield sql)
         (retrieve-by-sql sql :binds binds)))))
+
+(defun acquire-advisory-lock (conn id)
+  (funcall
+   (ecase (dbi:connection-driver-type conn)
+     (:postgres #'mito.db.postgres:acquire-advisory-lock))
+   conn id))
+
+(defun release-advisory-lock (conn id)
+  (funcall
+   (ecase (dbi:connection-driver-type conn)
+     (:postgres #'mito.db.postgres:release-advisory-lock))
+   conn id))
