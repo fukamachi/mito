@@ -205,12 +205,20 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
 
 (defun acquire-advisory-lock (conn id)
   (funcall
-   (ecase (dbi:connection-driver-type conn)
-     (:postgres #'mito.db.postgres:acquire-advisory-lock))
+   (case (dbi:connection-driver-type conn)
+     (:postgres #'mito.db.postgres:acquire-advisory-lock)
+     (:mysql #'mito.db.mysql:acquire-advisory-lock)
+     (otherwise
+       ;; Just ignore
+       (lambda (&rest args) (declare (ignore args)))))
    conn id))
 
 (defun release-advisory-lock (conn id)
   (funcall
-   (ecase (dbi:connection-driver-type conn)
-     (:postgres #'mito.db.postgres:release-advisory-lock))
+   (case (dbi:connection-driver-type conn)
+     (:postgres #'mito.db.postgres:release-advisory-lock)
+     (:mysql #'mito.db.mysql:release-advisory-lock)
+     (otherwise
+       ;; Just ignore
+       (lambda (&rest args) (declare (ignore args)))))
    conn id))
