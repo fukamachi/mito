@@ -10,7 +10,9 @@
   (:export #:last-insert-id
            #:column-definitions
            #:table-indices
-           #:table-view-query))
+           #:table-view-query
+           #:acquire-advisory-lock
+           #:release-advisory-lock))
 (in-package :mito.db.postgres)
 
 (defun last-insert-id (conn table-name serial-key-name)
@@ -140,3 +142,11 @@
        (string-left-trim
         '(#\Space)
         (getf (first (dbi:fetch-all results)) :|def|))))))
+
+(defun acquire-advisory-lock (conn id)
+  (dbi:do-sql conn "SELECT pg_advisory_lock(?)" id)
+  (values))
+
+(defun release-advisory-lock (conn id)
+  (dbi:do-sql conn "SELECT pg_advisory_unlock(?)" id)
+  (values))
