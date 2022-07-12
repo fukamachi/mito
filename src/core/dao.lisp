@@ -344,6 +344,23 @@ For example: (mito:delete-by-values 'user :id 1)"))
       (otherwise object))))
 
 (defmacro select-dao (class &body clauses)
+  "Build custom queries with SxQL.
+
+Example:
+
+  (select-dao 'tweet
+    (where (:like :status \"%Japan%\")))
+
+You can use \"includes\" to eagerly load another table and prevent the \"N+1 query\" performance problem.
+
+Example:
+
+  (defvar *tweets-contain-japan*
+    (select-dao 'tweet
+      (includes 'user)
+      (where (:like :status \"%Japan%\"))))
+
+See the SxQL documentation for the available clauses and operators."
   (with-gensyms (sql clause results include-classes foreign-class)
     (once-only (class)
       `(#+sb-package-locks locally #+sb-package-locks (declare (sb-ext:disable-package-locks sxql:where))
