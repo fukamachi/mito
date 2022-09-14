@@ -520,6 +520,10 @@ Since `insert-dao`, `update-dao` and `delete-dao` are defined as generic functio
 ;=> #<USER {100835FB33}>
 ```
 
+### Controlling logging behavior
+
+By default, mito logs to `*standard-output*`.  To disable this, set `mito:*trace-sql-hooks*` to NIL.
+
 ## Installation
 
 ```common-lisp
