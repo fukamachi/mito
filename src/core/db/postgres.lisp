@@ -144,9 +144,9 @@
         (getf (first (dbi:fetch-all results)) :|def|))))))
 
 (defun acquire-advisory-lock (conn id)
-  (dbi:do-sql conn "SELECT pg_advisory_lock(?)" id)
+  (dbi:do-sql conn "SELECT pg_advisory_lock(?)" (list id))
   (values))
 
 (defun release-advisory-lock (conn id)
-  (dbi:do-sql conn "SELECT pg_advisory_unlock(?)" id)
+  (dbi:do-sql conn "SELECT pg_advisory_unlock(?)" (list id))
   (values))
