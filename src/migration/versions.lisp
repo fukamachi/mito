@@ -287,7 +287,7 @@
                (if migration-files
                    ;; Record all versions on the first table creation
                    (dolist (file migration-files)
-                     (update-migration-version (migration-file-version version)))
+                     (update-migration-version (migration-file-version file)))
                    (update-migration-version version)))
              (if dry-run
                  (format t "~&No problems were found while migration.~%")
