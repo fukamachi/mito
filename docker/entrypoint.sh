@@ -12,6 +12,7 @@ while ! mysql -u "$MYSQL_USER" \
 done
 
 ros install fukamachi/cl-dbi
+ros -e '(print (ql:where-is-system :cl-dbi))'
 
 ros -s mito-test
 run-prove mito-test.asd
