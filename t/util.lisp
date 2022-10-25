@@ -29,15 +29,15 @@
   (dbi:disconnect conn))
 
 (defun postgres-connect-to-testdb ()
-  (dbi:connect-cached :postgres
-                      :database-name "mito"
-                      :host (or (uiop:getenv "POSTGRES_HOST") "localhost")
-                      :port (parse-integer
-                              (or (uiop:getenv "POSTGRES_PORT")
-                                  "5432"))
-                      :username (or (uiop:getenv "POSTGRES_USER") "nobody")
-                      :password (or (uiop:getenv "POSTGRES_PASS") "nobody")
-                      :microsecond-precision t))
+  (dbi:connect :postgres
+               :database-name "mito"
+               :host (or (uiop:getenv "POSTGRES_HOST") "localhost")
+               :port (parse-integer
+                       (or (uiop:getenv "POSTGRES_PORT")
+                           "5432"))
+               :username (or (uiop:getenv "POSTGRES_USER") "nobody")
+               :password (or (uiop:getenv "POSTGRES_PASS") "nobody")
+               :microsecond-precision t))
 
 (defun mysql-disconnect-from-testdb (conn)
   (dbi:disconnect conn))
