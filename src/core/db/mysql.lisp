@@ -89,9 +89,9 @@
 (defun acquire-advisory-lock (conn id)
   ;; MySQL accepts -1 to wait forever, while MariaDB doesn't.
   ;; Give it a large enough number to simulate it.
-  (dbi:do-sql conn "SELECT GET_LOCK(?, 0xffffff)" id)
+  (dbi:do-sql conn "SELECT GET_LOCK(?, 0xffffff)" (list id))
   (values))
 
 (defun release-advisory-lock (conn id)
-  (dbi:do-sql conn "SELECT RELEASE_LOCK(?)" id)
+  (dbi:do-sql conn "SELECT RELEASE_LOCK(?)" (list id))
   (values))
