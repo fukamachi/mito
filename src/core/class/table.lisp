@@ -288,8 +288,12 @@
 
 (defun find-child-columns (table slot)
   (let (results)
-    (maphash (lambda (child parent)
-               (when (eq parent (c2mop:slot-definition-name slot))
-                 (push child results)))
-             (slot-value table 'parent-column-map))
+    (map-all-superclasses
+      (lambda (class)
+        (when (slot-exists-p class 'parent-column-map)
+          (maphash (lambda (child parent)
+                     (when (eq parent (c2mop:slot-definition-name slot))
+                       (push child results)))
+                   (slot-value class 'parent-column-map))))
+      table)
     results))
