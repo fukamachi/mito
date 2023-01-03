@@ -201,7 +201,7 @@ Besides the above keywords, there are other keywords that are valid, however the
 An example of this is that `:json` and `:jsonb` work for PostgreSQL but don't work on an old version of MySQL which doesn't support those types.
 
 A complete list of valid `:col-type` options is dependent on the database system. Here's a link for the current Data Types for:
-- [PostgreSQL Data Types](https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet#links)
+- [PostgreSQL Data Types](https://www.postgresql.org/docs/current/datatype.html#DATATYPE-TABLE)
 - [MySQL Data Types](https://dev.mysql.com/doc/refman/8.0/en/data-types.html)
 - [SQLite3 Data Types](https://www.sqlite.org/datatype3.html)
 
