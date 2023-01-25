@@ -177,15 +177,15 @@
 
 (defun map-all-superclasses (fn class &key (key #'identity))
   (labels ((main (class &optional main-objects)
-             (loop for superclass in (c2mop:class-direct-superclasses class)
-                   if (eq (class-of superclass) (find-class 'standard-class))
-                     append (if (eq superclass (find-class 'standard-object))
-                                (append (funcall fn class) main-objects)
-                                (funcall fn class))
-                   else
-                     append (main superclass
-                                  (append (funcall fn class)
-                                          main-objects)))))
+             (let ((ret (funcall fn class)))
+               (loop for superclass in (c2mop:class-direct-superclasses class)
+                     if (eq (class-of superclass) (find-class 'standard-class))
+                       append (if (eq superclass (find-class 'standard-object))
+                                  (append ret main-objects)
+                                  ret)
+                     else
+                       append (main superclass
+                                    (append ret main-objects))))))
     (delete-duplicates
      (main class)
      :test #'eq
