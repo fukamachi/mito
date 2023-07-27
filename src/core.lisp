@@ -34,6 +34,7 @@
                                       #:delete-by-values
                                       #:save-dao
                                       #:select-dao
+                                      #:select-by-sql
                                       #:includes
                                       #:include-foreign-objects
                                       #:find-dao
