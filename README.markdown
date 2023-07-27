@@ -270,7 +270,7 @@ The symbols are not defined directly in the system, rather they are the symbol e
 ;-> 1
 ```
 
-Use `select-dao` to build custom queries with sxql (examples below), or `select-by-sql` in the `mito.dao` package in order to run raw SQL.
+Use `select-dao` to build custom queries with sxql (examples below), or `select-by-sql` in order to run raw SQL.
 
 ### Relationship
 
