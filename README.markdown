@@ -71,6 +71,16 @@ In most cases `dbi:connect-cached` is a better option, since it reuses a connect
 
 Use `connection-database-name` to get the name of the current connection, or of one named via parameter.
 
+If you are using [clack](https://github.com/fukamachi/clack) as your webserver, A middleware is provided.
+
+```common-lisp
+(clack:clackup
+  (lack:builder
+    (:mito '(:sqlite3 :database-name #P"/tmp/myapp.db"))
+    ...
+    *app*))
+```
+
 ### deftable macro
 
 As Mito's dao table class is defined as a CLOS metaclass, a table class can be defined like this:
