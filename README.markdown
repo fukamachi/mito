@@ -71,6 +71,16 @@ In most cases `dbi:connect-cached` is a better option, since it reuses a connect
 
 Use `connection-database-name` to get the name of the current connection, or of one named via parameter.
 
+If you are using [clack](https://github.com/fukamachi/clack) as your webserver, A middleware is provided.
+
+```common-lisp
+(clack:clackup
+  (lack:builder
+    (:mito '(:sqlite3 :database-name #P"/tmp/myapp.db"))
+    ...
+    *app*))
+```
+
 ### deftable macro
 
 As Mito's dao table class is defined as a CLOS metaclass, a table class can be defined like this:
@@ -270,7 +280,54 @@ The symbols are not defined directly in the system, rather they are the symbol e
 ;-> 1
 ```
 
-Use `select-dao` to build custom queries with sxql (examples below), or `select-by-sql` in order to run raw SQL.
+### Custom queries
+Mito is at its core a rather thin wrapper around sxql and cl-dbi for converting sql results to special types and back. Most of the porcelain functions shown above are acutally implemented in just under 200 lines.
+
+Given a plist which represents the result from the database, you can apply `make-dao-instance` To make it into a `dao-class` automatically doing inflation/deflation.
+
+To run a custom query, use `retrieve-by-sql` which returns a list of plists.
+```common-lisp
+(mito:retrieve-by-sql
+  (select (:user.*)
+    (from :users)
+    ;; Using a subquery to avoid a join and distinct
+    ;; Make sure you actually test performance before doing this in production
+    (where (:in :user.name
+                (select (:poster)
+                  (from :tweets)
+                  (where (:> :tweets.likes 1000))
+                  (returning :poster))))))
+;=> ((:name "Shinmera" :email "shinmera@tymoon.eu" :followers 200000)
+;    (:name "Fukamachi" :email "e.arrows@gmail.com" :followers 100000) ...)
+```
+
+You can use `select-by-sql` if you want to automatically convert it to a class.
+
+```common-lisp
+(mito:select-by-sql 'user
+  (select (:user.*)
+    (from :users)
+    (where (:in :user.name
+                (select (:poster)
+                  (from :tweets)
+                  (where (:> :tweets.likes 1000))
+                  (returning :poster))))))
+;=> (#<USER {1003E769E3}> #<USER {10040637A3}>)
+```
+The actual definition is basically `mapcar #'make-dao-instance` over the results of `retrieve-by-sql`
+
+Finally `select-dao` provides the highest level API. This is usually what you need.
+```common-lisp
+(mito:select-dao 'user
+  (where (:in :user.name
+              (select (:poster)
+                (from :tweets)
+                (where (:> :tweets.likes 1000))
+                (returning :poster)))))
+;=> (#<USER {1003E769E3}> #<USER {10040637A3}>)
+```
+
+It also provides neat facilities such as an `includes` clause so that you don't have to write out joins by hand (examples below).
 
 ### Relationship
 
