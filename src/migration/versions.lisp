@@ -30,13 +30,16 @@
   (:import-from #:alexandria
                 #:with-gensyms
                 #:once-only)
-  (:export #:all-migration-expressions
+  (:export #:*migration-version-format*
+           #:all-migration-expressions
            #:current-migration-version
            #:update-migration-version
            #:generate-migrations
            #:migrate
            #:migration-status))
 (in-package :mito.migration.versions)
+
+(defvar *migration-version-format* :time)
 
 (defun schema-migrations-table-definition (&optional (driver-type (connection-driver-type *connection*)))
   ;; Add applied_at only for PostgreSQL because TIMESTAMPTZ is allowed.
@@ -103,16 +106,26 @@
    (sxql:insert-into :schema_migrations
      (sxql:set= :version version))))
 
-(defun generate-version ()
+(defun generate-time-version ()
   (multiple-value-bind (sec min hour day mon year)
       (decode-universal-time (get-universal-time) 0)
     (format nil "~4,'0D~2,'0D~2,'0D~2,'0D~2,'0D~2,'0D"
             year mon day hour min sec)))
 
+(defun generate-version (&optional current-version)
+  (ecase *migration-version-format*
+    (:time (generate-time-version))
+    (:serial
+     (write-to-string
+      (if current-version
+          (1+ (parse-integer current-version))
+          1)))))
+
 (defun generate-migrations (directory &key force)
   (let* ((schema.sql (merge-pathnames #P"schema.sql" directory))
          (directory (merge-pathnames #P"migrations/" directory))
-         (version (generate-version))
+         (current-version (current-migration-version))
+         (version (generate-version current-version))
          (destination (make-pathname :name (format nil "~A.up" version)
                                      :type "sql"
                                      :defaults directory))
@@ -120,8 +133,7 @@
          (sxql:*use-placeholder* nil))
 
     ;; Warn if there're non-applied migration files.
-    (let* ((current-version (current-migration-version))
-           (sql-files (sort (uiop:directory-files directory "*.up.sql")
+    (let* ((sql-files (sort (uiop:directory-files directory "*.up.sql")
                             #'string<
                             :key #'pathname-name))
            (non-applied-files
@@ -173,14 +185,12 @@
 
 (defun migration-file-version (file)
   (let* ((name (pathname-name file))
-         (pos (or (position #\_ name)
-                  (position #\. name :from-end t)))
+         (pos (position-if (complement #'digit-char-p) name))
          (version
            (if pos
                (subseq name 0 pos)
                name)))
-    (when (and (= (length version) 14)
-               (every #'digit-char-p version))
+    (when (<= 1 (length version))
       version)))
 
 (defun migration-files (base-directory &key (sort-by #'string<))
