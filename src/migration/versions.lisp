@@ -250,7 +250,8 @@
                  (release-advisory-lock ,connection ,lock-id)))
              (progn ,@body))))))
 
-(defun migrate (directory &key dry-run)
+(defun migrate (directory &key dry-run force)
+  (check-type directory pathname)
   (with-advisory-lock (*connection*)
     (let* ((current-version (current-migration-version))
            (schema.sql (merge-pathnames #P"schema.sql" directory))
@@ -267,12 +268,13 @@
         (sql-files-to-apply
          (dbi:with-transaction *connection*
            (dolist (file sql-files-to-apply)
-             (format t "~&Applying '~A'...~%" file)
-             (let ((content (uiop:read-file-string file)))
-               (dolist (stmt (parse-statements content))
-                 (format t "~&-> ~A~%" stmt)
-                 (let ((mito.logger::*mito-logger-stream* nil))
-                   (execute-sql stmt))))
+             (unless force
+               (format t "~&Applying '~A'...~%" file)
+               (let ((content (uiop:read-file-string file)))
+                 (dolist (stmt (parse-statements content))
+                   (format t "~&-> ~A~%" stmt)
+                   (let ((mito.logger::*mito-logger-stream* nil))
+                     (execute-sql stmt)))))
              (when current-version
                (let ((version (migration-file-version file)))
                  (update-migration-version version))))
