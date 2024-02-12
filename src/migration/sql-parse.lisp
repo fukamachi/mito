@@ -36,7 +36,7 @@
                                        (and #\\ #\$)))
                                 pg-dollar-sign))
   (:destructure (d1 content d2)
-   (format nil "~{~A~}~{~A~}~{~A~}" d1 content d2)))
+   (format nil "~A~A~A" d1 (coerce content 'string) d2)))
 
 (defrule space (or #\Space #\Newline #\Return #\Tab))
 
