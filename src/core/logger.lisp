@@ -48,7 +48,7 @@
     (do ((frame (sb-di:frame-down (sb-di:top-frame))
                 (sb-di:frame-down frame)))
         ((null frame))
-      (multiple-value-bind (call args info)
+      (multiple-value-bind (call)
           (sb-debug::frame-call frame)
         (let ((call (normalize-call call)))
           (when (users-call-p call)
