@@ -63,7 +63,7 @@
 (defmethod initialize-instance :around ((class table-column-class) &rest rest-initargs
                                         &key name initargs ghost
                                         &allow-other-keys)
-
+  (declare (ignore ghost))
   (unless (find (symbol-name name) initargs :test #'string=)
     ;; Add the default initarg.
     (push (intern (symbol-name name) :keyword)

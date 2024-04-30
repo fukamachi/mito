@@ -115,7 +115,7 @@
                               (setf calledp t
                                     (slot-value object slot-name) foreign-object)))))))))
 
-(defun add-relational-readers (class initargs)
+(defun add-relational-readers (class)
   (loop for column in (table-direct-column-slots class)
         for col-type = (table-column-type column)
         when (and (symbolp col-type)
@@ -131,14 +131,14 @@
                                         &key conc-name &allow-other-keys)
   (let ((*conc-name* (first conc-name)))
     (let ((class (apply #'call-next-method class initargs)))
-      (add-relational-readers class initargs)
+      (add-relational-readers class)
       class)))
 
 (defmethod reinitialize-instance :around ((class dao-table-mixin) &rest initargs
                                           &key conc-name &allow-other-keys)
   (let ((*conc-name* (first conc-name)))
     (let ((class (apply #'call-next-method class initargs)))
-      (add-relational-readers class initargs)
+      (add-relational-readers class)
       class)))
 
 (defclass serial-pk-mixin ()
