@@ -15,16 +15,17 @@ services:
       - postgres
       - mysql
     environment:
-      POSTGRES_HOST: postgres
+      POSTGRES_HOST: mito-test-postgres
       POSTGRES_USER: mito
       POSTGRES_PASS: mito
-      MYSQL_HOST: mysql
+      MYSQL_HOST: mito-test-mysql
       MYSQL_USER: root
       MYSQL_PASS: mito
 
   postgres:
     container_name: mito-postgres
     image: "postgres:10"
+    hostname: mito-test-postgres
     restart: always
     environment:
       POSTGRES_USER: mito
@@ -32,7 +33,8 @@ services:
 
   mysql:
     container_name: mito-mysql
-    image: "mysql:8"
+    image: "mysql:8.4"
+    hostname: mito-test-mysql
     restart: always
     command: --mysql_native_password=ON
     environment:
