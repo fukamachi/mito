@@ -42,27 +42,37 @@
    (format nil "~:@(~A-~A~)" name pk-name)))
 
 (defun add-referencing-slots (initargs)
-  (let ((parent-column-map (make-hash-table :test 'eq)))
+  (let ((parent-column-map (make-hash-table :test 'eq))
+        (class-name (getf initargs :name)))
     (setf (getf initargs :direct-slots)
           (loop for column in (getf initargs :direct-slots)
                 for (col-type not-null) = (multiple-value-list (parse-col-type (getf column :col-type)))
 
                 if (typep col-type '(and symbol (not null) (not keyword)))
                   append
-                  (let* ((name (getf column :name))
-                         ;; FIXME: find-class raises an error if the class is this same class or not defined yet.
-                         (rel-class (find-class col-type))
-                         (pk-names (table-primary-key rel-class)))
+                  (let* ((column-name (getf column :name))
+                         ;; FIXME: find-class raises an error if the class is not defined yet.
+                         (pk-names (if (eq col-type class-name)
+                                       (or (getf initargs :primary-key)
+                                           (getf (find-if (lambda (column-def)
+                                                            (getf column-def :primary-key))
+                                                          (getf initargs :direct-slots))
+                                                 :name)
+                                           (loop for superclass in (getf initargs :direct-superclasses)
+                                                 for pk-names = (table-primary-key superclass)
+                                                 until pk-names
+                                                 finally (return pk-names)))
+                                       (table-primary-key (find-class col-type)))))
                     (unless pk-names
-                      (error "Foreign class ~S has no primary keys."
-                             (class-name rel-class)))
+                      (error "Primary keys can not be determined for ~A."
+                             col-type))
                     (rplacd (cdr column)
                             `(:ghost t ,@(cddr column)))
 
                     (cons column
                           (mapcar (lambda (pk-name)
-                                    (let ((rel-column-name (rel-column-name name pk-name)))
-                                      (setf (gethash rel-column-name parent-column-map) name)
+                                    (let ((rel-column-name (rel-column-name column-name pk-name)))
+                                      (setf (gethash rel-column-name parent-column-map) column-name)
                                       `(:name ,rel-column-name
                                         :initargs (,(intern (symbol-name rel-column-name) :keyword))
                                         :col-type ,(if not-null

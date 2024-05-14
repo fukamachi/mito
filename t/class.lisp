@@ -299,3 +299,29 @@
                   "CREATE TABLE tweet_tags (
     tweet1_id BIGINT UNSIGNED
 )"))
+
+(deftest self-reference
+  (is-table-class :mysql
+                  (defclass category ()
+                    ((parent :col-type category
+                             :initarg :parent
+                             :accessor parent))
+                    (:metaclass mito:dao-table-class))
+                  "CREATE TABLE category (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    parent_id BIGINT UNSIGNED NOT NULL,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+)")
+  (is-table-class :postgres
+                  (defclass category ()
+                    ((parent :col-type category
+                             :initarg :parent
+                             :accessor parent))
+                    (:metaclass mito:dao-table-class))
+                  "CREATE TABLE category (
+    id BIGSERIAL NOT NULL PRIMARY KEY,
+    parent_id BIGINT NOT NULL,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+)"))
