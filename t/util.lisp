@@ -1,5 +1,4 @@
-(in-package :cl-user)
-(defpackage mito-test.util
+(defpackage #:mito-test.util
   (:use #:cl
         #:sxql)
   (:import-from #:mito.class
@@ -13,7 +12,7 @@
            #:connect-to-testdb
            #:reconnect-to-testdb
            #:is-table-class))
-(in-package :mito-test.util)
+(in-package #:mito-test.util)
 
 (defun sqlite3-disconnect-from-testdb (conn)
   (when conn
@@ -74,7 +73,7 @@
 (defmacro is-table-class (driver class-definition create-table &optional desc)
   (let ((class (gensym "CLASS")))
     `(let ((,class ,class-definition))
-       (prove:is (let ((sxql:*use-placeholder* nil))
-                   (mapcar #'sxql:yield (create-table-sxql ,class ,driver)))
-                 (alexandria:ensure-list ,create-table)
-                 (format nil "~A (~S)~:[~;~:* ~A~]" (class-name ,class) ,driver ,desc)))))
+       (rove:ok (equal (let ((sxql:*use-placeholder* nil))
+                         (mapcar #'sxql:yield (create-table-sxql ,class ,driver)))
+                       (alexandria:ensure-list ,create-table))
+                (format nil "~A (~S)~:[~;~:* ~A~]" (class-name ,class) ,driver ,desc)))))

@@ -2,22 +2,23 @@
   :author "Eitaro Fukamachi"
   :license "LLGPL"
   :depends-on ("mito"
-               "prove")
+               "dbd-mysql"
+               "dbd-postgres"
+               "dbd-sqlite3"
+               "rove")
   :components ((:module "t"
                 :components
                 ((:file "util")
                  (:file "db/main")
-                 (:test-file "db/sqlite3")
-                 (:test-file "db/mysql")
-                 (:test-file "db/postgres")
-                 (:test-file "class")
-                 (:test-file "dao")
-                 (:test-file "migration/sqlite3")
-                 (:test-file "migration/mysql")
-                 (:test-file "migration/postgres")
-                 (:test-file "postgres-types")
-                 (:test-file "mixin"))))
+                 (:file "db/sqlite3")
+                 (:file "db/mysql")
+                 (:file "db/postgres")
+                 (:file "class")
+                 (:file "dao")
+                 (:file "migration/sqlite3")
+                 (:file "migration/mysql")
+                 (:file "migration/postgres")
+                 (:file "postgres-types")
+                 (:file "mixin"))))
   :description "Test system for mito"
-
-  :defsystem-depends-on ("prove-asdf")
-  :perform (test-op (op c) (symbol-call :prove-asdf :run-test-system c)))
+  :perform (test-op (op c) (symbol-call :rove :run c)))

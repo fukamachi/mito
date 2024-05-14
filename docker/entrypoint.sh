@@ -12,4 +12,4 @@ while ! mysql -u "$MYSQL_USER" \
 done
 
 ros -s mito-test
-run-prove mito-test.asd
+rove mito-test.asd
