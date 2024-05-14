@@ -68,7 +68,7 @@
       (setf (dao-synced obj) t)
       obj)))
 
-(defun make-relational-reader-method (func-name class slot-name rel-class)
+(defun make-relational-reader-method (func-name class slot-name rel-class-name)
   (let ((generic-function
           (ensure-generic-function func-name :lambda-list '(object))))
     (add-method
@@ -99,7 +99,7 @@
                                                   (first
                                                    (mito.db:retrieve-by-sql
                                                     (sxql:select :*
-                                                      (sxql:from (sxql:make-sql-symbol (table-name rel-class)))
+                                                      (sxql:from (sxql:make-sql-symbol (table-name (find-class rel-class-name))))
                                                       (sxql:where
                                                        `(:and
                                                          ,@(mapcar (lambda (slot-name)
@@ -111,7 +111,7 @@
                                                                    child-columns)))
                                                       (sxql:limit 1))))))
                                             (and result
-                                                 (apply #'make-dao-instance rel-class result))))))
+                                                 (apply #'make-dao-instance rel-class-name result))))))
                               (setf calledp t
                                     (slot-value object slot-name) foreign-object)))))))))
 
@@ -121,11 +121,9 @@
         when (and (symbolp col-type)
                   (not (null col-type))
                   (not (keywordp col-type)))
-        do (let* ((name (c2mop:slot-definition-name column))
-                  ;; FIXME: find-class returns NIL if the class is this same class
-                  (rel-class (find-class col-type)))
+        do (let ((name (c2mop:slot-definition-name column)))
              (dolist (reader (c2mop:slot-definition-readers column))
-               (make-relational-reader-method reader class name rel-class)))))
+               (make-relational-reader-method reader class name col-type)))))
 
 (defmethod initialize-instance :around ((class dao-table-mixin) &rest initargs
                                         &key conc-name &allow-other-keys)
