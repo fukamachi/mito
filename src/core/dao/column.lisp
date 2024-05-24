@@ -29,10 +29,12 @@
     (let ((accessor (intern
                       (format nil "~:@(~A~A~)" *conc-name* name)
                       *package*)))
-      (pushnew accessor readers)
-      (pushnew `(setf ,accessor) writers)
-      (setf (getf rest-initargs :readers) readers)
-      (setf (getf rest-initargs :writers) writers)))
+      (unless readers
+        (pushnew accessor readers)
+        (setf (getf rest-initargs :readers) readers))
+      (unless writers
+        (pushnew `(setf ,accessor) writers)
+        (setf (getf rest-initargs :writers) writers))))
 
   (when inflate
     (setf (getf rest-initargs :inflate) (eval inflate)))
