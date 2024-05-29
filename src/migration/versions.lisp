@@ -146,9 +146,16 @@
       (when non-applied-files
         (if (y-or-n-p "Found non-applied ~D migration file~:*~P. Will you delete them?"
                       (length non-applied-files))
-            (dolist (file non-applied-files)
-              (format *error-output* "~&Deleting '~A'...~%" file)
-              (delete-file file))
+            (flet ((delete-migration-file (file)
+                     (format *error-output* "~&Deleting '~A'...~%" file)
+                     (delete-file file)))
+              (dolist (up-file non-applied-files)
+                (delete-migration-file up-file)
+                (let ((down-file
+                        (make-pathname :name (ppcre:regex-replace "\\.up$" (pathname-name file) ".down")
+                                       :defaults up-file)))
+                  (when (uiop:file-exists-p down-file)
+                    (delete-migration-file down-file)))))
             (progn
               (format *error-output* "~&Given up.~%")
               (return-from generate-migrations nil)))))
