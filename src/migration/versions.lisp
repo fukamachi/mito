@@ -160,12 +160,14 @@
               (format *error-output* "~&Given up.~%")
               (return-from generate-migrations nil)))))
 
-    (flet ((write-expressions (expressions destination)
+    (flet ((write-expressions (expressions destination &key print)
              (ensure-directories-exist directory)
              (with-open-file (out destination
                                   :direction :output
                                   :if-does-not-exist :create)
-               (let ((out (make-broadcast-stream *standard-output* out)))
+               (let ((out (if print
+                              (make-broadcast-stream *standard-output* out)
+                              out)))
                  (with-quote-char
                      (map nil
                           (lambda (ex)
@@ -196,7 +198,7 @@
                                                    :type "sql"
                                                    :defaults directory))
                   (sxql:*use-placeholder* nil))
-             (write-expressions up-expressions up-destination)
+             (write-expressions up-expressions up-destination :print t)
              (write-expressions down-expressions down-destination)
              (format t "~&Successfully generated: ~A~%" up-destination)
              (values up-destination down-destination)))
