@@ -22,7 +22,7 @@
       (:record-timestamps nil))
     (mapc #'execute-sql (table-definition 'tweets))
 
-    (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
+    (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets) :mysql)
                '(nil nil nil nil nil))
         "No migration at first")
 
@@ -33,7 +33,7 @@
       (:table-name "tweets")
       (:record-timestamps nil))
 
-    (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
+    (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets) :mysql)
                '(nil nil nil nil nil))
         "No migration at first"))
 
@@ -50,7 +50,7 @@
                          change-columns
                          add-indices
                          drop-indices)
-        (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
+        (mito.migration.table::migration-expressions-aux (find-class 'tweets) :mysql)
       (ok (null add-columns)
           "No columns to add")
       (ok (equal (mapcar #'sxql:yield drop-columns) '("ALTER TABLE tweets DROP COLUMN id"))
@@ -79,7 +79,7 @@
                          change-columns
                          add-indices
                          drop-indices)
-        (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
+        (mito.migration.table::migration-expressions-aux (find-class 'tweets) :mysql)
       (ok (equal (mapcar #'sxql:yield add-columns)
                  '("ALTER TABLE tweets ADD COLUMN status text NOT NULL, ADD COLUMN tweet_id int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY"))
           "Add id and status")
@@ -94,7 +94,7 @@
 
     (migrate-table (find-class 'tweets))
 
-    (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
+    (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets) :mysql)
                '(nil nil nil nil nil))
         "No migration after migrating"))
 
@@ -114,7 +114,7 @@
                          change-columns
                          add-indices
                          drop-indices)
-        (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
+        (mito.migration.table::migration-expressions-aux (find-class 'tweets) :mysql)
       (ok (equal (mapcar #'sxql:yield add-columns)
                  '("ALTER TABLE tweets ADD COLUMN created_at char(8) NOT NULL")))
       (ok (equal (mapcar #'sxql:yield drop-columns) '("ALTER TABLE tweets DROP COLUMN status")))
@@ -126,7 +126,7 @@
 
     (migrate-table (find-class 'tweets))
 
-    (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
+    (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets) :mysql)
                '(nil nil nil nil nil))
         "No migration after migrating"))
 
@@ -146,7 +146,7 @@
                                 change-columns
                                 add-indices
                                 drop-indices)
-               (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
+               (mito.migration.table::migration-expressions-aux (find-class 'tweets) :mysql)
              (ok (null add-columns))
              (ok (null drop-columns))
              (ok (equal (format nil "~{~A~^~%~}"
@@ -157,7 +157,7 @@
 
            (migrate-table (find-class 'tweets))
 
-           (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
+           (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets) :mysql)
                       '(nil nil nil nil nil))
                "No migration after migrating"))
 
@@ -177,7 +177,7 @@
                                 change-columns
                                 add-indices
                                 drop-indices)
-               (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
+               (mito.migration.table::migration-expressions-aux (find-class 'tweets) :mysql)
              (ok (null add-columns))
              (ok (null drop-columns))
              (ok (equal (format nil "~{~A~^~%~}"
@@ -188,7 +188,7 @@
 
            (migrate-table (find-class 'tweets))
 
-           (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
+           (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets) :mysql)
                       '(nil nil nil nil nil))
                "No migration after migrating"))
 
@@ -209,7 +209,7 @@
                          change-columns
                          add-indices
                          drop-indices)
-        (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
+        (mito.migration.table::migration-expressions-aux (find-class 'tweets) :mysql)
       (ok (null add-columns))
       (ok (null drop-columns))
       (ok (null change-columns))
@@ -220,7 +220,7 @@
 
     (migrate-table (find-class 'tweets))
 
-    (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
+    (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets) :mysql)
                '(nil nil nil nil nil))
         "No migration after migrating"))
 
@@ -241,7 +241,7 @@
                          change-columns
                          add-indices
                          drop-indices)
-        (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
+        (mito.migration.table::migration-expressions-aux (find-class 'tweets) :mysql)
       (ok (null add-columns))
       (ok (null drop-columns))
       (ok (null change-columns))
@@ -253,7 +253,7 @@
 
     (migrate-table (find-class 'tweets))
 
-    (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
+    (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets) :mysql)
                '(nil nil nil nil nil))
         "No migration after migrating"))
 
@@ -274,7 +274,7 @@
                                 change-columns
                                 add-indices
                                 drop-indices)
-               (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
+               (mito.migration.table::migration-expressions-aux (find-class 'tweets) :mysql)
              (ok (null add-columns))
              (ok (null drop-columns))
              (ok (null change-columns))
@@ -287,7 +287,7 @@
 
            (migrate-table (find-class 'tweets))
 
-           (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :mysql)
+           (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets) :mysql)
                       '(nil nil nil nil nil))
                "No migration after migrating"))
 
@@ -315,7 +315,7 @@
              (:primary-key tweet tag))
            (ensure-table-exists 'tweets-tag)
 
-           (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets-tag) :mysql)
+           (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets-tag) :mysql)
                       '(nil nil nil nil nil))
                "No migration after migrating")))
 
