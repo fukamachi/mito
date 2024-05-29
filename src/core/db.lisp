@@ -88,6 +88,7 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
    conn table-name))
 
 (defun table-exists-p (conn table-name)
+  (check-type table-name string)
   (multiple-value-bind (sql binds)
       (sxql:yield
        (ecase (dbi:connection-driver-type conn)
