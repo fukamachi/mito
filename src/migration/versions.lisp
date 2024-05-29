@@ -152,7 +152,7 @@
               (dolist (up-file non-applied-files)
                 (delete-migration-file up-file)
                 (let ((down-file
-                        (make-pathname :name (ppcre:regex-replace "\\.up$" (pathname-name file) ".down")
+                        (make-pathname :name (ppcre:regex-replace "\\.up$" (pathname-name up-file) ".down")
                                        :defaults up-file)))
                   (when (uiop:file-exists-p down-file)
                     (delete-migration-file down-file)))))

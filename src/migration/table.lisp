@@ -39,7 +39,8 @@
                 #:ensure-class)
   (:import-from #:alexandria
                 #:ensure-list
-                #:remove-from-plist)
+                #:remove-from-plist
+                #:compose)
   (:export #:*auto-migration-mode*
            #:*migration-keep-temp-tables*
            #:migrate-table
@@ -61,28 +62,6 @@ If this variable is T they won't be deleted after migration.")
       (with-sql-logging
         (mapc #'execute-sql
               (migration-expressions class))))))
-
-(defun slot-defaults (class table-columns new-fields)
-  (let (new-names defaults)
-    (dolist (new-field new-fields)
-      (let ((slot
-              (find-slot-by-name class (lispify (string-upcase new-field))
-                                 :test #'string-equal)))
-        (cond
-          ((c2mop:slot-definition-initfunction slot)
-           (push (sxql:make-sql-symbol new-field) new-names)
-           (push
-            (convert-for-driver-type
-             :sqlite3
-             (table-column-type slot)
-             (dao-table-column-deflate slot
-                                       (funcall (c2mop:slot-definition-initfunction slot))))
-            defaults))
-          (t
-           (when (getf (cdr (find new-field table-columns :key #'first)) :not-null)
-             (warn "Adding a non-null column ~S but there's no :initform to set default"
-                   new-field))))))
-    (values new-names defaults)))
 
 (defun migration-expressions-between-for-sqlite3 (class from-columns to-columns from-indices to-indices)
   (let* ((table-name (table-name class))
@@ -109,17 +88,29 @@ If this variable is T they won't be deleted after migration.")
 
        (first (create-table-sxql class :sqlite3))
 
-       (let* ((column-names (mapcar #'car
-                                    (column-definitions *connection* table-name)))
-              (slot-names (mapcar #'car to-columns))
-              (same (list-diff column-names slot-names))
-              (same-names (mapcar #'sxql:make-sql-symbol same))
-              (new (set-difference slot-names column-names :test #'string-equal)))
-         (multiple-value-bind (new-names defaults)
-             (slot-defaults class to-columns new)
-           (sxql:insert-into (sxql:make-sql-symbol table-name) (append same-names new-names)
+       (multiple-value-bind (columns-intersection
+                             columns-to-delete
+                             columns-to-add)
+           (list-diff from-columns to-columns
+                      :key #'car)
+         (let ((new-columns-have-default
+                 (loop for new-column in columns-to-add
+                       if (getf (cdr new-column) :default)
+                       collect new-column
+                       else
+                       do (warn "Adding a non-null column ~S but there's no :initform to set default"
+                                (car new-column)))))
+           (sxql:insert-into (sxql:make-sql-symbol table-name)
+                             (append (mapcar (compose #'sxql:make-sql-symbol #'car)
+                                             columns-intersection)
+                                     (mapcar (compose #'sxql:make-sql-symbol #'car)
+                                             new-columns-have-default))
                              (sxql:select
-                               (apply #'sxql:make-clause :fields (append same-names defaults))
+                               (apply #'sxql:make-clause :fields
+                                      (append (mapcar (compose #'sxql:make-sql-symbol #'car)
+                                                      columns-intersection)
+                                              (mapcar (compose #'sxql:make-sql-symbol #'car)
+                                                      new-columns-have-default)))
                                (sxql:from tmp-table-name)))))
        (unless *migration-keep-temp-tables*
          (list (sxql:drop-table tmp-table-name)))))))
