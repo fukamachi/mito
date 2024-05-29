@@ -4,9 +4,13 @@
         #:mito.util)
   (:import-from #:mito.class.column
                 #:table-column-class
-                #:table-column-type)
+                #:table-column-type
+                #:table-column-info)
+  (:import-from #:mito.conversion
+                #:convert-for-driver-type)
   (:import-from #:local-time)
   (:import-from #:cl-ppcre)
+  (:import-from #:closer-mop)
   (:export #:dao-table-column-class
            #:dao-table-column-inflate
            #:dao-table-column-deflate
@@ -141,3 +145,15 @@
     (deflate-for-col-type :datetime value))
   (:method ((col-type (eql :timestamptz)) value)
     (deflate-for-col-type :datetime value)))
+
+(defmethod table-column-info :around ((column dao-table-column-class) driver-type)
+  (let ((column-info (call-next-method)))
+    (when (and (null (getf (cdr column-info) :default))
+               (c2mop:slot-definition-initfunction column))
+      (setf (getf (cdr column-info) :default)
+            (convert-for-driver-type
+             driver-type
+             (table-column-type column)
+             (dao-table-column-deflate column
+                                       (funcall (c2mop:slot-definition-initfunction column))))))
+    column-info))

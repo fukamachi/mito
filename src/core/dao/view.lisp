@@ -38,6 +38,22 @@
             (sxql:yield (create-view-view-name statement))
             (create-view-as statement))))
 
+(defstruct (drop-view (:include sxql.sql-type:sql-statement (sxql.sql-type:name "DROP VIEW"))
+                      (:constructor make-drop-view (view-name &key if-exists)))
+  view-name
+  if-exists)
+
+(defmethod sxql:make-statement ((statement-name (eql :drop-view)) &rest args)
+  (destructuring-bind (view-name &key if-exists)
+      args
+    (make-drop-view (sxql.operator:detect-and-convert view-name) :if-exists if-exists)))
+
+(defmethod sxql:yield ((statement drop-view))
+  (sxql.sql-type:with-yield-binds
+      (format nil "DROP~:[~; IF EXISTS~] VIEW ~A"
+              (drop-view-if-exists statement)
+              (drop-view-view-name statement))))
+
 (defgeneric table-definition (class &key if-not-exists or-replace)
   (:method ((class symbol) &rest args &key if-not-exists or-replace)
     (declare (ignore if-not-exists or-replace))

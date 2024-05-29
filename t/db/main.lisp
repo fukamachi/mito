@@ -11,13 +11,13 @@
            (ok (equal (column-definitions conn "tweets")
                       (ecase (dbi:connection-driver-type conn)
                         (:mysql
-                         '(("id" :type "int" :auto-increment t :primary-key t :not-null t)
-                           ("status" :type "text" :auto-increment nil :primary-key nil  :not-null t)
-                           ("user" :type "varchar(64)" :auto-increment nil :primary-key nil :not-null t)))
+                         '(("id" :type "int" :auto-increment t :primary-key t :not-null t :default nil)
+                           ("status" :type "text" :auto-increment nil :primary-key nil  :not-null t :default nil)
+                           ("user" :type "varchar(64)" :auto-increment nil :primary-key nil :not-null t :default nil)))
                         (:postgres
-                         '(("id" :type "integer" :auto-increment t :primary-key t :not-null t)
-                           ("status" :type "text" :auto-increment nil :primary-key nil  :not-null t)
-                           ("user" :type "character varying(64)" :auto-increment nil :primary-key nil :not-null t)))
+                         '(("id" :type "integer" :auto-increment t :primary-key t :not-null t :default nil)
+                           ("status" :type "text" :auto-increment nil :primary-key nil  :not-null t :default nil)
+                           ("user" :type "character varying(64)" :auto-increment nil :primary-key nil :not-null t :default nil)))
                         (:sqlite3
                          '(("id" :type "INTEGER" :auto-increment t :primary-key t :not-null t)
                            ("status" :type "TEXT" :auto-increment nil :primary-key nil :not-null t)

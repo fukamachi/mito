@@ -58,10 +58,14 @@
                         ~%    CASE~
                         ~%        WHEN p.contype = 'p' THEN true~
                         ~%        ELSE false~
-                        ~%    END AS primary~
+                        ~%    END AS primary,~
+                        ~%    CASE~
+                        ~%        WHEN f.atthasdef THEN pg_get_expr(d.adbin, d.adrelid)~
+                        ~%    END AS default~
                         ~%FROM pg_attribute f~
                         ~%    JOIN pg_class c ON c.oid = f.attrelid~
                         ~%    LEFT JOIN pg_constraint p ON p.conrelid = f.attrelid AND f.attnum = ANY (p.conkey)~
+                        ~%    LEFT JOIN pg_attrdef d ON d.adrelid = c.oid~
                         ~%WHERE c.relkind = 'r'::char~
                         ~%    AND c.relname = '~A'~
                         ~%    AND f.attnum > 0~
@@ -73,14 +77,19 @@
                (loop with results = (dbi:execute query)
                      for column = (dbi:fetch results)
                      while column
-                     collect (list (getf column :|name|)
-                                   :type (getf column :|type|)
-                                   :auto-increment (not (null (member (getf column :|name|)
+                     collect (let ((auto-increment (not (null (member (getf column :|name|)
                                                                       serial-keys
-                                                                      :test #'string=)))
-                                   :primary-key (getf column :|primary|)
-                                   :not-null (or (getf column :|primary|)
-                                                 (getf column :|notnull|))))
+                                                                      :test #'string=)))))
+                               (list (getf column :|name|)
+                                     :type (getf column :|type|)
+                                     :auto-increment auto-increment
+                                     :primary-key (getf column :|primary|)
+                                     :not-null (or (getf column :|primary|)
+                                                   (getf column :|notnull|))
+                                     :default (if (or auto-increment
+                                                      (eq :null (getf column :|default|)))
+                                                  nil
+                                                  (getf column :|default|)))))
                :key #'car
                :test #'string=
                :from-end t)))
