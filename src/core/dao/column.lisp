@@ -148,12 +148,12 @@
 
 (defmethod table-column-info :around ((column dao-table-column-class) driver-type)
   (let ((column-info (call-next-method)))
-    (when (and (null (getf (cdr column-info) :default))
-               (c2mop:slot-definition-initfunction column))
+    (when (null (getf (cdr column-info) :default))
       (setf (getf (cdr column-info) :default)
-            (convert-for-driver-type
-             driver-type
-             (table-column-type column)
-             (dao-table-column-deflate column
-                                       (funcall (c2mop:slot-definition-initfunction column))))))
+            (and (c2mop:slot-definition-initfunction column)
+                 (convert-for-driver-type
+                  driver-type
+                  (table-column-type column)
+                  (dao-table-column-deflate column
+                                            (funcall (c2mop:slot-definition-initfunction column)))))))
     column-info))

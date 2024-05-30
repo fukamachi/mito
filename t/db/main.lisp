@@ -19,9 +19,9 @@
                            ("status" :type "text" :auto-increment nil :primary-key nil  :not-null t :default nil)
                            ("user" :type "character varying(64)" :auto-increment nil :primary-key nil :not-null t :default nil)))
                         (:sqlite3
-                         '(("id" :type "INTEGER" :auto-increment t :primary-key t :not-null t)
-                           ("status" :type "TEXT" :auto-increment nil :primary-key nil :not-null t)
-                           ("user" :type "VARCHAR(64)" :auto-increment nil :primary-key nil :not-null t)))))
+                         '(("id" :type "INTEGER" :auto-increment t :primary-key t :not-null t :default nil)
+                           ("status" :type "TEXT" :auto-increment nil :primary-key nil :not-null t :default nil)
+                           ("user" :type "VARCHAR(64)" :auto-increment nil :primary-key nil :not-null t :default nil)))))
                "tweets"))
 
   (testing "table-indices"

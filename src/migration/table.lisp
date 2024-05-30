@@ -39,7 +39,6 @@
                 #:ensure-class)
   (:import-from #:alexandria
                 #:ensure-list
-                #:remove-from-plist
                 #:compose)
   (:export #:*auto-migration-mode*
            #:*migration-keep-temp-tables*
@@ -63,6 +62,23 @@ If this variable is T they won't be deleted after migration.")
         (mapc #'execute-sql
               (migration-expressions class))))))
 
+(defun plist= (plist1 plist2)
+  (equalp (sort
+           (loop for (k v) on plist1 by #'cddr
+                 collect (cons k v))
+           #'string<
+           :key #'car)
+          (sort
+           (loop for (k v) on plist2 by #'cddr
+                 collect (cons k v))
+           #'string<
+           :key #'car)))
+
+(defun column-definition-equal-p (column1 column2)
+  (and (first column1)
+       (first column2)
+       (plist= (cdr column1) (cdr column2))))
+
 (defun migration-expressions-between-for-sqlite3 (class from-columns to-columns from-indices to-indices)
   (let* ((table-name (table-name class))
          (tmp-table-name (gensym table-name)))
@@ -75,12 +91,15 @@ If this variable is T they won't be deleted after migration.")
             (sort (getf (cdr idx) :columns) #'string<=)))
 
     (unless (every #'null
-                   (append (cdr (multiple-value-list (list-diff from-columns to-columns
-                                                                :test #'equalp
-                                                                :sort-fn (constantly t))))
+                   (append (cdr (multiple-value-list
+                                 (list-diff from-columns to-columns
+                                            :key #'cdr
+                                            :test #'plist=
+                                            :sort-fn (constantly t))))
                            (cdr (multiple-value-list
-                                 (list-diff from-indices to-indices :key #'cdr
-                                            :test #'equalp
+                                 (list-diff from-indices to-indices
+                                            :key #'cdr
+                                            :test #'plist=
                                             :sort-fn (constantly t))))))
       (list*
        (sxql:alter-table (sxql:make-sql-symbol table-name)
@@ -192,8 +211,7 @@ If this variable is T they won't be deleted after migration.")
                with after-alter-sequences = '()
                for db-column in columns-intersection
                for table-column = (find (car db-column) to-columns :test #'string= :key #'car)
-               unless (equalp (remove-from-plist (cdr db-column) :default)
-                              (remove-from-plist (cdr table-column) :default))
+               unless (column-definition-equal-p db-column table-column)
                append (case driver-type
                         (:postgres
                          (loop for (k v) on (cdr table-column) by #'cddr
