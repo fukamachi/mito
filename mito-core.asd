@@ -19,7 +19,7 @@
                 ((:file "dao" :depends-on ("dao-components"))
                  (:module "dao-components"
                   :pathname "dao"
-                  :depends-on ("connection" "class" "db" "logger" "util")
+                  :depends-on ("connection" "class" "db" "conversion" "logger" "util")
                   :components
                   ((:file "table" :depends-on ("column" "mixin" "view"))
                    (:file "view" :depends-on ("column"))
@@ -42,6 +42,7 @@
                   ((:file "mysql")
                    (:file "postgres")
                    (:file "sqlite3")))
+                 (:file "conversion")
                  (:file "logger")
                  (:file "error")
                  (:file "util")))))

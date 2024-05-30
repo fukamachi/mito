@@ -41,7 +41,11 @@
                         :auto-increment (column-auto-increment-p column)
                         :primary-key (column-primary-key-p column)
                         :not-null (or (column-primary-key-p column)
-                                      (not (= (getf column :|notnull|) 0))))
+                                      (not (= (getf column :|notnull|) 0)))
+                        :default (let ((default (getf column :|dflt_value|)))
+                                   (if (stringp default)
+                                       (read-from-string default)
+                                       default)))
             into definitions
           finally
              (return

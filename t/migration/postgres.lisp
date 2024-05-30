@@ -23,7 +23,7 @@
       (:record-timestamps nil))
     (mapc #'execute-sql (table-definition 'tweets))
 
-    (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :postgres)
+    (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets) :postgres)
                '(nil nil nil nil nil))
         "No migration at first")
 
@@ -34,7 +34,7 @@
       (:table-name "tweets")
       (:record-timestamps nil))
 
-    (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :postgres)
+    (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets) :postgres)
                '(nil nil nil nil nil))
         "No migration at first"))
 
@@ -51,10 +51,10 @@
                          change-columns
                          add-indices
                          drop-indices)
-        (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :postgres)
+        (mito.migration.table::migration-expressions-aux (find-class 'tweets) :postgres)
       (ok (null add-columns)
           "No columns to add")
-      (ok (equal (sxql:yield drop-columns) "ALTER TABLE tweets DROP COLUMN id")
+      (ok (equal (mapcar #'sxql:yield drop-columns) '("ALTER TABLE tweets DROP COLUMN id"))
           "Drop column id")
       (ok (null change-columns)
           "No columns to change")
@@ -80,11 +80,11 @@
                          change-columns
                          add-indices
                          drop-indices)
-        (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :postgres)
+        (mito.migration.table::migration-expressions-aux (find-class 'tweets) :postgres)
       (ok (equal (mapcar #'sxql:yield add-columns)
                  '("ALTER TABLE tweets ADD COLUMN status text NOT NULL, ADD COLUMN tweet_id serial NOT NULL PRIMARY KEY"))
           "Add id and status")
-      (ok (equal (sxql:yield drop-columns) "ALTER TABLE tweets DROP COLUMN id")
+      (ok (equal (mapcar #'sxql:yield drop-columns) '("ALTER TABLE tweets DROP COLUMN id"))
           "Drop id")
       (ok (null change-columns)
           "No columns to change")
@@ -95,7 +95,7 @@
 
     (migrate-table (find-class 'tweets))
 
-    (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :postgres)
+    (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets) :postgres)
                '(nil nil nil nil nil))
         "No migration after migrating"))
 
@@ -115,10 +115,10 @@
                          change-columns
                          add-indices
                          drop-indices)
-        (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :postgres)
+        (mito.migration.table::migration-expressions-aux (find-class 'tweets) :postgres)
       (ok (equal (mapcar #'sxql:yield add-columns)
                  '("ALTER TABLE tweets ADD COLUMN created_at character(8) NOT NULL")))
-      (ok (equal (sxql:yield drop-columns) "ALTER TABLE tweets DROP COLUMN status"))
+      (ok (equal (mapcar #'sxql:yield drop-columns) '("ALTER TABLE tweets DROP COLUMN status")))
       (ok (equal (format nil "~{~A~^~%~}"
                          (mapcar #'sxql:yield change-columns))
                  "ALTER TABLE tweets ALTER COLUMN user TYPE character varying(64)"))
@@ -127,71 +127,71 @@
 
     (migrate-table (find-class 'tweets))
 
-    (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :postgres)
+    (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets) :postgres)
                '(nil nil nil nil nil))
         "No migration after migrating"))
 
   (testing "redefinition (modifying the column type)"
-           (defclass tweets ()
-             ((tweet-id :col-type :serial
-                        :primary-key t
-                        :reader tweet-id)
-              (user :col-type (:varchar 128)
-                    :accessor tweet-user)
-              (created-at :col-type (:char 8)))
-             (:metaclass dao-table-class)
-             (:record-timestamps nil))
+    (defclass tweets ()
+      ((tweet-id :col-type :serial
+                 :primary-key t
+                 :reader tweet-id)
+       (user :col-type (:varchar 128)
+             :accessor tweet-user)
+       (created-at :col-type (:char 8)))
+      (:metaclass dao-table-class)
+      (:record-timestamps nil))
 
-           (destructuring-bind (add-columns
-                                drop-columns
-                                change-columns
-                                add-indices
-                                drop-indices)
-               (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :postgres)
-             (ok (null add-columns))
-             (ok (null drop-columns))
-             (ok (equal (format nil "~{~A~^~%~}"
-                                (mapcar #'sxql:yield change-columns))
-                        "ALTER TABLE tweets ALTER COLUMN user TYPE character varying(128)"))
-             (ok (null add-indices))
-             (ok (null drop-indices)))
+    (destructuring-bind (add-columns
+                         drop-columns
+                         change-columns
+                         add-indices
+                         drop-indices)
+        (mito.migration.table::migration-expressions-aux (find-class 'tweets) :postgres)
+      (ok (null add-columns))
+      (ok (null drop-columns))
+      (ok (equal (format nil "~{~A~^~%~}"
+                         (mapcar #'sxql:yield change-columns))
+                 "ALTER TABLE tweets ALTER COLUMN user TYPE character varying(128)"))
+      (ok (null add-indices))
+      (ok (null drop-indices)))
 
-           (migrate-table (find-class 'tweets))
+    (migrate-table (find-class 'tweets))
 
-           (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :postgres)
-                      '(nil nil nil nil nil))
-               "No migration after migrating"))
+    (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets) :postgres)
+               '(nil nil nil nil nil))
+        "No migration after migrating"))
 
   (testing "redefinition of primary key"
-           (defclass tweets ()
-             ((tweet-id :col-type :bigserial
-                        :primary-key t
-                        :reader tweet-id)
-              (user :col-type (:varchar 128)
-                    :accessor tweet-user)
-              (created-at :col-type (:char 8)))
-             (:metaclass dao-table-class)
-             (:record-timestamps nil))
+    (defclass tweets ()
+      ((tweet-id :col-type :bigserial
+                 :primary-key t
+                 :reader tweet-id)
+       (user :col-type (:varchar 128)
+             :accessor tweet-user)
+       (created-at :col-type (:char 8)))
+      (:metaclass dao-table-class)
+      (:record-timestamps nil))
 
-           (destructuring-bind (add-columns
-                                drop-columns
-                                change-columns
-                                add-indices
-                                drop-indices)
-               (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :postgres)
-             (ok (null add-columns))
-             (ok (null drop-columns))
-             (ok (equal (format nil "~{~A~^~%~}"
-                                (mapcar #'sxql:yield change-columns))
-                        "ALTER TABLE tweets ALTER COLUMN tweet_id TYPE bigint"))
-             (ok (null add-indices))
-             (ok (null drop-indices)))
+    (destructuring-bind (add-columns
+                         drop-columns
+                         change-columns
+                         add-indices
+                         drop-indices)
+        (mito.migration.table::migration-expressions-aux (find-class 'tweets) :postgres)
+      (ok (null add-columns))
+      (ok (null drop-columns))
+      (ok (equal (format nil "~{~A~^~%~}"
+                         (mapcar #'sxql:yield change-columns))
+                 "ALTER TABLE tweets ALTER COLUMN tweet_id TYPE bigint"))
+      (ok (null add-indices))
+      (ok (null drop-indices)))
 
-           (migrate-table (find-class 'tweets))
+    (migrate-table (find-class 'tweets))
 
-           (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :postgres)
-                      '(nil nil nil nil nil))
-               "No migration after migrating"))
+    (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets) :postgres)
+               '(nil nil nil nil nil))
+        "No migration after migrating"))
 
   (testing "add :unique-keys"
     (defclass tweets ()
@@ -210,7 +210,7 @@
                          change-columns
                          add-indices
                          drop-indices)
-        (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :postgres)
+        (mito.migration.table::migration-expressions-aux (find-class 'tweets) :postgres)
       (ok (null add-columns))
       (ok (null drop-columns))
       (ok (null change-columns))
@@ -221,7 +221,7 @@
 
     (migrate-table (find-class 'tweets))
 
-    (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :postgres)
+    (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets) :postgres)
                '(nil nil nil nil nil))
         "No migration after migrating"))
 
@@ -242,7 +242,7 @@
                          change-columns
                          add-indices
                          drop-indices)
-        (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :postgres)
+        (mito.migration.table::migration-expressions-aux (find-class 'tweets) :postgres)
       (ok (null add-columns))
       (ok (null drop-columns))
       (ok (null change-columns))
@@ -255,7 +255,7 @@
 
     (migrate-table (find-class 'tweets))
 
-    (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :postgres)
+    (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets) :postgres)
                '(nil nil nil nil nil))
         "No migration after migrating"))
 
@@ -276,7 +276,7 @@
                          change-columns
                          add-indices
                          drop-indices)
-        (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :postgres)
+        (mito.migration.table::migration-expressions-aux (find-class 'tweets) :postgres)
       (ok (null add-columns))
       (ok (null drop-columns))
       (ok (null change-columns))
@@ -289,7 +289,7 @@
 
     (migrate-table (find-class 'tweets))
 
-    (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets) :postgres)
+    (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets) :postgres)
                '(nil nil nil nil nil))
         "No migration after migrating"))
 
@@ -317,7 +317,7 @@
       (:primary-key tweet tag))
     (ensure-table-exists 'tweets-tag)
 
-    (ok (equal (mito.migration.table::migration-expressions-for-others (find-class 'tweets-tag) :postgres)
+    (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets-tag) :postgres)
                '(nil nil nil nil nil))
         "No migration after migrating")))
 

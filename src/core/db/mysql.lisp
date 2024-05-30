@@ -71,7 +71,8 @@
                                    :auto-increment (string= (getf column :|Extra|) "auto_increment")
                                    :primary-key (string= (getf column :|Key|) "PRI")
                                    :not-null (or (string= (getf column :|Key|) "PRI")
-                                                 (string= (getf column :|Null|) "NO"))))))
+                                                 (string= (getf column :|Null|) "NO"))
+                                   :default (getf column :|Default|)))))
         ;; Set :primary-key NIL if there's a composite primary key.
         (if (< 1 (count-if (lambda (def)
                              (getf (cdr def) :primary-key))

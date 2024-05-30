@@ -86,11 +86,16 @@
 
 (defun all-migration-expressions ()
   (check-connected)
-  (mapcan (lambda (class)
-            (if (table-exists-p *connection* (table-name class))
-                (migration-expressions class)
-                (table-definition class)))
-          (all-dao-classes)))
+  (loop for class in (all-dao-classes)
+        for (up down) = (if (table-exists-p *connection* (table-name class))
+                            (multiple-value-list (migration-expressions class))
+                            (list (table-definition class)
+                                  (list (sxql:drop-table (sxql:make-sql-symbol (table-name class))))))
+        append up into up-expressions
+        append down into down-expressions
+        finally (return
+                  (values up-expressions
+                          down-expressions))))
 
 (defun current-migration-version ()
   (initialize-migrations-table)
@@ -122,15 +127,9 @@
           1)))))
 
 (defun generate-migrations (directory &key force)
-  (let* ((schema.sql (merge-pathnames #P"schema.sql" directory))
-         (directory (merge-pathnames #P"migrations/" directory))
-         (current-version (current-migration-version))
-         (version (generate-version current-version))
-         (destination (make-pathname :name (format nil "~A.up" version)
-                                     :type "sql"
-                                     :defaults directory))
-         (expressions (all-migration-expressions))
-         (sxql:*use-placeholder* nil))
+  (let ((schema.sql (merge-pathnames #P"schema.sql" directory))
+        (directory (merge-pathnames #P"migrations/" directory))
+        (current-version (current-migration-version)))
 
     ;; Warn if there're non-applied migration files.
     (let* ((sql-files (sort (uiop:directory-files directory "*.up.sql")
@@ -147,41 +146,65 @@
       (when non-applied-files
         (if (y-or-n-p "Found non-applied ~D migration file~:*~P. Will you delete them?"
                       (length non-applied-files))
-            (dolist (file non-applied-files)
-              (format *error-output* "~&Deleting '~A'...~%" file)
-              (delete-file file))
+            (flet ((delete-migration-file (file)
+                     (format *error-output* "~&Deleting '~A'...~%" file)
+                     (delete-file file)))
+              (dolist (up-file non-applied-files)
+                (delete-migration-file up-file)
+                (let ((down-file
+                        (make-pathname :name (ppcre:regex-replace "\\.up$" (pathname-name up-file) ".down")
+                                       :defaults up-file)))
+                  (when (uiop:file-exists-p down-file)
+                    (delete-migration-file down-file)))))
             (progn
               (format *error-output* "~&Given up.~%")
               (return-from generate-migrations nil)))))
 
-    (if (or expressions force)
-        (progn
-          (ensure-directories-exist directory)
-          (with-open-file (out destination
-                               :direction :output
-                               :if-does-not-exist :create)
-            (let ((out (make-broadcast-stream *standard-output* out)))
-              (with-quote-char
-                (map nil
-                     (lambda (ex)
-                       (format out "~&~A;~%" (sxql:yield ex)))
-                     expressions))))
-          (with-open-file (out schema.sql
-                               :direction :output
-                               :if-exists :supersede
-                               :if-does-not-exist :create)
-            (with-quote-char
-              (format out "~{~{~A;~%~}~^~%~}"
-                      (mapcar (lambda (class)
-                                (mapcar #'sxql:yield (table-definition class)))
-                              (all-dao-classes)))
-              (format out "~2&~A;~%"
-                      (sxql:yield (schema-migrations-table-definition)))))
-          (format t "~&Successfully generated: ~A~%" destination)
-          destination)
-        (progn
-          (format t "~&Nothing to migrate.~%")
-          nil))))
+    (flet ((write-expressions (expressions destination &key print)
+             (ensure-directories-exist directory)
+             (with-open-file (out destination
+                                  :direction :output
+                                  :if-does-not-exist :create)
+               (let ((out (if print
+                              (make-broadcast-stream *standard-output* out)
+                              out)))
+                 (with-quote-char
+                     (map nil
+                          (lambda (ex)
+                            (format out "~&~A;~%" (sxql:yield ex)))
+                          expressions))))
+             (with-open-file (out schema.sql
+                                  :direction :output
+                                  :if-exists :supersede
+                                  :if-does-not-exist :create)
+               (with-quote-char
+                   (format out "~{~{~A;~%~}~^~%~}"
+                           (mapcar (lambda (class)
+                                     (mapcar #'sxql:yield (table-definition class)))
+                                   (all-dao-classes)))
+                 (format out "~2&~A;~%"
+                         (sxql:yield (schema-migrations-table-definition)))))
+             destination))
+      (multiple-value-bind
+            (up-expressions down-expressions)
+          (all-migration-expressions)
+        (cond
+          ((or up-expressions force)
+           (let* ((version (generate-version current-version))
+                  (up-destination (make-pathname :name (format nil "~A.up" version)
+                                                 :type "sql"
+                                                 :defaults directory))
+                  (down-destination (make-pathname :name (format nil "~A.down" version)
+                                                   :type "sql"
+                                                   :defaults directory))
+                  (sxql:*use-placeholder* nil))
+             (write-expressions up-expressions up-destination :print t)
+             (write-expressions down-expressions down-destination)
+             (format t "~&Successfully generated: ~A~%" up-destination)
+             (values up-destination down-destination)))
+          (t
+           (format t "~&Nothing to migrate.~%")
+           (values)))))))
 
 (defun migration-file-version (file)
   (let* ((name (pathname-name file))
