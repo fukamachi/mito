@@ -1,5 +1,5 @@
 (defsystem "mito-core"
-  :version "0.1"
+  :version "0.2.0"
   :author "Eitaro Fukamachi"
   :license "LLGPL"
   :depends-on ((:version "dbi" "0.10.0")
