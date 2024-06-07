@@ -9,7 +9,6 @@
   (:import-from #:mito.logger
                 #:with-trace-sql)
   (:import-from #:mito.util
-                #:lispify
                 #:with-prepared-query
                 #:execute-with-retry)
   (:import-from #:dbi
@@ -161,21 +160,35 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
                x)))
           results-list))
 
+(defun lispified-fields (query)
+  (mapcar (lambda (field)
+            (declare (type string field))
+            (intern (map 'string
+                         (lambda (char)
+                           (declare (type character char))
+                           (if (char= char #\_)
+                               #\-
+                               (char-upcase char)))
+                         field)
+                    :keyword))
+          (dbi:query-fields query)))
+
 (defgeneric retrieve-by-sql (sql &key binds)
   (:method :before (sql &key binds)
     (declare (ignore sql binds))
     (check-connected))
   (:method ((sql string) &key binds)
     (with-prepared-query query (*connection* sql :use-prepare-cached *use-prepare-cached*)
-      (let* ((results
-               (dbi:fetch-all
-                (with-trace-sql
-                  (execute-with-retry query binds))))
+      (let* ((query (with-trace-sql
+                        (execute-with-retry query binds)))
+             (rows (dbi:fetch-all query :format :values))
+             (fields (lispified-fields query))
              (results
-               (loop for result in results
+               (loop for row in rows
                      collect
-                     (loop for (k v) on result by #'cddr
-                           collect (lispify k)
+                     (loop for field in fields
+                           for v in row
+                           collect field
                            collect (cond ((eq v :null) nil)
                                          ((and v (listp v))
                                           (list-convert-nulls-to-nils v))
