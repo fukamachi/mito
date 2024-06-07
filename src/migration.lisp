@@ -1,9 +1,5 @@
-(in-package :cl-user)
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (handler-bind (#+sbcl (warning #'muffle-warning))
-    (defpackage mito.migration
-      (:use #:cl))))
+(uiop:define-package #:mito.migration
+  (:use #:cl)
+  (:use-reexport #:mito.migration.table
+                 #:mito.migration.versions))
 (in-package :mito.migration)
-
-(cl-reexport:reexport-from :mito.migration.table)
-(cl-reexport:reexport-from :mito.migration.versions)

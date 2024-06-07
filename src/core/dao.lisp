@@ -1,68 +1,63 @@
-(in-package :cl-user)
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (handler-bind (#+sbcl (warning #'muffle-warning))
-    (defpackage mito.dao
-      (:use #:cl
-            #:sxql
-            #:mito.class)
-      (:import-from #:mito.dao.column
-                    #:dao-table-column-deflate)
-      (:import-from #:mito.conversion
-                    #:convert-for-driver-type)
-      (:import-from #:mito.connection
-                    #:*connection*
-                    #:check-connected
-                    #:driver-type)
-      (:import-from #:mito.class
-                    #:database-column-slots
-                    #:ghost-slot-p
-                    #:find-slot-by-name
-                    #:find-parent-column
-                    #:find-child-columns
-                    #:table-column-references-column
-                    #:table-column-name
-                    #:table-column-type)
-      (:import-from #:mito.db
-                    #:last-insert-id
-                    #:execute-sql
-                    #:retrieve-by-sql
-                    #:table-exists-p)
-      (:import-from #:mito.logger
-                    #:with-sql-logging)
-      (:import-from #:mito.util
-                    #:unlispify
-                    #:symbol-name-literally
-                    #:ensure-class)
-      (:import-from #:trivia
-                    #:match
-                    #:guard)
-      (:import-from #:alexandria
-                    #:appendf
-                    #:ensure-list
-                    #:once-only
-                    #:with-gensyms)
-      (:export #:insert-dao
-               #:update-dao
-               #:create-dao
-               #:delete-dao
-               #:delete-by-values
-               #:save-dao
-               #:select-dao
-               #:select-by-sql
-               #:includes
-               #:include-foreign-objects
-               #:find-dao
-               #:retrieve-dao
-               #:count-dao
-               #:recreate-table
-               #:ensure-table-exists
-               #:deftable))))
-(in-package :mito.dao)
-
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (cl-reexport:reexport-from :mito.dao.mixin)
-  (cl-reexport:reexport-from :mito.dao.view)
-  (cl-reexport:reexport-from :mito.dao.table))
+(uiop:define-package #:mito.dao
+  (:use #:cl
+        #:sxql
+        #:mito.class)
+  (:use-reexport #:mito.dao.mixin
+                 #:mito.dao.view
+                 #:mito.dao.table)
+  (:import-from #:mito.dao.column
+                #:dao-table-column-deflate)
+  (:import-from #:mito.conversion
+                #:convert-for-driver-type)
+  (:import-from #:mito.connection
+                #:*connection*
+                #:check-connected
+                #:driver-type)
+  (:import-from #:mito.class
+                #:database-column-slots
+                #:ghost-slot-p
+                #:find-slot-by-name
+                #:find-parent-column
+                #:find-child-columns
+                #:table-column-references-column
+                #:table-column-name
+                #:table-column-type)
+  (:import-from #:mito.db
+                #:last-insert-id
+                #:execute-sql
+                #:retrieve-by-sql
+                #:table-exists-p)
+  (:import-from #:mito.logger
+                #:with-sql-logging)
+  (:import-from #:mito.util
+                #:unlispify
+                #:symbol-name-literally
+                #:ensure-class)
+  (:import-from #:trivia
+                #:match
+                #:guard)
+  (:import-from #:alexandria
+                #:appendf
+                #:ensure-list
+                #:once-only
+                #:with-gensyms)
+  (:export #:insert-dao
+           #:update-dao
+           #:create-dao
+           #:delete-dao
+           #:delete-by-values
+           #:save-dao
+           #:select-dao
+           #:select-by-sql
+           #:includes
+           #:include-foreign-objects
+           #:find-dao
+           #:retrieve-dao
+           #:count-dao
+           #:recreate-table
+           #:ensure-table-exists
+           #:deftable))
+(in-package #:mito.dao)
 
 (defun foreign-value (obj slot)
   (let* ((class (class-of obj))

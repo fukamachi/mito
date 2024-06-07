@@ -6,7 +6,6 @@
                "sxql"
                "dbi"
                "closer-mop"
-               "cl-reexport"
                "esrap"
                "alexandria"
                "uiop"

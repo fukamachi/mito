@@ -8,7 +8,6 @@
                "closer-mop"
                "dissect"
                "trivia"
-               "cl-reexport"
                "local-time"
                "uuid"
                "alexandria")
