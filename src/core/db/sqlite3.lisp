@@ -15,16 +15,16 @@
 (defun table-info (conn table-name)
   (let* ((sql (format nil "PRAGMA table_info(\"~A\")" table-name)))
     (with-prepared-query query (conn sql)
-      (or (dbi:fetch-all (dbi:execute query))
+      (or (dbi:fetch-all (dbi:execute query) :format :plist)
           (error "Table \"~A\" doesn't exist." table-name)))))
 
 (defun last-insert-id (conn table-name)
   (declare (ignore table-name))
   (with-prepared-query query (conn "SELECT last_insert_rowid() AS last_insert_id")
-    (getf (dbi:fetch
-           (dbi:execute query))
-          :|last_insert_id|
-          0)))
+    (or (first (dbi:fetch
+                (dbi:execute query)
+                :format :values))
+        0)))
 
 (defun column-definitions (conn table-name)
   (labels ((column-primary-key-p (column)
@@ -67,14 +67,15 @@
     (with-prepared-query query (conn (format nil "PRAGMA index_list(\"~A\")" table-name))
       (append
        (loop with results = (dbi:execute query)
-             for index = (dbi:fetch results)
+             for index = (dbi:fetch results :format :plist)
              while index
              collect
              (let* ((columns (mapcar
                               (lambda (info) (getf info :|name|))
                               (dbi:fetch-all
                                (dbi:execute (dbi:prepare conn (format nil "PRAGMA index_info(\"~A\")"
-                                                                      (getf index :|name|)))))))
+                                                                      (getf index :|name|))))
+                               :format :plist)))
                     (unique-key (= (getf index :|unique|) 1))
                     (primary-key (and unique-key
                                       primary-keys

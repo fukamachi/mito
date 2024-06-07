@@ -111,7 +111,8 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
             (sxql:limit 1)))))
     (with-prepared-query query (conn sql)
       (and (dbi:fetch-all
-            (execute-with-retry query binds))
+            (execute-with-retry query binds)
+            :format :plist)
            t))))
 
 (defgeneric execute-sql (sql &optional binds)

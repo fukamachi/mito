@@ -18,14 +18,11 @@
 (defun last-insert-id (conn table-name serial-key-name)
   (handler-case
       (with-prepared-query query
-          (conn (format nil
-                        "SELECT currval(pg_get_serial_sequence('~A', '~A')) AS last_insert_id"
-                        table-name
-                        serial-key-name))
-        (getf (dbi:fetch
-               (dbi:execute query))
-              :|last_insert_id|
-              0))
+        (conn (format nil
+                      "SELECT currval(pg_get_serial_sequence('~A', '~A')) AS last_insert_id"
+                      table-name
+                      serial-key-name))
+        (or (first (dbi:fetch (dbi:execute query) :format :values)) 0))
     (dbi:<dbi-error> () 0)))
 
 (defun get-serial-keys (conn table-name)
@@ -33,21 +30,16 @@
    (lambda (column)
      (with-prepared-query query
          (conn (format nil "SELECT pg_get_serial_sequence('~A', '~A')" table-name column))
-       (let ((seq (getf
-                   (first
-                    (dbi:fetch-all
-                     (dbi:execute query)))
-                   :|pg_get_serial_sequence|)))
+       (let ((seq (first (dbi:fetch
+                          (dbi:execute query)
+                          :format :values))))
          (if (eq seq :null)
              nil
              seq))))
    (with-prepared-query query
        (conn (format nil "SELECT column_name FROM information_schema.columns WHERE table_name = '~A'"
                      table-name))
-     (mapcar (lambda (row)
-               (getf row :|column_name|))
-             (dbi:fetch-all
-              (dbi:execute query))))))
+     (mapcar #'car (dbi:fetch-all (dbi:execute query) :format :values)))))
 
 (defun column-definitions (conn table-name)
   (let* ((serial-keys (get-serial-keys conn table-name))
@@ -75,7 +67,7 @@
       (let ((definitions
               (delete-duplicates
                (loop with results = (dbi:execute query)
-                     for column = (dbi:fetch results)
+                     for column = (dbi:fetch results :format :plist)
                      while column
                      collect (let ((auto-increment (not (null (member (getf column :|name|)
                                                                       serial-keys
@@ -141,7 +133,7 @@
                                                     (read-from-string column)
                                                     column))
                                         |column_names|))))
-              (dbi:fetch-all results)))))
+              (dbi:fetch-all results :format :plist)))))
 
 (defun table-view-query (conn table-name)
   (with-prepared-query query (conn (format nil "SELECT pg_get_viewdef('~A'::regclass) AS def" table-name))
@@ -150,7 +142,7 @@
        '(#\Space #\;)
        (string-left-trim
         '(#\Space)
-        (getf (first (dbi:fetch-all results)) :|def|))))))
+        (first (first (dbi:fetch-all results :format :values))))))))
 
 (defun acquire-advisory-lock (conn id)
   (dbi:do-sql conn "SELECT pg_advisory_lock(?)" (list id))

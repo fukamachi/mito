@@ -23,10 +23,8 @@
 (defun last-insert-id (conn table-name serial-key-name)
   (declare (ignore table-name serial-key-name))
   (with-prepared-query query (conn "SELECT last_insert_id() AS last_insert_id")
-    (getf (dbi:fetch
-           (dbi:execute query))
-          :|last_insert_id|
-          0)))
+    (or (first (dbi:fetch (dbi:execute query) :format :values))
+        0)))
 
 (defun table-indices (conn table-name)
   (with-prepared-query query
@@ -49,7 +47,7 @@
                         :columns (mapcar (lambda (column)
                                            (getf column :|column_name|))
                                          column-list))))
-              (group-by-plist (dbi:fetch-all results)
+              (group-by-plist (dbi:fetch-all results :format :plist)
                               :key :|index_name|
                               :test #'string=)))))
 
@@ -64,7 +62,7 @@
     (with-prepared-query query (conn sql)
       (let* ((results (dbi:execute query))
              (definitions
-               (loop for column = (dbi:fetch results)
+               (loop for column = (dbi:fetch results :format :plist)
                      while column
                      collect (list (getf column :|Field|)
                                    :type (ensure-string (getf column :|Type|))
@@ -85,7 +83,7 @@
 (defun table-view-query (conn table-name)
   (with-prepared-query query (conn (format nil "SHOW CREATE VIEW `~A`" table-name))
     (let ((results (dbi:execute query)))
-      (getf (first (dbi:fetch-all results)) :|Create View|))))
+      (getf (first (dbi:fetch-all results :format :plist)) :|Create View|))))
 
 (defun acquire-advisory-lock (conn id)
   ;; MySQL accepts -1 to wait forever, while MariaDB doesn't.
