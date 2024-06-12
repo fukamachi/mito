@@ -44,5 +44,5 @@
       ('nil 0)))
   (:method ((driver-type (eql :postgres)) (col-type (eql :boolean)) value)
     (ecase value
-      (t '(:raw "true"))
-      ('nil '(:raw "false")))))
+      (t "true")
+      ('nil "false"))))
