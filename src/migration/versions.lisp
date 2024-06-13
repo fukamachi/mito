@@ -48,7 +48,7 @@
 (defun schema-migrations-table-definition ()
   (let ((driver-type (connection-driver-type *connection*)))
     (sxql:create-table (:schema_migrations :if-not-exists t)
-        ((version :type :integer
+        ((version :type :bigint
                   :primary-key t)
          (applied_at :type (if (eq driver-type :postgres)
                                :timestamptz
@@ -73,7 +73,7 @@
                                 '("version" "applied_at" "dirty")
                                 :test 'equal)
                      (equal (getf (cdr (find "version" db-columns :test 'equal :key 'first)) :type)
-                            (get-column-real-type *connection* :integer)))
+                            (get-column-real-type *connection* :bigint)))
               (execute-sql
                (sxql:alter-table :schema_migrations
                  (sxql:rename-to :schema_migrations_backup)))
@@ -84,7 +84,7 @@
                         SELECT CAST(version AS ~A), ~:[NOW()~;applied_at~], CAST(~:[0~;dirty~] AS ~A) FROM schema_migrations_backup"
                        (case driver-type
                          (:mysql "UNSIGNED")
-                         (otherwise "INTEGER"))
+                         (otherwise "BIGINT"))
                        (find "applied_at" db-columns :test 'equal :key 'first)
                        (find "dirty" db-columns :test 'equal :key 'first)
                        (case driver-type
