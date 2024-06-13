@@ -241,7 +241,8 @@ If this variable is T they won't be deleted after migration.")
                                                                (sxql:make-sql-symbol (car table-column))
                                                                :drop-default t)))))
                                     (:default
-                                        (sxql:make-clause :set-default v))
+                                        (when v
+                                          (sxql:make-clause :set-default v)))
                                     (otherwise
                                      (sxql:make-clause :alter-column
                                                        (sxql:make-sql-symbol (car table-column))
