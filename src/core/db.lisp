@@ -131,36 +131,6 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
           (sxql:yield sql)
         (execute-sql sql binds)))))
 
-(defun array-convert-nulls-to-nils (results-array)
-  (let ((darray (make-array (array-total-size results-array)
-                            :displaced-to results-array
-                            :element-type (array-element-type results-array))))
-    (loop for x across darray
-          for i from 0
-          do (typecase x
-               ((eql :null)
-                (setf (aref darray i) nil))
-               (cons
-                (setf (aref darray i)
-                      (list-convert-nulls-to-nils x)))
-               ((and (not string) vector)
-                (setf (aref darray i)
-                      (array-convert-nulls-to-nils x)))))
-    results-array))
-
-(defun list-convert-nulls-to-nils (results-list)
-  (mapcar (lambda (x)
-            (typecase x
-              ((eql :null)
-               nil)
-              (cons
-               (list-convert-nulls-to-nils x))
-              ((and (not string) vector)
-               (array-convert-nulls-to-nils x))
-              (otherwise
-               x)))
-          results-list))
-
 (defun lispified-fields (query)
   (mapcar (lambda (field)
             (declare (type string field))
@@ -174,49 +144,88 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
                     :keyword))
           (dbi:query-fields query)))
 
-(defgeneric retrieve-by-sql (sql &key binds)
-  (:method :before (sql &key binds)
-    (declare (ignore sql binds))
+(defun convert-nulls-to-nils (value)
+  (typecase value
+    ((eql :null)
+     nil)
+    (cons
+     (mapcar #'convert-nulls-to-nils value))
+    ((and (not string) vector)
+     (map (type-of value) #'convert-nulls-to-nils value))
+    (otherwise
+     value)))
+
+(defvar *plist-row-lispify* nil)
+
+(defun retrieve-from-query (query format)
+  (ecase format
+    (:plist
+     (let ((rows (dbi:fetch-all query :format :values))
+           (fields (if *plist-row-lispify*
+                       (lispified-fields query)
+                       (mapcar (lambda (field)
+                                 (intern field :keyword))
+                               (dbi:query-fields query)))))
+       (loop for row in rows
+             collect
+                (loop for field in fields
+                      for v in row
+                      collect field
+                      collect (convert-nulls-to-nils v)))))
+    (:alist
+     (let ((rows (dbi:fetch-all query :format :values)))
+       (mapcar (lambda (row)
+                 (loop for v in row
+                       for field in (dbi:query-fields query)
+                       collect (cons field
+                                     (convert-nulls-to-nils v))))
+               rows)))
+    (:hash-table
+     (let ((rows (dbi:fetch-all query :format :hash-table)))
+       (maphash (lambda (k v)
+                  (setf (gethash k rows)
+                        (convert-nulls-to-nils v)))
+                rows)
+       rows))
+    (:values
+     (convert-nulls-to-nils
+      (dbi:fetch-all query :format :values)))))
+
+(defgeneric retrieve-by-sql (sql &key binds format lispify)
+  (:method :before (sql &rest args)
+    (declare (ignore sql args))
     (check-connected))
-  (:method ((sql string) &key binds)
+  (:method ((sql string) &key binds format (lispify nil lispify-specified))
     (with-prepared-query query (*connection* sql :use-prepare-cached *use-prepare-cached*)
       (let* ((query (with-trace-sql
                         (execute-with-retry query binds)))
-             (rows (dbi:fetch-all query :format :values))
-             (fields (lispified-fields query))
-             (results
-               (loop for row in rows
-                     collect
-                     (loop for field in fields
-                           for v in row
-                           collect field
-                           collect (cond ((eq v :null) nil)
-                                         ((and v (listp v))
-                                          (list-convert-nulls-to-nils v))
-                                         ((arrayp v)
-                                          (array-convert-nulls-to-nils v))
-                                         (t v))))))
-
-        results)))
-  (:method ((sql sql-statement) &key binds)
-    (declare (ignore binds))
+             (format (or format :plist))
+             (*plist-row-lispify*
+               (if lispify-specified
+                   lispify
+                   (case format
+                     (:plist t)
+                     (otherwise nil)))))
+        (retrieve-from-query query format))))
+  (:method ((sql sql-statement) &rest args &key binds &allow-other-keys)
+    (assert (null binds))
     (with-quote-char
       (multiple-value-bind (sql binds)
           (sxql:yield sql)
-        (retrieve-by-sql sql :binds binds))))
-  (:method ((sql composed-statement) &key binds)
-    (declare (ignore binds))
+        (apply #'retrieve-by-sql sql :binds binds args))))
+  (:method ((sql composed-statement) &rest args &key binds &allow-other-keys)
+    (assert (null binds))
     (with-quote-char
       (multiple-value-bind (sql binds)
           (sxql:yield sql)
-        (retrieve-by-sql sql :binds binds))))
+        (apply #'retrieve-by-sql sql :binds binds args))))
   ;; For UNION [ALL]
-  (:method ((sql conjunctive-op) &key binds)
-    (declare (ignore binds))
+  (:method ((sql conjunctive-op) &rest args &key binds &allow-other-keys)
+    (assert (null binds))
     (with-quote-char
       (multiple-value-bind (sql binds)
           (sxql:yield sql)
-        (retrieve-by-sql sql :binds binds)))))
+        (apply #'retrieve-by-sql sql :binds binds args)))))
 
 (defun acquire-advisory-lock (conn id)
   (funcall
