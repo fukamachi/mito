@@ -155,11 +155,17 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
     (otherwise
      value)))
 
+(defvar *plist-row-lispify* nil)
+
 (defun retrieve-from-query (query format)
   (ecase format
     (:plist
      (let ((rows (dbi:fetch-all query :format :values))
-           (fields (lispified-fields query)))
+           (fields (if *plist-row-lispify*
+                       (lispified-fields query)
+                       (mapcar (lambda (field)
+                                 (intern field :keyword))
+                               (dbi:query-fields query)))))
        (loop for row in rows
              collect
                 (loop for field in fields
@@ -185,34 +191,41 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
      (convert-nulls-to-nils
       (dbi:fetch-all query :format :values)))))
 
-(defgeneric retrieve-by-sql (sql &key binds format)
-  (:method :before (sql &key binds format)
-    (declare (ignore sql binds format))
+(defgeneric retrieve-by-sql (sql &key binds format lispify)
+  (:method :before (sql &rest args)
+    (declare (ignore sql args))
     (check-connected))
-  (:method ((sql string) &key binds format)
+  (:method ((sql string) &key binds format (lispify nil lispify-specified))
     (with-prepared-query query (*connection* sql :use-prepare-cached *use-prepare-cached*)
-      (let ((query (with-trace-sql
-                     (execute-with-retry query binds))))
-        (retrieve-from-query query (or format :plist)))))
-  (:method ((sql sql-statement) &key binds format)
-    (declare (ignore binds))
+      (let* ((query (with-trace-sql
+                        (execute-with-retry query binds)))
+             (format (or format :plist))
+             (*plist-row-lispify*
+               (if lispify-specified
+                   lispify
+                   (case format
+                     (:plist t)
+                     (otherwise nil)))))
+        (retrieve-from-query query format))))
+  (:method ((sql sql-statement) &rest args &key binds &allow-other-keys)
+    (assert (null binds))
     (with-quote-char
       (multiple-value-bind (sql binds)
           (sxql:yield sql)
-        (retrieve-by-sql sql :binds binds :format format))))
-  (:method ((sql composed-statement) &key binds format)
-    (declare (ignore binds))
+        (apply #'retrieve-by-sql sql :binds binds args))))
+  (:method ((sql composed-statement) &rest args &key binds &allow-other-keys)
+    (assert (null binds))
     (with-quote-char
       (multiple-value-bind (sql binds)
           (sxql:yield sql)
-        (retrieve-by-sql sql :binds binds :format format))))
+        (apply #'retrieve-by-sql sql :binds binds args))))
   ;; For UNION [ALL]
-  (:method ((sql conjunctive-op) &key binds format)
-    (declare (ignore binds))
+  (:method ((sql conjunctive-op) &rest args &key binds &allow-other-keys)
+    (assert (null binds))
     (with-quote-char
       (multiple-value-bind (sql binds)
           (sxql:yield sql)
-        (retrieve-by-sql sql :binds binds :format format)))))
+        (apply #'retrieve-by-sql sql :binds binds args)))))
 
 (defun acquire-advisory-lock (conn id)
   (funcall
