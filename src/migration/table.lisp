@@ -40,7 +40,8 @@
   (:import-from #:alexandria
                 #:ensure-list
                 #:compose
-                #:when-let)
+                #:when-let
+                #:delete-from-plist)
   (:export #:*auto-migration-mode*
            #:*migration-keep-temp-tables*
            #:migrate-table
@@ -76,8 +77,7 @@ If this variable is T they won't be deleted after migration.")
            :key #'car)))
 
 (defun column-definition-equal-p (column1 column2)
-  (and (first column1)
-       (first column2)
+  (and (equal (first column1) (first column2))
        (plist= (cdr column1) (cdr column2))))
 
 (defun migration-expressions-between-for-sqlite3 (class from-columns to-columns from-indices to-indices)
@@ -308,6 +308,12 @@ If this variable is T they won't be deleted after migration.")
                                nil
                                (list :on (sxql:make-sql-symbol table-name))))))))))))
 
+(defun omit-default (definitions)
+  (mapcar (lambda (definition)
+            (cons (car definition)
+                  (delete-from-plist (cdr definition) :default)))
+          definitions))
+
 (defun migration-expressions-aux (class driver-type)
   (let* ((table-name (table-name class))
          (table-columns
@@ -318,7 +324,7 @@ If this variable is T they won't be deleted after migration.")
                        info))
                    (database-column-slots class)))
          (table-indices (table-indices-info class driver-type))
-         (db-columns (column-definitions *connection* table-name))
+         (db-columns (omit-default (column-definitions *connection* table-name)))
          (db-indices (table-indices *connection* table-name)))
     (values
      (migration-expressions-between class driver-type
