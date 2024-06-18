@@ -256,11 +256,11 @@
         (error ()
           (warn "Invalid version format in a migration file: ~A~%Version must be an integer. Ignored." file))))))
 
-(defun migration-files (base-directory &key (sort-by #'string<))
+(defun migration-files (base-directory &key (sort-by #'<))
   (sort (uiop:directory-files (merge-pathnames #P"migrations/" base-directory)
                               "*.up.sql")
         sort-by
-        :key #'pathname-name))
+        :key #'migration-file-version))
 
 (defun %migration-status (directory)
   (let ((db-versions
