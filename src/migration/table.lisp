@@ -39,7 +39,8 @@
                 #:ensure-class)
   (:import-from #:alexandria
                 #:ensure-list
-                #:compose)
+                #:compose
+                #:when-let)
   (:export #:*auto-migration-mode*
            #:*migration-keep-temp-tables*
            #:migrate-table
@@ -112,6 +113,7 @@ If this variable is T they won't be deleted after migration.")
                              columns-to-add)
            (list-diff from-columns to-columns
                       :key #'car)
+         (declare (ignore columns-to-delete))
          (let ((new-columns-have-default
                  (loop for new-column in columns-to-add
                        if (getf (cdr new-column) :default)
@@ -181,7 +183,9 @@ If this variable is T they won't be deleted after migration.")
                                                        type))
                                                  :default
                                                  (if (getf (cdr column) :not-null)
-                                                     (or (getf (cdr column) :default)
+                                                     (or (when-let ((default (getf (cdr column) :default)))
+                                                           (push (car column) drop-defaults)
+                                                           default)
                                                          (progn
                                                            (warn "Adding a non-null column ~S but there's no :initform to set default"
                                                                  (car column))
