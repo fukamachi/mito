@@ -116,10 +116,8 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
            t))))
 
 (defgeneric execute-sql (sql &optional binds)
-  (:method :before (sql &optional binds)
-    (declare (ignore sql binds))
-    (check-connected))
   (:method ((sql string) &optional binds)
+    (check-connected)
     (with-trace-sql
       (with-prepared-query query (*connection* sql :use-prepare-cached *use-prepare-cached*)
         (setf query (execute-with-retry query binds))
@@ -192,10 +190,8 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
       (dbi:fetch-all query :format :values)))))
 
 (defgeneric retrieve-by-sql (sql &key binds format lispify)
-  (:method :before (sql &rest args)
-    (declare (ignore sql args))
-    (check-connected))
   (:method ((sql string) &key binds format (lispify nil lispify-specified))
+    (check-connected)
     (with-prepared-query query (*connection* sql :use-prepare-cached *use-prepare-cached*)
       (let* ((query (with-trace-sql
                         (execute-with-retry query binds)))
