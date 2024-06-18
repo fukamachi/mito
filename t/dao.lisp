@@ -156,6 +156,18 @@
 
   (ok (= (mito:count-dao 'tweet) 2))
 
+  (dbi:with-transaction mito:*connection*
+    (let ((tweet (first (mito:select-dao 'tweet (sxql:limit 1)))))
+      (setf (tweet-status tweet) "Goodbye, World")
+      (setf (tweet-user tweet) (mito:find-dao 'user :name "Yoshimi"))
+      (mito:update-dao 'user :columns '(:status))
+      (ok (equal (user-name (tweet-user (first (mito:select-dao 'tweet (sxql:limit 1)))))
+                 "Eitaro"))
+      (mito:update-dao 'user)
+      (ok (equal (user-name (tweet-user (first (mito:select-dao 'tweet (sxql:limit 1)))))
+                 "Yoshimi")))
+    (dbi:rollback mito:*connection*))
+
   (let ((tweets (mito:select-dao 'tweet)))
     (ok (= (length tweets) 2))
     (ok (typep (first tweets) 'tweet))

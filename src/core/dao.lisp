@@ -71,8 +71,21 @@
                 t)
         (values nil nil))))
 
-(defun make-set-clause (obj)
-  (let ((class (class-of obj)))
+(defun make-set-clause (obj &key columns)
+  (let* ((class (class-of obj))
+         (column-slots (database-column-slots class)))
+    (when columns
+      (setf column-slots
+            (remove-if-not (lambda (slot)
+                             (let ((slot-name (c2mop:slot-definition-name slot)))
+                               (find-if (lambda (column-name)
+                                          (typecase column-name
+                                            ((and symbol (not keyword))
+                                             (eq column-name slot-name))
+                                            (otherwise
+                                             (string= column-name slot-name))))
+                                        columns)))
+                           column-slots)))
     (apply #'sxql:make-clause :set=
            (mapcan
             (lambda (slot)
@@ -97,7 +110,7 @@
                            (convert-for-driver-type (driver-type)
                                                     (table-column-type slot)
                                                     (dao-table-column-deflate slot value))))))))
-            (database-column-slots class)))))
+            column-slots))))
 
 (defgeneric insert-dao (obj)
   (:method ((obj dao-class))
@@ -130,8 +143,8 @@
       (setf (dao-synced obj) nil)
       (save-dao obj))))
 
-(defgeneric update-dao (obj)
-  (:method ((obj dao-class))
+(defgeneric update-dao (obj &key columns)
+  (:method ((obj dao-class) &key columns)
     (check-connected)
     (let ((primary-key (table-primary-key (class-of obj))))
       (unless primary-key
@@ -139,13 +152,13 @@
 
       (execute-sql
        (sxql:update (sxql:make-sql-symbol (table-name (class-of obj)))
-         (make-set-clause obj)
+         (make-set-clause obj :columns columns)
          (sxql:where
           `(:and ,@(mapcar (lambda (key)
                              `(:= ,(unlispify key) ,(slot-value obj key)))
                            primary-key))))))
     (values))
-  (:method :before ((obj record-timestamps-mixin))
+  (:method :before ((obj record-timestamps-mixin) &key columns)
     (let ((now (local-time:now)))
       (setf (object-updated-at obj) now))))
 
