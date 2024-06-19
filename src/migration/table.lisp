@@ -37,10 +37,10 @@
                 #:lispify
                 #:list-diff
                 #:ensure-class)
+  (:import-from #:closer-mop)
   (:import-from #:alexandria
                 #:ensure-list
                 #:compose
-                #:when-let
                 #:delete-from-plist)
   (:export #:*auto-migration-mode*
            #:*migration-keep-temp-tables*
@@ -183,13 +183,23 @@ If this variable is T they won't be deleted after migration.")
                                                        type))
                                                  :default
                                                  (if (getf (cdr column) :not-null)
-                                                     (or (when-let ((default (getf (cdr column) :default)))
-                                                           (push (car column) drop-defaults)
-                                                           default)
-                                                         (progn
-                                                           (warn "Adding a non-null column ~S but there's no :initform to set default"
-                                                                 (car column))
-                                                           nil))
+                                                     (let ((slot
+                                                             (find-slot-by-name class (lispify (car column))
+                                                                                :test #'string-equal)))
+                                                       ;; Set the default only for 'up' migration when adding a new column.
+                                                       (when slot
+                                                         (cond
+                                                           ((c2mop:slot-definition-initfunction slot)
+                                                            (push (car column) drop-defaults)
+                                                            (convert-for-driver-type
+                                                             (driver-type)
+                                                             (table-column-type slot)
+                                                             (dao-table-column-deflate slot
+                                                                                       (funcall (c2mop:slot-definition-initfunction slot)))))
+                                                           (t
+                                                            (warn "Adding a non-null column ~S but there's no :initform to set default"
+                                                                  (car column))
+                                                            nil))))
                                                      nil)
                                                  :primary-key (getf (cdr column) :primary-key)
                                                  :not-null (getf (cdr column) :not-null)
