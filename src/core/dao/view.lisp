@@ -46,7 +46,11 @@
 (defmethod sxql:make-statement ((statement-name (eql :drop-view)) &rest args)
   (destructuring-bind (view-name &key if-exists)
       args
-    (make-drop-view (sxql.operator:detect-and-convert view-name) :if-exists if-exists)))
+    (make-drop-view (typecase view-name
+                      (sxql.sql-type:sql-symbol view-name)
+                      (string (sxql:make-sql-symbol view-name))
+                      (otherwise (sxql.operator:detect-and-convert view-name)))
+                    :if-exists if-exists)))
 
 (defmethod sxql:yield ((statement drop-view))
   (sxql.sql-type:with-yield-binds
