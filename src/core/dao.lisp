@@ -161,6 +161,7 @@
                            primary-key))))))
     (values))
   (:method :before ((obj record-timestamps-mixin) &key columns)
+    (declare (ignore columns))
     (let ((now (local-time:now)))
       (setf (object-updated-at obj) now))))
 
