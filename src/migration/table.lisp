@@ -362,7 +362,7 @@ If this variable is T they won't be deleted after migration.")
                (list (sxql:make-statement :drop-view (table-name class)))))
        (execute-sql
         (sxql:make-statement :drop-view
-                             (sxql:make-sql-symbol (format nil "__~A" (table-name class)))))))
+                             (format nil "__~A" (table-name class))))))
     (dao-table-class
      (flet ((order-expressions (expressions-groups)
               (destructuring-bind (add-columns

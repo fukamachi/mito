@@ -52,7 +52,7 @@
   (sxql.sql-type:with-yield-binds
       (format nil "DROP~:[~; IF EXISTS~] VIEW ~A"
               (drop-view-if-exists statement)
-              (drop-view-view-name statement))))
+              (sxql:yield (drop-view-view-name statement)))))
 
 (defgeneric table-definition (class &key if-not-exists or-replace)
   (:method ((class symbol) &rest args &key if-not-exists or-replace)
