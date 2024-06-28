@@ -19,9 +19,11 @@
                 #:find-slot-by-name
                 #:find-parent-column
                 #:find-child-columns
+                #:table-name
                 #:table-column-references-column
                 #:table-column-name
-                #:table-column-type)
+                #:table-column-type
+                #:table-column-not-null-p)
   (:import-from #:mito.db
                 #:last-insert-id
                 #:execute-sql
@@ -159,6 +161,7 @@
                            primary-key))))))
     (values))
   (:method :before ((obj record-timestamps-mixin) &key columns)
+    (declare (ignore columns))
     (let ((now (local-time:now)))
       (setf (object-updated-at obj) now))))
 
@@ -341,14 +344,32 @@
                                                      (find-child-columns class slot))))
                                (when children
                                  `((:and ,@(loop for child in children
+                                                 for column = (intern (table-column-name child) :keyword)
                                                  collect
-                                                 `(:= ,(intern (table-column-name child) :keyword)
+                                                 (cond
+                                                   ((null value)
+                                                    (unless (table-column-not-null-p slot)
+                                                      (warn "Slot ~S in table ~S is not null, but IS NULL condition is specified."
+                                                            (table-column-name slot)
+                                                            (table-name class)))
+                                                    `(:is-null ,column))
+                                                   (t
+                                                    `(:= ,column
                                                       ,(slot-value value
                                                                    (c2mop:slot-definition-name
-                                                                    (table-column-references-column child)))))))))
+                                                                    (table-column-references-column child)))))))))))
                     else
-                      collect `(:= ,(unlispify field)
-                                   ,(dao-table-column-deflate slot value)))))
+                      collect (let ((db-value
+                                      (dao-table-column-deflate slot value)))
+                                (cond
+                                  ((null db-value)
+                                   (unless (table-column-not-null-p slot)
+                                     (warn "Slot ~S in table ~S is not null, but IS NULL condition is specified."
+                                           (table-column-name slot)
+                                           (table-name class)))
+                                   `(:is-null ,(unlispify field)))
+                                  (t
+                                   `(:= ,(unlispify field) ,db-value)))))))
       (when op
         (sxql:where `(:and ,@op))))))
 
