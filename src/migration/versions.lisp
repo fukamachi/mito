@@ -256,27 +256,57 @@
         (error ()
           (warn "Invalid version format in a migration file: ~A~%Version must be an integer. Ignored." file))))))
 
-(defun migration-files (base-directory &key (sort-by #'<))
-  (sort (uiop:directory-files (merge-pathnames #P"migrations/" base-directory)
-                              "*.up.sql")
-        sort-by
-        :key #'migration-file-version))
+(defun migration-files (base-directory &key (sort-by #'<) from to)
+  (let* ((files (sort (uiop:directory-files (merge-pathnames #P"migrations/" base-directory)
+                                            "*.up.sql")
+                      sort-by
+                      :key #'migration-file-version))
+         (files (if from
+                    (member-if (lambda (version) (< from version)) files
+                               :key #'migration-file-version)
+                    files)))
+    (if to
+        (loop for file in files
+              while (<= (migration-file-version file) to)
+              collect file)
+        files)))
 
-(defun %migration-status (directory)
+(defun next-migration-version (migration-files current-version step)
+  (check-type step (or (integer 0) null))
+  (let ((next-file
+          (cond
+            ((null step)
+             (first (last migration-files)))
+            ((zerop step)
+             (find current-version migration-files
+                   :key #'migration-file-version))
+            (t
+             (or
+              (nth (1- step)
+                   (if current-version
+                       (member-if (lambda (version)
+                                    (< current-version version))
+                                  migration-files
+                                  :key #'migration-file-version)
+                       migration-files))
+              (first (last migration-files)))))))
+    (when next-file
+      (migration-file-version next-file))))
+
+(defun %migration-status (directory &key from to)
   (let ((db-versions
-          (or (handler-case (retrieve-by-sql
-                             (sxql:select (:version)
-                               (sxql:from :schema_migrations)
-                               (sxql:where (:not-null :applied_at))
-                               (sxql:order-by :version)))
-                (dbi:<dbi-programming-error> () nil))
-              ;; XXX: for backward-compatibility (apply all non-applied files since e18d942ba0e556b1533d5a5ac5a9775e7c6abe93)
-              (retrieve-by-sql
-               (sxql:select (:version)
-                            (sxql:from :schema_migrations)
-                            (sxql:order-by (:desc :version))
-                            (sxql:limit 1)))))
-        (files (migration-files directory)))
+          (handler-case (retrieve-by-sql
+                         (sxql:select (:version)
+                           (sxql:from :schema_migrations)
+                           (sxql:where
+                            `(:and (:not-null :applied_at)
+                              ,@(and from
+                                     `((:< ,from :version)))
+                              ,@(and to
+                                     `((:<= :version ,to)))))
+                           (sxql:order-by :version)))
+            (dbi:dbi-programming-error () nil)))
+        (files (migration-files directory :from from :to to)))
     (loop while (and files
                      db-versions
                      (< (migration-file-version (first files))
@@ -323,18 +353,24 @@
                  (release-advisory-lock ,connection ,lock-id)))
              (progn ,@body))))))
 
-(defun migrate (directory &key dry-run force)
+(defun migrate (directory &key step dry-run force)
   (check-type directory pathname)
+  (check-type step (or (integer 0) null))
   (with-advisory-lock (*connection*)
     (let* ((current-version (current-migration-version))
+           (migration-files (migration-files directory))
+           (next-version (next-migration-version migration-files current-version step))
            (schema.sql (merge-pathnames #P"schema.sql" directory))
            (sql-files-to-apply
              (if current-version
-                 (mapcar (lambda (result)
-                           (getf (cdr result) :file))
-                         (remove :up
-                                 (%migration-status directory)
-                                 :key #'car))
+                 (and next-version
+                      (mapcar (lambda (result)
+                                (getf (cdr result) :file))
+                              (remove :up
+                                      (%migration-status directory
+                                                         :from current-version
+                                                         :to next-version)
+                                      :key #'car)))
                  (and (probe-file schema.sql)
                       (list schema.sql)))))
       (cond
@@ -351,13 +387,7 @@
              (when current-version
                (let ((version (migration-file-version file)))
                  (update-migration-version version))))
-           (let* ((migration-files (migration-files directory))
-                  (latest-migration-file (first (last (if current-version
-                                                          sql-files-to-apply
-                                                          migration-files))))
-                  (version (if latest-migration-file
-                               (migration-file-version latest-migration-file)
-                               (generate-version))))
+           (let ((version (or next-version (generate-version))))
              (unless current-version
                (if migration-files
                    ;; Record all versions on the first table creation
