@@ -53,6 +53,7 @@
          (applied_at :type (if (eq driver-type :postgres)
                                :timestamptz
                                :timestamp)
+                     :not-null t
                      :default (sxql.sql-type:make-sql-keyword "CURRENT_TIMESTAMP"))
          (dirty :type :boolean
                 :not-null t
