@@ -78,18 +78,29 @@
                (sxql:alter-table :schema_migrations
                  (sxql:rename-to :schema_migrations_backup)))
               (execute-sql (schema-migrations-table-definition))
-              (execute-sql
-               (format nil
-                       "INSERT INTO schema_migrations (version, applied_at, dirty) ~
-                        SELECT CAST(version AS ~A), ~:[NOW()~;applied_at~], CAST(~:[0~;dirty~] AS ~A) FROM schema_migrations_backup"
-                       (case driver-type
-                         (:mysql "UNSIGNED")
-                         (otherwise "BIGINT"))
-                       (find "applied_at" db-columns :test 'equal :key 'first)
-                       (find "dirty" db-columns :test 'equal :key 'first)
-                       (case driver-type
-                         (:mysql "UNSIGNED")
-                         (otherwise "BOOLEAN"))))
+              (cond
+                ((or (not (find "applied_at" db-columns :test 'equal :key 'first))
+                     (eql 0 (caar (retrieve-by-sql "SELECT COUNT(*) FROM schema_migrations_backup WHERE applied_at IS NOT NULL" :format :values))))
+                 (execute-sql
+                  (format nil
+                          "INSERT INTO schema_migrations (version) ~
+                           SELECT CAST(version AS ~A) ~
+                           FROM schema_migrations_backup ~
+                           ORDER BY version DESC LIMIT 1"
+                          (case driver-type
+                            (:mysql "UNSIGNED")
+                            (otherwise "BIGINT")))))
+                (t
+                 (execute-sql
+                  (format nil
+                          "INSERT INTO schema_migrations (version, applied_at, dirty) ~
+                           SELECT CAST(version AS ~A), applied_at, CAST(~:[0~;dirty~] AS ~A) ~
+                           FROM schema_migrations_backup ~
+                           WHERE applied_at IS NOT NULL"
+                          (case driver-type
+                            (:mysql "UNSIGNED")
+                            (otherwise "BIGINT"))
+                          (find "dirty" db-columns :test 'equal :key 'first)))))
               (execute-sql
                (sxql:drop-table :schema_migrations_backup))))
           (execute-sql (schema-migrations-table-definition))))))
