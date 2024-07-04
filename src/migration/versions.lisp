@@ -6,6 +6,8 @@
                 #:migration-expressions)
   (:import-from #:mito.migration.sql-parse
                 #:parse-statements)
+  (:import-from #:mito.migration.util
+                #:generate-advisory-lock-id)
   (:import-from #:mito.dao
                 #:dao-class
                 #:dao-table-class
@@ -20,10 +22,20 @@
   (:import-from #:mito.db
                 #:execute-sql
                 #:retrieve-by-sql
-                #:table-exists-p)
+                #:table-exists-p
+                #:acquire-advisory-lock
+                #:release-advisory-lock
+                #:column-definitions)
+  (:import-from #:mito.type
+                #:get-column-real-type)
   (:import-from #:cl-dbi
                 #:connection-driver-type)
-  (:export #:all-migration-expressions
+  (:import-from #:alexandria
+                #:with-gensyms
+                #:once-only
+                #:set-equal)
+  (:export #:*migration-version-format*
+           #:all-migration-expressions
            #:current-migration-version
            #:update-migration-version
            #:generate-migrations
@@ -31,22 +43,70 @@
            #:migration-status))
 (in-package :mito.migration.versions)
 
-(defun schema-migrations-table-definition (&optional (driver-type (connection-driver-type *connection*)))
-  ;; Add applied_at only for PostgreSQL because TIMESTAMPTZ is allowed.
-  (if (eq driver-type :postgres)
-      (sxql:create-table (:schema_migrations :if-not-exists t)
-        ((version :type '(:varchar 255)
+(defvar *migration-version-format* :time)
+
+(defun schema-migrations-table-definition ()
+  (let ((driver-type (connection-driver-type *connection*)))
+    (sxql:create-table (:schema_migrations :if-not-exists t)
+        ((version :type :bigint
                   :primary-key t)
-         (applied_at :type :timestamptz
-                     :default (sxql.sql-type:make-sql-keyword "CURRENT_TIMESTAMP"))))
-      (sxql:create-table (:schema_migrations :if-not-exists t)
-        ((version :type '(:varchar 255)
-                  :primary-key t)))))
+         (applied_at :type (if (eq driver-type :postgres)
+                               :timestamptz
+                               :timestamp)
+                     :not-null t
+                     :default (sxql.sql-type:make-sql-keyword "CURRENT_TIMESTAMP"))
+         (dirty :type :boolean
+                :not-null t
+                :default (if (eq driver-type :postgres)
+                             (sxql.sql-type:make-sql-keyword "false")
+                             0))))))
 
 (defun initialize-migrations-table ()
   (check-connected)
-  (let ((*error-output* (make-broadcast-stream)))
-    (execute-sql (schema-migrations-table-definition))))
+  (let ((*error-output* (make-broadcast-stream))
+        (driver-type (connection-driver-type *connection*)))
+    (dbi:with-transaction *connection*
+      (if (table-exists-p *connection* "schema_migrations")
+          (let ((db-columns (column-definitions *connection* "schema_migrations")))
+            (unless
+                (and (set-equal (mapcar 'first db-columns)
+                                '("version" "applied_at" "dirty")
+                                :test 'equal)
+                     (equal (getf (cdr (find "version" db-columns :test 'equal :key 'first)) :type)
+                            (get-column-real-type *connection* :bigint)))
+              (execute-sql
+               (sxql:alter-table :schema_migrations
+                 (sxql:rename-to :schema_migrations_backup)))
+              (execute-sql (schema-migrations-table-definition))
+              (cond
+                ((or (not (find "applied_at" db-columns :test 'equal :key 'first))
+                     (eql 0 (caar (retrieve-by-sql "SELECT COUNT(*) FROM schema_migrations_backup WHERE applied_at IS NOT NULL" :format :values))))
+                 (execute-sql
+                  (format nil
+                          "INSERT INTO schema_migrations (version) ~
+                           SELECT CAST(version AS ~A) ~
+                           FROM schema_migrations_backup ~
+                           ORDER BY version DESC LIMIT 1"
+                          (case driver-type
+                            (:mysql "UNSIGNED")
+                            (otherwise "BIGINT")))))
+                (t
+                 (execute-sql
+                  (format nil
+                          "INSERT INTO schema_migrations (version, applied_at, dirty) ~
+                           SELECT CAST(version AS ~A), applied_at, CAST(~:[0~;dirty~] AS ~A) ~
+                           FROM schema_migrations_backup ~
+                           WHERE applied_at IS NOT NULL"
+                          (case driver-type
+                            (:mysql "UNSIGNED")
+                            (otherwise "BIGINT"))
+                          (find "dirty" db-columns :test 'equal :key 'first)
+                          (case driver-type
+                            (:mysql "UNSIGNED")
+                            (otherwise "BOOLEAN"))))))
+              (execute-sql
+               (sxql:drop-table :schema_migrations_backup))))
+          (execute-sql (schema-migrations-table-definition))))))
 
 (defun all-dao-classes ()
   (let ((hash (make-hash-table :test 'eq)))
@@ -76,11 +136,16 @@
 
 (defun all-migration-expressions ()
   (check-connected)
-  (mapcan (lambda (class)
-            (if (table-exists-p *connection* (table-name class))
-                (migration-expressions class)
-                (table-definition class)))
-          (all-dao-classes)))
+  (loop for class in (all-dao-classes)
+        for (up down) = (if (table-exists-p *connection* (table-name class))
+                            (multiple-value-list (migration-expressions class))
+                            (list (table-definition class)
+                                  (list (sxql:drop-table (sxql:make-sql-symbol (table-name class))))))
+        append up into up-expressions
+        append down into down-expressions
+        finally (return
+                  (values up-expressions
+                          down-expressions))))
 
 (defun current-migration-version ()
   (initialize-migrations-table)
@@ -96,91 +161,120 @@
    (sxql:insert-into :schema_migrations
      (sxql:set= :version version))))
 
-(defun generate-version ()
+(defun generate-time-version ()
   (multiple-value-bind (sec min hour day mon year)
       (decode-universal-time (get-universal-time) 0)
-    (format nil "~4,'0D~2,'0D~2,'0D~2,'0D~2,'0D~2,'0D"
-            year mon day hour min sec)))
+    (parse-integer
+     (format nil "~4,'0D~2,'0D~2,'0D~2,'0D~2,'0D~2,'0D"
+             year mon day hour min sec))))
+
+(defun generate-version (&optional current-version)
+  (ecase *migration-version-format*
+    (:time (generate-time-version))
+    (:serial
+     (if current-version
+         (1+ current-version)
+         1))))
 
 (defun generate-migrations (directory &key force)
-  (let* ((schema.sql (merge-pathnames #P"schema.sql" directory))
-         (directory (merge-pathnames #P"migrations/" directory))
-         (version (generate-version))
-         (destination (make-pathname :name (format nil "~A.up" version)
-                                     :type "sql"
-                                     :defaults directory))
-         (expressions (all-migration-expressions))
-         (sxql:*use-placeholder* nil))
+  (let ((schema.sql (merge-pathnames #P"schema.sql" directory))
+        (directory (merge-pathnames #P"migrations/" directory))
+        (current-version (current-migration-version)))
 
     ;; Warn if there're non-applied migration files.
-    (let* ((current-version (current-migration-version))
-           (sql-files (sort (uiop:directory-files directory "*.up.sql")
+    (let* ((sql-files (sort (uiop:directory-files directory "*.up.sql")
                             #'string<
                             :key #'pathname-name))
            (non-applied-files
              (if current-version
                  (remove-if-not (lambda (version)
                                   (and version
-                                       (string< current-version version)))
+                                       (< current-version version)))
                                 sql-files
                                 :key #'migration-file-version)
                  sql-files)))
       (when non-applied-files
         (if (y-or-n-p "Found non-applied ~D migration file~:*~P. Will you delete them?"
                       (length non-applied-files))
-            (dolist (file non-applied-files)
-              (format *error-output* "~&Deleting '~A'...~%" file)
-              (delete-file file))
+            (flet ((delete-migration-file (file)
+                     (format *error-output* "~&Deleting '~A'...~%" file)
+                     (delete-file file)))
+              (dolist (up-file non-applied-files)
+                (delete-migration-file up-file)
+                (let ((down-file
+                        (make-pathname :name (ppcre:regex-replace "\\.up$" (pathname-name up-file) ".down")
+                                       :defaults up-file)))
+                  (when (uiop:file-exists-p down-file)
+                    (delete-migration-file down-file)))))
             (progn
               (format *error-output* "~&Given up.~%")
               (return-from generate-migrations nil)))))
 
-    (if (or expressions force)
-        (progn
-          (ensure-directories-exist directory)
-          (with-open-file (out destination
-                               :direction :output
-                               :if-does-not-exist :create)
-            (let ((out (make-broadcast-stream *standard-output* out)))
-              (with-quote-char
-                (map nil
-                     (lambda (ex)
-                       (format out "~&~A;~%" (sxql:yield ex)))
-                     expressions))))
-          (with-open-file (out schema.sql
-                               :direction :output
-                               :if-exists :supersede
-                               :if-does-not-exist :create)
-            (with-quote-char
-              (format out "~{~{~A;~%~}~^~%~}"
-                      (mapcar (lambda (class)
-                                (mapcar #'sxql:yield (table-definition class)))
-                              (all-dao-classes)))
-              (format out "~2&~A;~%"
-                      (sxql:yield (schema-migrations-table-definition)))))
-          (format t "~&Successfully generated: ~A~%" destination)
-          destination)
-        (progn
-          (format t "~&Nothing to migrate.~%")
-          nil))))
+    (flet ((write-expressions (expressions destination &key print)
+             (ensure-directories-exist directory)
+             (with-open-file (out destination
+                                  :direction :output
+                                  :if-does-not-exist :create)
+               (let ((out (if print
+                              (make-broadcast-stream *standard-output* out)
+                              out)))
+                 (with-quote-char
+                     (map nil
+                          (lambda (ex)
+                            (format out "~&~A;~%" (sxql:yield ex)))
+                          expressions))))
+             (let ((sxql:*use-placeholder* nil))
+               (with-open-file (out schema.sql
+                                    :direction :output
+                                    :if-exists :supersede
+                                    :if-does-not-exist :create)
+                 (with-quote-char
+                   (format out "~{~{~A;~%~}~^~%~}"
+                           (mapcar (lambda (class)
+                                     (mapcar #'sxql:yield (table-definition class)))
+                                   (all-dao-classes)))
+                   (format out "~2&~A;~%"
+                           (sxql:yield (schema-migrations-table-definition))))))
+             destination))
+      (multiple-value-bind
+            (up-expressions down-expressions)
+          (all-migration-expressions)
+        (cond
+          ((or up-expressions force)
+           (let* ((version (generate-version current-version))
+                  (up-destination (make-pathname :name (format nil "~A.up" version)
+                                                 :type "sql"
+                                                 :defaults directory))
+                  (down-destination (make-pathname :name (format nil "~A.down" version)
+                                                   :type "sql"
+                                                   :defaults directory))
+                  (sxql:*use-placeholder* nil))
+             (write-expressions up-expressions up-destination :print t)
+             (write-expressions down-expressions down-destination)
+             (format t "~&Successfully generated: ~A~%" up-destination)
+             (values up-destination down-destination)))
+          (t
+           (format t "~&Nothing to migrate.~%")
+           (values)))))))
 
 (defun migration-file-version (file)
   (let* ((name (pathname-name file))
-         (pos (or (position #\_ name)
-                  (position #\. name :from-end t)))
+         (pos (position-if (complement #'digit-char-p) name))
          (version
            (if pos
                (subseq name 0 pos)
                name)))
-    (when (and (= (length version) 14)
-               (every #'digit-char-p version))
-      version)))
+    (when (<= 1 (length version))
+      (handler-case
+          (parse-integer version)
+        (error ()
+          (warn "Invalid version format in a migration file: ~A~%Version must be an integer. Ignored." file))))))
 
-(defun migration-files (base-directory &key (sort-by #'string<))
+(defun migration-files (base-directory &key (sort-by #'<))
   (sort (uiop:directory-files (merge-pathnames #P"migrations/" base-directory)
                               "*.up.sql")
         sort-by
-        :key #'pathname-name))
+        :key #'migration-file-version))
 
 (defun %migration-status (directory)
   (let ((db-versions
@@ -199,17 +293,17 @@
         (files (migration-files directory)))
     (loop while (and files
                      db-versions
-                     (string< (migration-file-version (first files))
-                              (getf (first db-versions) :version)))
+                     (< (migration-file-version (first files))
+                        (getf (first db-versions) :version)))
           do (pop files))
     (let (results)
       (loop for db-version in db-versions
             do (destructuring-bind (&key version) db-version
-                 (loop while (and files (string< (migration-file-version (first files)) version))
+                 (loop while (and files (< (migration-file-version (first files)) version))
                        for file = (pop files)
                        do (push (list :down :version (migration-file-version file) :file file)
                                 results))
-                 (if (and files (string= version (migration-file-version (first files))))
+                 (if (and files (= version (migration-file-version (first files))))
                      (push (list :up :version version :file (pop files))
                            results)
                      (push (list :up :version version) results))))
@@ -230,45 +324,66 @@
         (null (format t "   (NO FILE)~%"))
         (pathname (format t "~%"))))))
 
-(defun migrate (directory &key dry-run)
-  (let* ((current-version (current-migration-version))
-         (schema.sql (merge-pathnames #P"schema.sql" directory))
-         (sql-files-to-apply
-           (if current-version
-               (mapcar (lambda (result)
-                         (getf (cdr result) :file))
-                       (remove :up
-                               (%migration-status directory)
-                               :key #'car))
-               (and (probe-file schema.sql)
-                    (list schema.sql)))))
-    (cond
-      (sql-files-to-apply
-       (dbi:with-transaction *connection*
-         (dolist (file sql-files-to-apply)
-           (format t "~&Applying '~A'...~%" file)
-           (let ((content (uiop:read-file-string file)))
-             (dolist (stmt (parse-statements content))
-               (format t "~&-> ~A~%" stmt)
-               (let ((mito.logger::*mito-logger-stream* nil))
-                 (execute-sql stmt))))
-           (when current-version
-             (let ((version (migration-file-version file)))
-               (update-migration-version version))))
-         (let* ((latest-migration-file (first (last (if current-version
-                                                        sql-files-to-apply
-                                                        (migration-files directory)))))
-                (version (if latest-migration-file
-                             (migration-file-version latest-migration-file)
-                             (generate-version))))
-           (unless current-version
-             (update-migration-version version))
-           (if dry-run
-               (format t "~&No problems were found while migration.~%")
-               (format t "~&Successfully updated to the version ~S.~%" version)))
-         (when dry-run
-           (dbi:rollback *connection*))))
-      (current-version
-       (format t "~&Version ~S is up to date.~%" current-version))
-      (t
-       (format t "~&Nothing to migrate.~%")))))
+(defparameter *advisory-lock-drivers* '(:postgres))
+
+(defmacro with-advisory-lock ((connection) &body body)
+  (with-gensyms (lock-id driver)
+    (once-only (connection)
+      `(let ((,driver (connection-driver-type ,connection)))
+         (if (member ,driver *advisory-lock-drivers* :test 'eq)
+             (let ((,lock-id (generate-advisory-lock-id (dbi:connection-database-name ,connection))))
+               (acquire-advisory-lock ,connection ,lock-id)
+               (unwind-protect (progn ,@body)
+                 (release-advisory-lock ,connection ,lock-id)))
+             (progn ,@body))))))
+
+(defun migrate (directory &key dry-run force)
+  (check-type directory pathname)
+  (with-advisory-lock (*connection*)
+    (let* ((current-version (current-migration-version))
+           (schema.sql (merge-pathnames #P"schema.sql" directory))
+           (sql-files-to-apply
+             (if current-version
+                 (mapcar (lambda (result)
+                           (getf (cdr result) :file))
+                         (remove :up
+                                 (%migration-status directory)
+                                 :key #'car))
+                 (and (probe-file schema.sql)
+                      (list schema.sql)))))
+      (cond
+        (sql-files-to-apply
+         (dbi:with-transaction *connection*
+           (dolist (file sql-files-to-apply)
+             (unless force
+               (format t "~&Applying '~A'...~%" file)
+               (let ((content (uiop:read-file-string file)))
+                 (dolist (stmt (parse-statements content))
+                   (format t "~&-> ~A~%" stmt)
+                   (let ((mito.logger::*mito-logger-stream* nil))
+                     (execute-sql stmt)))))
+             (when current-version
+               (let ((version (migration-file-version file)))
+                 (update-migration-version version))))
+           (let* ((migration-files (migration-files directory))
+                  (latest-migration-file (first (last (if current-version
+                                                          sql-files-to-apply
+                                                          migration-files))))
+                  (version (if latest-migration-file
+                               (migration-file-version latest-migration-file)
+                               (generate-version))))
+             (unless current-version
+               (if migration-files
+                   ;; Record all versions on the first table creation
+                   (dolist (file migration-files)
+                     (update-migration-version (migration-file-version file)))
+                   (update-migration-version version)))
+             (if dry-run
+                 (format t "~&No problems were found while migration.~%")
+                 (format t "~&Successfully updated to the version ~S.~%" version)))
+           (when dry-run
+             (dbi:rollback *connection*))))
+        (current-version
+         (format t "~&Version ~S is up to date.~%" current-version))
+        (t
+         (format t "~&Nothing to migrate.~%"))))))

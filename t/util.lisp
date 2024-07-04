@@ -1,5 +1,4 @@
-(in-package :cl-user)
-(defpackage mito-test.util
+(defpackage #:mito-test.util
   (:use #:cl
         #:sxql)
   (:import-from #:mito.class
@@ -13,7 +12,7 @@
            #:connect-to-testdb
            #:reconnect-to-testdb
            #:is-table-class))
-(in-package :mito-test.util)
+(in-package #:mito-test.util)
 
 (defun sqlite3-disconnect-from-testdb (conn)
   (when conn
@@ -29,15 +28,15 @@
   (dbi:disconnect conn))
 
 (defun postgres-connect-to-testdb ()
-  (dbi:connect-cached :postgres
-                      :database-name "mito"
-                      :host (or (uiop:getenv "POSTGRES_HOST") "localhost")
-                      :port (parse-integer
-                              (or (uiop:getenv "POSTGRES_PORT")
-                                  "5432"))
-                      :username (or (uiop:getenv "POSTGRES_USER") "nobody")
-                      :password (or (uiop:getenv "POSTGRES_PASS") "nobody")
-                      :microsecond-precision t))
+  (dbi:connect :postgres
+               :database-name "mito"
+               :host (or (uiop:getenv "POSTGRES_HOST") "localhost")
+               :port (parse-integer
+                       (or (uiop:getenv "POSTGRES_PORT")
+                           "5432"))
+               :username (or (uiop:getenv "POSTGRES_USER") "nobody")
+               :password (or (uiop:getenv "POSTGRES_PASS") "nobody")
+               :microsecond-precision t))
 
 (defun mysql-disconnect-from-testdb (conn)
   (dbi:disconnect conn))
@@ -74,7 +73,7 @@
 (defmacro is-table-class (driver class-definition create-table &optional desc)
   (let ((class (gensym "CLASS")))
     `(let ((,class ,class-definition))
-       (prove:is (let ((sxql:*use-placeholder* nil))
-                   (mapcar #'sxql:yield (create-table-sxql ,class ,driver)))
-                 (alexandria:ensure-list ,create-table)
-                 (format nil "~A (~S)~:[~;~:* ~A~]" (class-name ,class) ,driver ,desc)))))
+       (rove:ok (equal (let ((sxql:*use-placeholder* nil))
+                         (mapcar #'sxql:yield (create-table-sxql ,class ,driver)))
+                       (alexandria:ensure-list ,create-table))
+                (format nil "~A (~S)~:[~;~:* ~A~]" (class-name ,class) ,driver ,desc)))))

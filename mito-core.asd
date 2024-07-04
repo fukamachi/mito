@@ -1,14 +1,13 @@
 (defsystem "mito-core"
-  :version "0.1"
+  :version "0.2.0"
   :author "Eitaro Fukamachi"
   :license "LLGPL"
-  :depends-on ((:version "dbi" "0.9.5")
+  :depends-on ((:version "dbi" "0.10.0")
                "sxql"
                "cl-ppcre"
                "closer-mop"
                "dissect"
                "trivia"
-               "cl-reexport"
                "local-time"
                "uuid"
                "alexandria")
@@ -19,7 +18,7 @@
                 ((:file "dao" :depends-on ("dao-components"))
                  (:module "dao-components"
                   :pathname "dao"
-                  :depends-on ("connection" "class" "db" "logger" "util")
+                  :depends-on ("connection" "class" "db" "conversion" "logger" "util")
                   :components
                   ((:file "table" :depends-on ("column" "mixin" "view"))
                    (:file "view" :depends-on ("column"))
@@ -42,6 +41,7 @@
                   ((:file "mysql")
                    (:file "postgres")
                    (:file "sqlite3")))
+                 (:file "conversion")
                  (:file "logger")
                  (:file "error")
                  (:file "util")))))

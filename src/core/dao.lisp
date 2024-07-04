@@ -1,67 +1,65 @@
-(in-package :cl-user)
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (handler-bind (#+sbcl (warning #'muffle-warning))
-    (defpackage mito.dao
-      (:use #:cl
-            #:sxql
-            #:mito.class)
-      (:import-from #:mito.dao.column
-                    #:dao-table-column-deflate)
-      (:import-from #:mito.connection
-                    #:*connection*
-                    #:check-connected
-                    #:driver-type)
-      (:import-from #:mito.class
-                    #:database-column-slots
-                    #:ghost-slot-p
-                    #:find-slot-by-name
-                    #:find-parent-column
-                    #:find-child-columns
-                    #:table-column-references-column
-                    #:table-column-name
-                    #:table-column-type)
-      (:import-from #:mito.db
-                    #:last-insert-id
-                    #:execute-sql
-                    #:retrieve-by-sql
-                    #:table-exists-p)
-      (:import-from #:mito.logger
-                    #:with-sql-logging)
-      (:import-from #:mito.util
-                    #:unlispify
-                    #:symbol-name-literally
-                    #:ensure-class)
-      (:import-from #:trivia
-                    #:match
-                    #:guard)
-      (:import-from #:alexandria
-                    #:appendf
-                    #:ensure-list
-                    #:once-only
-                    #:with-gensyms)
-      (:export #:convert-for-driver-type
-               #:insert-dao
-               #:update-dao
-               #:create-dao
-               #:delete-dao
-               #:delete-by-values
-               #:save-dao
-               #:select-dao
-               #:select-by-sql
-               #:includes
-               #:include-foreign-objects
-               #:find-dao
-               #:retrieve-dao
-               #:count-dao
-               #:recreate-table
-               #:ensure-table-exists
-               #:deftable))))
-(in-package :mito.dao)
-
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (cl-reexport:reexport-from :mito.dao.mixin)
-  (cl-reexport:reexport-from :mito.dao.view)
-  (cl-reexport:reexport-from :mito.dao.table))
+(uiop:define-package #:mito.dao
+  (:use #:cl
+        #:sxql
+        #:mito.class)
+  (:use-reexport #:mito.dao.mixin
+                 #:mito.dao.view
+                 #:mito.dao.table)
+  (:import-from #:mito.dao.column
+                #:dao-table-column-deflate)
+  (:import-from #:mito.conversion
+                #:convert-for-driver-type)
+  (:import-from #:mito.connection
+                #:*connection*
+                #:check-connected
+                #:driver-type)
+  (:import-from #:mito.class
+                #:database-column-slots
+                #:ghost-slot-p
+                #:find-slot-by-name
+                #:find-parent-column
+                #:find-child-columns
+                #:table-name
+                #:table-column-references-column
+                #:table-column-name
+                #:table-column-type
+                #:table-column-not-null-p)
+  (:import-from #:mito.db
+                #:last-insert-id
+                #:execute-sql
+                #:retrieve-by-sql
+                #:table-exists-p)
+  (:import-from #:mito.logger
+                #:with-sql-logging)
+  (:import-from #:mito.util
+                #:unlispify
+                #:symbol-name-literally
+                #:ensure-class)
+  (:import-from #:trivia
+                #:match
+                #:guard)
+  (:import-from #:alexandria
+                #:appendf
+                #:ensure-list
+                #:once-only
+                #:with-gensyms)
+  (:export #:insert-dao
+           #:update-dao
+           #:create-dao
+           #:delete-dao
+           #:delete-by-values
+           #:save-dao
+           #:select-dao
+           #:select-by-sql
+           #:includes
+           #:include-foreign-objects
+           #:find-dao
+           #:retrieve-dao
+           #:count-dao
+           #:recreate-table
+           #:ensure-table-exists
+           #:deftable))
+(in-package #:mito.dao)
 
 (defun foreign-value (obj slot)
   (let* ((class (class-of obj))
@@ -75,51 +73,21 @@
                 t)
         (values nil nil))))
 
-(defvar *db-datetime-format*
-  '((:year 4) #\- (:month 2) #\- (:day 2) #\Space (:hour 2) #\: (:min 2) #\: (:sec 2) #\. (:usec 6) :gmt-offset-or-z))
-
-(defvar *db-datetime-format-without-timezone*
-  '((:year 4) #\- (:month 2) #\- (:day 2) #\Space (:hour 2) #\: (:min 2) #\: (:sec 2) #\. (:usec 6)))
-
-(defvar *db-date-format*
-  '((:year 4) #\- (:month 2) #\- (:day 2)))
-
-(defgeneric convert-for-driver-type (driver-type col-type value)
-  (:method (driver-type col-type value)
-    (declare (ignore driver-type col-type))
-    value)
-  (:method (driver-type col-type (value string))
-    (declare (ignore driver-type col-type))
-    value)
-  (:method ((driver-type (eql :mysql)) (col-type (eql :boolean)) value)
-    (ecase value
-      (t 1)
-      ('nil 0)))
-  (:method ((driver-type (eql :mysql)) (col-type (eql :datetime)) (value local-time:timestamp))
-    (local-time:format-timestring nil value
-                                  :format *db-datetime-format-without-timezone*))
-  (:method (driver-type (col-type (eql :datetime)) (value local-time:timestamp))
-    (local-time:format-timestring nil value
-                                  :format *db-datetime-format*
-                                  :timezone local-time:+gmt-zone+))
-  (:method (driver-type (col-type (eql :date)) (value local-time:timestamp))
-    (local-time:format-timestring nil value
-                                  :format *db-date-format*))
-  (:method (driver-type (col-type (eql :timestamp)) value)
-    (convert-for-driver-type driver-type :datetime value))
-  (:method (driver-type (col-type (eql :timestamptz)) value)
-    (convert-for-driver-type driver-type :datetime value))
-  (:method ((driver-type (eql :sqlite3)) (col-type (eql :boolean)) value)
-    (ecase value
-      (t 1)
-      ('nil 0)))
-  (:method ((driver-type (eql :postgres)) (col-type (eql :boolean)) value)
-    (ecase value
-      (t '(:raw "true"))
-      ('nil '(:raw "false")))))
-
-(defun make-set-clause (obj)
-  (let ((class (class-of obj)))
+(defun make-set-clause (obj &key columns)
+  (let* ((class (class-of obj))
+         (column-slots (database-column-slots class)))
+    (when columns
+      (setf column-slots
+            (remove-if-not (lambda (slot)
+                             (let ((slot-name (c2mop:slot-definition-name slot)))
+                               (find-if (lambda (column-name)
+                                          (typecase column-name
+                                            ((and symbol (not keyword))
+                                             (eq column-name slot-name))
+                                            (otherwise
+                                             (string= column-name slot-name))))
+                                        columns)))
+                           column-slots)))
     (apply #'sxql:make-clause :set=
            (mapcan
             (lambda (slot)
@@ -144,7 +112,7 @@
                            (convert-for-driver-type (driver-type)
                                                     (table-column-type slot)
                                                     (dao-table-column-deflate slot value))))))))
-            (database-column-slots class)))))
+            column-slots))))
 
 (defgeneric insert-dao (obj)
   (:method ((obj dao-class))
@@ -177,8 +145,8 @@
       (setf (dao-synced obj) nil)
       (save-dao obj))))
 
-(defgeneric update-dao (obj)
-  (:method ((obj dao-class))
+(defgeneric update-dao (obj &key columns)
+  (:method ((obj dao-class) &key columns)
     (check-connected)
     (let ((primary-key (table-primary-key (class-of obj))))
       (unless primary-key
@@ -186,13 +154,14 @@
 
       (execute-sql
        (sxql:update (sxql:make-sql-symbol (table-name (class-of obj)))
-         (make-set-clause obj)
+         (make-set-clause obj :columns columns)
          (sxql:where
           `(:and ,@(mapcar (lambda (key)
                              `(:= ,(unlispify key) ,(slot-value obj key)))
                            primary-key))))))
     (values))
-  (:method :before ((obj record-timestamps-mixin))
+  (:method :before ((obj record-timestamps-mixin) &key columns)
+    (declare (ignore columns))
     (let ((now (local-time:now)))
       (setf (object-updated-at obj) now))))
 
@@ -375,14 +344,32 @@
                                                      (find-child-columns class slot))))
                                (when children
                                  `((:and ,@(loop for child in children
+                                                 for column = (intern (table-column-name child) :keyword)
                                                  collect
-                                                 `(:= ,(intern (table-column-name child) :keyword)
+                                                 (cond
+                                                   ((null value)
+                                                    (unless (table-column-not-null-p slot)
+                                                      (warn "Slot ~S in table ~S is not null, but IS NULL condition is specified."
+                                                            (table-column-name slot)
+                                                            (table-name class)))
+                                                    `(:is-null ,column))
+                                                   (t
+                                                    `(:= ,column
                                                       ,(slot-value value
                                                                    (c2mop:slot-definition-name
-                                                                    (table-column-references-column child)))))))))
+                                                                    (table-column-references-column child)))))))))))
                     else
-                      collect `(:= ,(unlispify field)
-                                   ,(dao-table-column-deflate slot value)))))
+                      collect (let ((db-value
+                                      (dao-table-column-deflate slot value)))
+                                (cond
+                                  ((null db-value)
+                                   (unless (table-column-not-null-p slot)
+                                     (warn "Slot ~S in table ~S is not null, but IS NULL condition is specified."
+                                           (table-column-name slot)
+                                           (table-name class)))
+                                   `(:is-null ,(unlispify field)))
+                                  (t
+                                   `(:= ,(unlispify field) ,db-value)))))))
       (when op
         (sxql:where `(:and ,@op))))))
 

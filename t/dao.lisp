@@ -1,13 +1,6 @@
-(in-package :cl-user)
-(defpackage mito-test.dao
-  (:use #:cl))
-(in-package :mito-test.dao)
-
-;;; separate packages to avoid conflicting defclasses for testing
-
-(defpackage mito-test.dao.1
+(defpackage #:mito-test.dao
   (:use #:cl
-        #:prove
+        #:rove
         #:mito.dao
         #:mito.connection
         #:mito-test.util
@@ -15,12 +8,9 @@
   (:import-from #:alexandria
                 #:make-keyword
                 #:compose))
-(in-package :mito-test.dao.1)
+(in-package #:mito-test.dao)
 
-(plan nil)
-
-(subtest "dao-table-class inheritance"
-
+(deftest dao-table-class-inheritance
   (when (find-class 'tweet nil)
     (setf (find-class 'tweet) nil))
 
@@ -92,24 +82,11 @@
     status TEXT NOT NULL,
     user INTEGER NOT NULL
 )"
-                  "auto-pk is nil"))
+                  "auto-pk is nil")
 
+  (setf (find-class 'tweet) nil))
 
-(defpackage mito-test.dao.2
-  (:use #:cl
-        #:prove
-        #:mito.dao
-        #:mito.connection
-        #:mito-test.util
-        #:sxql)
-  (:import-from #:alexandria
-                #:make-keyword
-                #:compose))
-(in-package :mito-test.dao.2)
-
-(plan nil)
-
-(subtest "relation"
+(deftest relation
   (setf *connection* (connect-to-testdb :mysql))
   (when (find-class 'user nil)
     (setf (find-class 'user) nil))
@@ -126,7 +103,8 @@
     ((id :col-type :serial
          :primary-key t)
      (name :col-type :text
-           :initarg :name)
+           :initarg :name
+           :accessor user-name)
      (setting :col-type (or user-setting :null)
               :initarg :setting
               :accessor user-setting))
@@ -143,42 +121,57 @@
     (:metaclass dao-table-class)
     (:record-timestamps nil))
 
-  (is (mapcar #'sxql:yield (table-definition 'tweet))
-      '("CREATE TABLE tweet (
+  (ok (equal (mapcar #'sxql:yield (table-definition 'tweet))
+             '("CREATE TABLE tweet (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     status TEXT NOT NULL,
     user_id INT UNSIGNED NOT NULL
-)"))
+)")))
   (mito:execute-sql "DROP TABLE IF EXISTS tweet")
   (mito:execute-sql "DROP TABLE IF EXISTS user")
   (mito:execute-sql "DROP TABLE IF EXISTS user_setting")
   (mito:ensure-table-exists 'user-setting)
   (mito:ensure-table-exists 'user)
   (mito:ensure-table-exists 'tweet)
-  (let ((user (mito:create-dao 'user :name "Eitaro")))
+  (let ((user (mito:create-dao 'user
+                               :name "Eitaro")))
     (mito:create-dao 'tweet :status "Hello" :user user))
-  (let ((user (mito:create-dao 'user :name "Yoshimi")))
+  (let ((user (mito:create-dao 'user
+                               :name "Yoshimi"
+                               :setting (mito:create-dao 'user-setting))))
     (mito:create-dao 'tweet :status "こんにちは" :user user))
 
-  (is (mito:count-dao 'tweet) 2)
+  (ok (= (mito:count-dao 'tweet) 2))
+
+  (dbi:with-transaction mito:*connection*
+    (let ((tweet (first (mito:select-dao 'tweet (sxql:limit 1)))))
+      (setf (tweet-status tweet) "Goodbye, World")
+      (setf (tweet-user tweet) (mito:find-dao 'user :name "Yoshimi"))
+      (mito:update-dao tweet :columns '(:status))
+      (ok (equal (user-name (tweet-user (first (mito:select-dao 'tweet (sxql:limit 1)))))
+                 "Eitaro"))
+      (mito:update-dao tweet)
+      (ok (equal (user-name (tweet-user (first (mito:select-dao 'tweet (sxql:limit 1)))))
+                 "Yoshimi")))
+    (dbi:rollback mito:*connection*))
 
   (let ((tweets (mito:select-dao 'tweet)))
-    (is (length tweets) 2)
-    (is-type (first tweets) 'tweet)
-    (is-type (tweet-user (first tweets)) 'user)
+    (ok (= (length tweets) 2))
+    (ok (typep (first tweets) 'tweet))
+    (ok (typep (tweet-user (first tweets)) 'user))
 
     (diag "deleting the related foreign object")
     (dbi:with-transaction mito:*connection*
       (mito:delete-dao (tweet-user (first tweets)))
       (slot-makunbound (first tweets) 'user)
       ;; related foreign object is nil
-      (is (tweet-user (first tweets)) nil)
+      (ok (null (tweet-user (first tweets))))
       (slot-makunbound (first tweets) 'user)
       (setf (tweet-status (first tweets)) "Hello, World")
 
       ;; can update
       (mito:update-dao (first tweets))
-      (isnt (slot-value (mito:find-dao 'tweet :id (mito:object-id (first tweets))) 'user-id) nil)
+      (ok (slot-value (mito:find-dao 'tweet :id (mito:object-id (first tweets))) 'user-id))
       (dbi:rollback mito:*connection*)))
 
   (ok (every (lambda (tweet)
@@ -212,17 +205,21 @@
 
   (let ((user (mito:find-dao 'user)))
     (ok user)
-    (is-type (mito:find-dao 'tweet :user user)
-             'tweet
-             "Can find an object by a foreign object")
+    (ok (typep (mito:find-dao 'tweet :user user)
+               'tweet)
+        "Can find an object by a foreign object")
     (ok
      (mito.dao:select-dao 'tweet
        (where (:= :user user))))
     (ok
      (mito.dao:select-dao 'tweet
        (where (:in :user (list user))))))
+  (testing "Can generate IS NULL query by find-dao"
+    (ok (mito:find-dao 'user :name "Eitaro" :setting nil))
+    (ok (eql 4 (mito:count-dao 'user)))
+    (ok (eql 3 (mito:count-dao 'user :setting nil))))
 
-  (is (user-setting (mito:find-dao 'user)) nil)
+  (ok (null (user-setting (mito:find-dao 'user :name "Eitaro"))))
 
   (defclass tweet2 (tweet) ()
     (:metaclass dao-table-class)
@@ -234,30 +231,18 @@
     (ok (mito:create-dao 'tweet2 :status "Hello" :user user)))
 
   (let ((tweet (mito:find-dao 'tweet :id 1)))
-    (is (mito:count-dao 'tweet) 2)
+    (ok (= (mito:count-dao 'tweet) 2))
     (ok tweet)
     (mito:delete-dao tweet)
-    (is (mito:count-dao 'tweet) 1)
+    (ok (= (mito:count-dao 'tweet) 1))
     (mito:delete-by-values 'tweet :id 2)
-    (is (mito:count-dao 'tweet) 0))
+    (ok (= (mito:count-dao 'tweet) 0)))
 
+  (dolist (class-name '(user-setting user tweet friend-relationship tweet2))
+    (setf (find-class class-name) nil))
   (disconnect-toplevel))
 
-(defpackage mito-test.dao.3
-  (:use #:cl
-        #:prove
-        #:mito.dao
-        #:mito.connection
-        #:mito-test.util
-        #:sxql)
-  (:import-from #:alexandria
-                #:make-keyword
-                #:compose))
-(in-package :mito-test.dao.3)
-
-(plan nil)
-
-(subtest "foreign slots"
+(deftest foreign-slots
   (setf *connection* (connect-to-testdb :mysql))
   (defclass user ()
     ()
@@ -270,100 +255,77 @@
      (tweet :col-type tweet))
     (:metaclass dao-table-class)
     (:primary-key user tweet))
-  (is (mapcar #'sxql:yield (table-definition 'tweet-tag))
-      '("CREATE TABLE tweet_tag (
+  (ok (equal (mapcar #'sxql:yield (table-definition 'tweet-tag))
+             '("CREATE TABLE tweet_tag (
     user_id BIGINT UNSIGNED NOT NULL,
     tweet_id BIGINT UNSIGNED NOT NULL,
     created_at TIMESTAMP,
     updated_at TIMESTAMP,
     PRIMARY KEY (user_id, tweet_id)
-)"))
+)")))
   (defclass tweet-tag ()
     ((user :col-type user)
      (tweet :col-type tweet))
     (:metaclass dao-table-class)
     (:keys (user tweet)))
-  (is (mapcar #'sxql:yield (table-definition 'tweet-tag))
-      '("CREATE TABLE tweet_tag (
+  (ok (equal (mapcar #'sxql:yield (table-definition 'tweet-tag))
+             '("CREATE TABLE tweet_tag (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT UNSIGNED NOT NULL,
     tweet_id BIGINT UNSIGNED NOT NULL,
     created_at TIMESTAMP,
     updated_at TIMESTAMP,
     KEY (user_id, tweet_id)
-)"))
+)")))
 
+  (dolist (class-name '(user tweet tweet-tag))
+    (setf (find-class class-name) nil))
   (disconnect-toplevel))
 
-(defpackage mito-test.dao.4
-  (:use #:cl
-        #:prove
-        #:mito.dao
-        #:mito.connection
-        #:mito-test.util
-        #:sxql)
-  (:import-from #:alexandria
-                #:make-keyword
-                #:compose))
-(in-package :mito-test.dao.4)
+(deftest inflate-deflate
+  (dolist (driver '(:mysql :postgres :sqlite3))
+    (testing (format nil "inflate & deflate (~A)" driver)
+      (setf *connection* (connect-to-testdb driver))
+      (defclass user ()
+        ((id :col-type :serial
+             :primary-key t)
+         (name :col-type :text
+               :initarg :name)
+         (is-admin :col-type :boolean
+                   :initform nil
+                   :initarg :is-admin)
+         (role :col-type (:varchar 12)
+               :initarg :role
+               :deflate #'string-downcase
+               :inflate (compose #'make-keyword #'string-upcase)))
+        (:metaclass dao-table-class))
+      (mito:execute-sql
+       (sxql:drop-table :user :if-exists t))
+      (mito:ensure-table-exists 'user)
 
-(plan nil)
+      (let ((mito:*mito-logger-stream* t))
+        (mito:create-dao 'user
+                         :name "Admin User A"
+                         :is-admin t
+                         :role :manager)
+        (mito:create-dao 'user
+                         :name "User B"
+                         :is-admin nil
+                         :role :end-user)
 
-(dolist (driver '(:mysql :postgres :sqlite3))
-  (subtest (format nil "inflate & deflate (~A)" driver)
-    (setf *connection* (connect-to-testdb driver))
-    (defclass user ()
-      ((id :col-type :serial
-           :primary-key t)
-       (name :col-type :text
-             :initarg :name)
-       (is-admin :col-type :boolean
-                 :initform nil
-                 :initarg :is-admin)
-       (role :col-type (:varchar 12)
-             :initarg :role
-             :deflate #'string-downcase
-             :inflate (compose #'make-keyword #'string-upcase)))
-      (:metaclass dao-table-class))
-    (mito:execute-sql
-     (sxql:drop-table :user :if-exists t))
-    (mito:ensure-table-exists 'user)
+        (let ((user (mito:find-dao 'user :id 1)))
+          (ok (slot-value user 'is-admin))
+          (ok (typep (mito:object-created-at user) 'local-time:timestamp)))
+        (let ((user (mito:find-dao 'user :id 2)))
+          (ok (null (slot-value user 'is-admin)))
+          (ok (typep (mito:object-created-at user) 'local-time:timestamp)))
+        (let ((user (mito:find-dao 'user :role :manager)))
+          (ok user)))
 
-    (let ((mito:*mito-logger-stream* t))
-      (mito:create-dao 'user
-                       :name "Admin User A"
-                       :is-admin t
-                       :role :manager)
-      (mito:create-dao 'user
-                       :name "User B"
-                       :is-admin nil
-                       :role :end-user)
+      (setf (find-class 'user) nil)
+      (disconnect-toplevel))))
 
-      (let ((user (mito:find-dao 'user :id 1)))
-        (is (slot-value user 'is-admin) t)
-        (is-type (mito:object-created-at user) 'local-time:timestamp))
-      (let ((user (mito:find-dao 'user :id 2)))
-        (is (slot-value user 'is-admin) nil)
-        (is-type (mito:object-created-at user) 'local-time:timestamp))
-      (let ((user (mito:find-dao 'user :role :manager)))
-        (ok user)))
-    (disconnect-toplevel)))
-
-(defpackage mito-test.dao.5
-  (:use #:cl
-        #:prove
-        #:mito.dao
-        #:mito.connection
-        #:mito-test.util
-        #:sxql)
-  (:import-from #:alexandria
-                #:make-keyword
-                #:compose))
-(in-package :mito-test.dao.5)
-
-(plan nil)
-
-(subtest "timestamp with milliseconds (PostgreSQL)"
+(deftest timestamp-with-milliseconds
   (setf *connection* (connect-to-testdb :postgres))
   (defclass user ()
     ((registered-at :col-type :timestamp))
@@ -376,35 +338,22 @@
   (let ((now (local-time:now)))
     (mito:create-dao 'user :registered-at now)
     (let ((user (mito:find-dao 'user :id 1)))
-      (is-type (slot-value user 'registered-at) 'local-time:timestamp)
+      (ok (typep (slot-value user 'registered-at) 'local-time:timestamp))
       (ok (/= 0 (local-time:nsec-of (slot-value user 'registered-at))))))
+  (setf (find-class 'user) nil)
   (disconnect-toplevel))
 
-(defpackage mito-test.dao.6
-  (:use #:cl
-        #:prove
-        #:mito.dao
-        #:mito.connection
-        #:mito-test.util
-        #:sxql)
-  (:import-from #:alexandria
-                #:make-keyword
-                #:compose))
-(in-package :mito-test.dao.6)
+(deftest accessor
+  (defclass parent ()
+    ()
+    (:metaclass dao-table-class))
 
-(plan nil)
+  (defclass child ()
+    ((parent :col-type parent
+             :initarg :parent
+             :accessor child-parent))
+    (:metaclass dao-table-class))
 
-(defclass parent ()
-  ()
-  (:metaclass dao-table-class))
-
-(defclass child ()
-  ((parent :col-type parent
-           :initarg :parent
-           :accessor child-parent))
-  (:metaclass dao-table-class))
-
-(subtest "accessor"
   (setf *connection* (connect-to-testdb :postgres))
   (mito:execute-sql (sxql:drop-table :parent :if-exists t))
   (mito:execute-sql (sxql:drop-table :child :if-exists t))
@@ -413,6 +362,7 @@
   (mito:create-dao 'child :parent (mito:create-dao 'parent))
   (child-parent (mito:find-dao 'child))
   (ok (object= (child-parent (mito:find-dao 'child))
-               (mito:find-dao 'parent))))
+               (mito:find-dao 'parent)))
 
-(finalize)
+  (dolist (class-name '(parent child))
+    (setf (find-class class-name) nil)))

@@ -11,7 +11,5 @@ while ! mysql -u "$MYSQL_USER" \
       sleep 1
 done
 
-ros install fukamachi/cl-dbi
-
 ros -s mito-test
-run-prove mito-test.asd
+rove mito-test.asd

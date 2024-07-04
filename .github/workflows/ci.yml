@@ -8,12 +8,12 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        lisp: [sbcl, ccl]
+        lisp: [sbcl]
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
       - name: Run tests
         env:
           LISP: ${{ matrix.lisp }}
         run: |
-          docker-compose up --exit-code-from tests tests
+          docker compose up --exit-code-from tests tests

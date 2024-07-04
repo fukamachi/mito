@@ -5,6 +5,8 @@
   (:import-from #:mito.class.column
                 #:table-column-class
                 #:table-column-type)
+  (:import-from #:local-time)
+  (:import-from #:cl-ppcre)
   (:export #:dao-table-column-class
            #:dao-table-column-inflate
            #:dao-table-column-deflate
@@ -27,10 +29,12 @@
     (let ((accessor (intern
                       (format nil "~:@(~A~A~)" *conc-name* name)
                       *package*)))
-      (pushnew accessor readers)
-      (pushnew `(setf ,accessor) writers)
-      (setf (getf rest-initargs :readers) readers)
-      (setf (getf rest-initargs :writers) writers)))
+      (unless readers
+        (pushnew accessor readers)
+        (setf (getf rest-initargs :readers) readers))
+      (unless writers
+        (pushnew `(setf ,accessor) writers)
+        (setf (getf rest-initargs :writers) writers))))
 
   (when inflate
     (setf (getf rest-initargs :inflate) (eval inflate)))
@@ -77,7 +81,10 @@
       (integer
        (local-time:universal-to-timestamp value))
       (string
-       (local-time:parse-timestring value :date-time-separator #\Space))
+       (ppcre:register-groups-bind ((#'parse-integer year month day))
+           ("^(\\d{4})-(\\d{2})-(\\d{2})$" value)
+         (local-time:universal-to-timestamp
+           (encode-universal-time 0 0 0 day month year))))
       (null nil)))
   (:method ((col-type (eql :timestamp)) value)
     (inflate-for-col-type :datetime value))
