@@ -100,7 +100,10 @@
                           (case driver-type
                             (:mysql "UNSIGNED")
                             (otherwise "BIGINT"))
-                          (find "dirty" db-columns :test 'equal :key 'first)))))
+                          (find "dirty" db-columns :test 'equal :key 'first)
+                          (case driver-type
+                            (:mysql "UNSIGNED")
+                            (otherwise "BOOLEAN"))))))
               (execute-sql
                (sxql:drop-table :schema_migrations_backup))))
           (execute-sql (schema-migrations-table-definition))))))
