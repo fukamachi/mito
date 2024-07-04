@@ -196,7 +196,7 @@ The following are valid keywords for :col-type in the `deftable` definition abov
 :datetime
 ```
 
-Besides the above keywords, there are other keywords that are valid, however they are dependent on the RDS and its version. 
+Besides the above keywords, there are other keywords that are valid, however they are dependent on the RDS and its version.
 
 An example of this is that `:json` and `:jsonb` work for PostgreSQL but don't work on an old version of MySQL which doesn't support those types.
 
@@ -206,6 +206,37 @@ A complete list of valid `:col-type` options is dependent on the database system
 - [SQLite3 Data Types](https://www.sqlite.org/datatype3.html)
 
 The symbols are not defined directly in the system, rather they are the symbol equivalent of the string which is the name for the data type. Therefore, for any data type name, just preprend a colon to the name `:data-type` in order to use it as a `col-type`.
+
+##### :col-type Definitions with Qualifiers
+
+For some data types there are qualifiers available.
+
+When there is only **one** qualfier in the data type, it can be given like in the following example
+
+```lisp
+(name :col-type (:varchar 64))
+```
+
+However, when there is **more than one** qualifier, providing a list of qualifiers **does not currently work**.
+
+A **workaround** that works is giving the whole data type definition, including the qualifier, as a string.
+
+For example the following will work:
+
+```lisp
+(amount-paid :col-type "numeric(10,2)")
+```
+
+However note that the following examples will **not work**:
+
+```lisp
+(amount-paid-two :col-type (:numeric "10,2"))
+(amount-paid-two :col-type (:numeric 10 2))
+```
+
+Common Lisp does not accept parenthesis and commas as valid variable names, so `:numeric(10,2)` and `:numeric10,2` are obviously invalid.
+
+Keep this in mind in particular when using `NUMERIC`, `DECIMAL`, and spatial data types.
 
 ### Generating Table Definitions
 
