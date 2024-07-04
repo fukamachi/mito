@@ -224,14 +224,14 @@ A **workaround** that works is giving the whole data type definition, including 
 For example the following will work:
 
 ```lisp
-(amount-paid :col-type "numeric(10,2)")
+(price :col-type "numeric(10,2)")
 ```
 
 However note that the following examples will **not work**:
 
 ```lisp
-(amount-paid-two :col-type (:numeric "10,2"))
-(amount-paid-two :col-type (:numeric 10 2))
+(price :col-type (:numeric "10,2"))
+(price :col-type (:numeric 10 2))
 ```
 
 Common Lisp does not accept parenthesis and commas as valid variable names, so `:numeric(10,2)` and `:numeric10,2` are obviously invalid.
