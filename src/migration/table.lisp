@@ -41,7 +41,8 @@
   (:import-from #:alexandria
                 #:ensure-list
                 #:compose
-                #:delete-from-plist)
+                #:delete-from-plist
+                #:remove-from-plist)
   (:export #:*auto-migration-mode*
            #:*migration-keep-temp-tables*
            #:migrate-table
@@ -64,17 +65,18 @@ If this variable is T they won't be deleted after migration.")
         (mapc #'execute-sql
               (migration-expressions class))))))
 
-(defun plist= (plist1 plist2)
-  (equalp (sort
-           (loop for (k v) on plist1 by #'cddr
-                 collect (cons k v))
-           #'string<
-           :key #'car)
-          (sort
-           (loop for (k v) on plist2 by #'cddr
-                 collect (cons k v))
-           #'string<
-           :key #'car)))
+(defun plist= (plist1 plist2 &key (test 'equalp))
+  (every test
+         (sort
+          (loop for (k v) on plist1 by #'cddr
+                collect (cons k v))
+          #'string<
+          :key #'car)
+         (sort
+          (loop for (k v) on plist2 by #'cddr
+                collect (cons k v))
+          #'string<
+          :key #'car)))
 
 (defun column-definition-equal-p (column1 column2)
   (and (equal (first column1) (first column2))
@@ -225,7 +227,10 @@ If this variable is T they won't be deleted after migration.")
                with after-alter-sequences = '()
                for db-column in columns-intersection
                for table-column = (find (car db-column) to-columns :test #'string= :key #'car)
-               unless (column-definition-equal-p db-column table-column)
+               unless (column-definition-equal-p (cons (car db-column)
+                                                       (remove-from-plist (cdr db-column) :primary-key))
+                                                 (cons (car table-column)
+                                                       (remove-from-plist (cdr table-column) :primary-key)))
                append (case driver-type
                         (:postgres
                          (loop for (k v) on (cdr table-column) by #'cddr
@@ -307,16 +312,28 @@ If this variable is T they won't be deleted after migration.")
                                      :test #'string=))
                              (getf options :columns))
                append
-                  (nconc
-                   (when (and (not (eq driver-type :postgres))
-                              (getf options :primary-key))
-                     (list (sxql:make-statement :alter-table (sxql:make-sql-symbol table-name)
-                                                (sxql:drop-primary-key))))
-                   (list
-                    (apply #'sxql:drop-index index-name
-                           (if (eq driver-type :postgres)
-                               nil
-                               (list :on (sxql:make-sql-symbol table-name))))))))))))
+                  (if (eq driver-type :postgres)
+                      (if (getf options :primary-key)
+                          (list
+                           (sxql:make-statement :alter-table (sxql:make-sql-symbol table-name)
+                                                (sxql:drop-constraint (sxql:make-sql-symbol index-name))))
+                          (list
+                           (sxql:drop-index index-name)))
+                      (nconc
+                       (when (getf options :primary-key)
+                         (let ((column (and (null (cdr (getf options :columns)))
+                                            (find (car (getf options :columns)) from-columns
+                                                  :test 'equal
+                                                  :key #'first))))
+                           (list (sxql:make-statement :alter-table (sxql:make-sql-symbol table-name)
+                                                      (if (and column
+                                                               (getf (cdr column) :auto-increment))
+                                                          (apply #'sxql:make-clause :modify-column (sxql:make-sql-symbol (car column))
+                                                                 (remove-from-plist (cdr column) :auto-increment :primary-key))
+                                                          (sxql:drop-primary-key))))))
+                       (list
+                        (sxql:drop-index index-name
+                                         :on (sxql:make-sql-symbol table-name)))))))))))
 
 (defun omit-default (definitions)
   (mapcar (lambda (definition)

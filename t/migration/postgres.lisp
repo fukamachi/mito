@@ -99,16 +99,54 @@
                '(nil nil nil nil nil))
         "No migration after migrating"))
 
+  (testing "Change to the serial primary key again"
+    (defclass tweets ()
+      ((tweet-id :col-type :serial
+                 :reader tweet-id)
+       (status :col-type :text
+               :accessor tweet-status)
+       (user :col-type (:varchar 128)
+             :accessor tweet-user))
+      (:metaclass dao-table-class)
+      (:record-timestamps nil)
+      (:unique-keys (tweet-id)))
+
+    (destructuring-bind (add-columns
+                         drop-columns
+                         change-columns
+                         add-indices
+                         drop-indices)
+        (mito.migration.table::migration-expressions-aux (find-class 'tweets) :postgres)
+      (ok (equal (mapcar #'sxql:yield add-columns)
+                 '("ALTER TABLE tweets ADD COLUMN id bigserial NOT NULL PRIMARY KEY"))
+          "Add id")
+      (ok (null drop-columns)
+          "No columns to drop")
+      (ok (null change-columns)
+          "No columns to change")
+      (ok (equal (mapcar #'sxql:yield add-indices)
+                 '("CREATE UNIQUE INDEX unique_tweets_tweet_id ON tweets (tweet_id)"))
+          "Create a unique index")
+      (ok (equal (mapcar #'sxql:yield drop-indices)
+                 '("ALTER TABLE tweets DROP CONSTRAINT tweets_pkey"))
+          "Drop the primary key"))
+
+    (migrate-table (find-class 'tweets))
+
+    (ok (equal (mito.migration.table::migration-expressions-aux (find-class 'tweets) :postgres)
+               '(nil nil nil nil nil))
+        "No migration after migrating"))
+
   (testing "redefinition"
     (defclass tweets ()
       ((tweet-id :col-type :serial
-                 :primary-key t
                  :reader tweet-id)
        (user :col-type (:varchar 64)
              :accessor tweet-user)
        (created-at :col-type (:char 8)))
       (:metaclass dao-table-class)
-      (:record-timestamps nil))
+      (:record-timestamps nil)
+      (:unique-keys (tweet-id)))
 
     (destructuring-bind (add-columns
                          drop-columns
@@ -134,13 +172,13 @@
   (testing "redefinition (modifying the column type)"
     (defclass tweets ()
       ((tweet-id :col-type :serial
-                 :primary-key t
                  :reader tweet-id)
        (user :col-type (:varchar 128)
              :accessor tweet-user)
        (created-at :col-type (:char 8)))
       (:metaclass dao-table-class)
-      (:record-timestamps nil))
+      (:record-timestamps nil)
+      (:unique-keys (tweet-id)))
 
     (destructuring-bind (add-columns
                          drop-columns
@@ -165,13 +203,13 @@
   (testing "redefinition of primary key"
     (defclass tweets ()
       ((tweet-id :col-type :bigserial
-                 :primary-key t
                  :reader tweet-id)
        (user :col-type (:varchar 128)
              :accessor tweet-user)
        (created-at :col-type (:char 8)))
       (:metaclass dao-table-class)
-      (:record-timestamps nil))
+      (:record-timestamps nil)
+      (:unique-keys (tweet-id)))
 
     (destructuring-bind (add-columns
                          drop-columns
@@ -196,14 +234,13 @@
   (testing "add :unique-keys"
     (defclass tweets ()
       ((tweet-id :col-type :bigserial
-                 :primary-key t
                  :reader tweet-id)
        (user :col-type (:varchar 128)
              :accessor tweet-user)
        (created-at :col-type (:char 8)))
       (:metaclass dao-table-class)
-      (:unique-keys (user created-at))
-      (:record-timestamps nil))
+      (:record-timestamps nil)
+      (:unique-keys (tweet-id) (user created-at)))
 
     (destructuring-bind (add-columns
                          drop-columns
@@ -228,14 +265,14 @@
   (testing "modify :unique-keys"
     (defclass tweets ()
       ((tweet-id :col-type :bigserial
-                 :primary-key t
                  :reader tweet-id)
        (user :col-type (:varchar 128)
              :accessor tweet-user)
        (created-at :col-type (:char 8)))
       (:metaclass dao-table-class)
-      (:unique-keys (tweet-id user created-at))
-      (:record-timestamps nil))
+      (:record-timestamps nil)
+      (:unique-keys (tweet-id)
+                    (tweet-id user created-at)))
 
     (destructuring-bind (add-columns
                          drop-columns
@@ -262,14 +299,14 @@
   (testing "delete :unique-keys and add :keys"
     (defclass tweets ()
       ((tweet-id :col-type :bigserial
-                 :primary-key t
                  :reader tweet-id)
        (user :col-type (:varchar 128)
              :accessor tweet-user)
        (created-at :col-type (:char 8)))
       (:metaclass dao-table-class)
-      (:keys (user created-at))
-      (:record-timestamps nil))
+      (:record-timestamps nil)
+      (:unique-keys (tweet-id))
+      (:keys (user created-at)))
 
     (destructuring-bind (add-columns
                          drop-columns
