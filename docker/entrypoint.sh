@@ -3,6 +3,8 @@
 set -x
 set -e
 
+qlot exec ros -s mito-test
+
 while ! mysql -u "$MYSQL_USER" \
         -h "$MYSQL_HOST" \
         -P "$MYSQL_PORT" \
@@ -11,5 +13,4 @@ while ! mysql -u "$MYSQL_USER" \
       sleep 1
 done
 
-ros -s mito-test
-rove mito-test.asd
+.qlot/bin/rove mito-test.asd

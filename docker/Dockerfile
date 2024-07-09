@@ -1,8 +1,15 @@
 ARG LISP=sbcl
+
+FROM fukamachi/qlot AS build-env
+
+WORKDIR /app
+COPY qlfile /app
+COPY qlfile.lock /app
+
+RUN qlot install --no-deps
+
 FROM fukamachi/${LISP} AS base
 
-RUN ros -e '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)'
-RUN ros install fukamachi/cl-dbi rove
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       libsqlite3-dev \
@@ -10,9 +17,14 @@ RUN apt-get update && \
       default-mysql-client && \
     rm -rf /var/lib/apt/lists/*
 
-COPY . /app
 WORKDIR /app
+RUN set -x; \
+  ros -e '(ql:update-dist "quicklisp" :prompt nil)' && \
+  ros install "fukamachi/qlot"
 
-ENV CL_SOURCE_REGISTRY "/app/"
+COPY --from=build-env /app/.qlot /app/.qlot
+
+COPY . /app
+RUN qlot install
 
 ENTRYPOINT "/app/docker/entrypoint.sh"

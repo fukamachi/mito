@@ -10,7 +10,8 @@ services:
         - LISP=${LISP:-sbcl}
     restart: "no"
     volumes:
-      - ./:/app/
+      - .:/app
+      - /app/.qlot
     depends_on:
       - postgres
       - mysql
@@ -26,7 +27,8 @@ services:
     container_name: mito-postgres
     image: "postgres:10"
     hostname: mito-test-postgres
-    restart: always
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_USER: mito
       POSTGRES_PASSWORD: mito
@@ -35,7 +37,8 @@ services:
     container_name: mito-mysql
     image: "mysql:8.4"
     hostname: mito-test-mysql
-    restart: always
+    ports:
+      - "3306:3306"
     command: --mysql_native_password=ON
     environment:
       MYSQL_ROOT_PASSWORD: mito

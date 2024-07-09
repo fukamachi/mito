@@ -34,8 +34,8 @@
                :port (parse-integer
                        (or (uiop:getenv "POSTGRES_PORT")
                            "5432"))
-               :username (or (uiop:getenv "POSTGRES_USER") "nobody")
-               :password (or (uiop:getenv "POSTGRES_PASS") "nobody")
+               :username (or (uiop:getenv "POSTGRES_USER") "mito")
+               :password (or (uiop:getenv "POSTGRES_PASS") "mito")
                :microsecond-precision t))
 
 (defun mysql-disconnect-from-testdb (conn)
@@ -44,12 +44,12 @@
 (defun mysql-connect-to-testdb ()
   (dbi:connect :mysql
                :database-name "mito"
-               :host (or (uiop:getenv "MYSQL_HOST") "localhost")
+               :host (or (uiop:getenv "MYSQL_HOST") "0.0.0.0")
                :port (parse-integer
                        (or (uiop:getenv "MYSQL_PORT")
                            "3306"))
-               :username (or (uiop:getenv "MYSQL_USER") "nobody")
-               :password (or (uiop:getenv "MYSQL_PASS") "nobody")))
+               :username (or (uiop:getenv "MYSQL_USER") "root")
+               :password (or (uiop:getenv "MYSQL_PASS") "mito")))
 
 (defun disconnect-from-testdb (conn)
   (funcall
