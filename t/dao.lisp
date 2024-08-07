@@ -268,6 +268,17 @@
         (ok (typep row 'user))
         (ok (equal (slot-value row 'name) "Btaro")))
       (ok (null (mito.dao:fetch-dao cursor)))))
+
+  (let ((records '()))
+    (do-cursor (dao (mito.dao:select-dao 'user) i)
+      (push (cons i dao) records)
+      (when (<= 1 i)
+        (return)))
+    (ok (= (length records) 2))
+    (ok (every (lambda (record)
+                 (typep (cdr record) 'user))
+               records)))
+
   (when (find-class 'user nil)
     (setf (find-class 'user) nil))
   (disconnect-toplevel))

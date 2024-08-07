@@ -63,7 +63,8 @@
            #:count-dao
            #:recreate-table
            #:ensure-table-exists
-           #:deftable))
+           #:deftable
+           #:do-cursor))
 (in-package #:mito.dao)
 
 (defun foreign-value (obj slot)
@@ -448,3 +449,17 @@
      ,@(unless (find :conc-name options :key #'car)
                `((:conc-name ,(intern (format nil "~@:(~A-~)" name) (symbol-package name)))))
      ,@options))
+
+(defmacro do-cursor ((dao select &optional index) &body body)
+  (with-gensyms (main cursor)
+    `(flet ((,main ()
+              (let* ((*want-cursor* t)
+                     (,cursor ,select))
+                (loop ,@(and index `(for ,index from 0))
+                      for ,dao = (fetch-dao ,cursor)
+                      while ,dao
+                      do (progn ,@body)))))
+       (if (dbi:in-transaction *connection*)
+           (,main)
+           (dbi:with-transaction *connection*
+             (,main))))))
