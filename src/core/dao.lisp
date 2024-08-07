@@ -28,13 +28,16 @@
                 #:last-insert-id
                 #:execute-sql
                 #:retrieve-by-sql
-                #:table-exists-p)
+                #:table-exists-p
+                #:ensure-sql)
   (:import-from #:mito.logger
                 #:with-sql-logging)
   (:import-from #:mito.util
+                #:lispify
                 #:unlispify
                 #:symbol-name-literally
-                #:ensure-class)
+                #:ensure-class
+                #:execute-with-retry)
   (:import-from #:trivia
                 #:match
                 #:guard)
@@ -50,6 +53,8 @@
            #:delete-by-values
            #:save-dao
            #:select-dao
+           #:*want-cursor*
+           #:fetch-dao
            #:select-by-sql
            #:includes
            #:include-foreign-objects
@@ -198,6 +203,28 @@
         (update-dao obj)
         (insert-dao obj))))
 
+(defstruct mito-cursor
+  cursor
+  class)
+
+(defun select-by-sql-as-cursor (class sql &key binds)
+  (multiple-value-bind (sql yield-binds)
+      (ensure-sql sql)
+    (let* ((cursor (dbi:make-cursor *connection* sql))
+           (cursor (execute-with-retry cursor (or binds yield-binds))))
+      (make-mito-cursor :cursor cursor
+                        :class class))))
+
+(defun fetch-dao (cursor)
+  (check-type cursor mito-cursor)
+  (let ((row (dbi:fetch (mito-cursor-cursor cursor)
+                        :format :alist)))
+    (when row
+      (apply #'make-dao-instance (mito-cursor-class cursor)
+             (loop for (k . v) in row
+                   collect (intern (lispify (string-upcase k)) :keyword)
+                   collect v)))))
+
 (defun select-by-sql (class sql &key binds)
   (mapcar (lambda (result)
             (apply #'make-dao-instance class result))
@@ -305,6 +332,8 @@
                                   (expand-op arg class)) args)))
       (otherwise object))))
 
+(defparameter *want-cursor* nil)
+
 (defmacro select-dao (class &body clauses)
   (with-gensyms (sql clause results include-classes foreign-class)
     (once-only (class)
@@ -327,10 +356,12 @@
                 (dolist (,clause (list ,@clauses))
                   (when ,clause
                     (add-child ,sql ,clause)))
-                (let ((,results (select-by-sql ,class ,sql)))
-                  (dolist (,foreign-class (remove-duplicates ,include-classes))
-                    (include-foreign-objects ,foreign-class ,results))
-                  (values ,results ,sql))))))))))
+                (if *want-cursor*
+                    (select-by-sql-as-cursor ,class ,sql)
+                    (let ((,results (select-by-sql ,class ,sql)))
+                      (dolist (,foreign-class (remove-duplicates ,include-classes))
+                        (include-foreign-objects ,foreign-class ,results))
+                      (values ,results ,sql)))))))))))
 
 (defun where-and (fields-and-values class)
   (when fields-and-values

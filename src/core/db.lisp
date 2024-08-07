@@ -115,6 +115,18 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
             :format :plist)
            t))))
 
+(defun sxql-to-sql (sql)
+  (with-quote-char (sxql:yield sql)))
+
+(defun ensure-sql (sql)
+  (etypecase sql
+    (string sql)
+    ((or sql-statement
+         composed-statement
+         ;; For UNION [ALL]
+         conjunctive-op)
+     (sxql-to-sql sql))))
+
 (defgeneric execute-sql (sql &optional binds)
   (:method ((sql string) &optional binds)
     (check-connected)
@@ -124,10 +136,9 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
         (query-row-count query))))
   (:method ((sql sql-statement) &optional binds)
     (declare (ignore binds))
-    (with-quote-char
-      (multiple-value-bind (sql binds)
-          (sxql:yield sql)
-        (execute-sql sql binds)))))
+    (multiple-value-bind (sql binds)
+        (sxql-to-sql sql)
+      (execute-sql sql binds))))
 
 (defun lispified-fields (query)
   (mapcar (lambda (field)
@@ -203,25 +214,11 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
                      (:plist t)
                      (otherwise nil)))))
         (retrieve-from-query query format))))
-  (:method ((sql sql-statement) &rest args &key binds &allow-other-keys)
+  (:method (sql &rest args &key binds &allow-other-keys)
     (assert (null binds))
-    (with-quote-char
-      (multiple-value-bind (sql binds)
-          (sxql:yield sql)
-        (apply #'retrieve-by-sql sql :binds binds args))))
-  (:method ((sql composed-statement) &rest args &key binds &allow-other-keys)
-    (assert (null binds))
-    (with-quote-char
-      (multiple-value-bind (sql binds)
-          (sxql:yield sql)
-        (apply #'retrieve-by-sql sql :binds binds args))))
-  ;; For UNION [ALL]
-  (:method ((sql conjunctive-op) &rest args &key binds &allow-other-keys)
-    (assert (null binds))
-    (with-quote-char
-      (multiple-value-bind (sql binds)
-          (sxql:yield sql)
-        (apply #'retrieve-by-sql sql :binds binds args)))))
+    (multiple-value-bind (sql binds)
+        (ensure-sql sql)
+      (apply #'retrieve-by-sql sql :binds binds args))))
 
 (defun acquire-advisory-lock (conn id)
   (funcall
