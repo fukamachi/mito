@@ -53,8 +53,6 @@
            #:delete-by-values
            #:save-dao
            #:select-dao
-           #:*want-cursor*
-           #:fetch-dao
            #:select-by-sql
            #:includes
            #:include-foreign-objects
@@ -216,8 +214,7 @@
       (make-mito-cursor :cursor cursor
                         :class class))))
 
-(defun fetch-dao (cursor)
-  (check-type cursor mito-cursor)
+(defun fetch-dao-from-cursor (cursor)
   (let ((row (dbi:fetch (mito-cursor-cursor cursor)
                         :format :alist)))
     (when row
@@ -456,7 +453,7 @@
               (let* ((*want-cursor* t)
                      (,cursor ,select))
                 (loop ,@(and index `(for ,index from 0))
-                      for ,dao = (fetch-dao ,cursor)
+                      for ,dao = (fetch-dao-from-cursor ,cursor)
                       while ,dao
                       do (progn ,@body)))))
        (if (dbi:in-transaction *connection*)

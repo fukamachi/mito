@@ -257,17 +257,17 @@
   (mito:create-dao 'user :name "Btaro")
   (mito:create-dao 'user :name "Charlie")
   (dbi:with-transaction *connection*
-    (let* ((*want-cursor* t)
+    (let* ((mito.dao::*want-cursor* t)
            (cursor (mito.dao:select-dao 'user
                      (where (:like :name "%aro")))))
       (ok (typep cursor 'mito.dao::mito-cursor))
-      (let ((row (mito.dao:fetch-dao cursor)))
+      (let ((row (mito.dao::fetch-dao-from-cursor cursor)))
         (ok (typep row 'user))
         (ok (equal (slot-value row 'name) "Eitaro")))
-      (let ((row (mito.dao:fetch-dao cursor)))
+      (let ((row (mito.dao::fetch-dao-from-cursor cursor)))
         (ok (typep row 'user))
         (ok (equal (slot-value row 'name) "Btaro")))
-      (ok (null (mito.dao:fetch-dao cursor)))))
+      (ok (null (mito.dao::fetch-dao-from-cursor cursor)))))
 
   (let ((records '()))
     (do-cursor (dao (mito.dao:select-dao 'user) i)
