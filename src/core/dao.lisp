@@ -204,6 +204,7 @@
 
 (defstruct mito-cursor
   cursor
+  fields
   class)
 
 (defun select-by-sql-as-cursor (class sql &key binds)
@@ -212,16 +213,21 @@
     (let* ((cursor (dbi:make-cursor *connection* sql))
            (cursor (execute-with-retry cursor (or binds yield-binds))))
       (make-mito-cursor :cursor cursor
+                        :fields (mapcar (lambda (column-name)
+                                          (intern (lispify (string-upcase column-name)) :keyword))
+                                        (dbi.driver:query-fields cursor))
                         :class class))))
 
 (defun fetch-dao-from-cursor (cursor)
-  (let ((row (dbi:fetch (mito-cursor-cursor cursor)
-                        :format :alist)))
+  (let ((fields (mito-cursor-fields cursor))
+        (row (dbi:fetch (mito-cursor-cursor cursor)
+                        :format :values)))
     (when row
       (apply #'make-dao-instance (mito-cursor-class cursor)
-             (loop for (k . v) in row
-                   collect (intern (lispify (string-upcase k)) :keyword)
-                   collect v)))))
+             (loop for field in fields
+                   for value in row
+                   collect field
+                   collect value)))))
 
 (defun select-by-sql (class sql &key binds)
   (mapcar (lambda (result)
