@@ -2,7 +2,7 @@
   :version "0.2.0"
   :author "Eitaro Fukamachi"
   :license "LLGPL"
-  :depends-on ((:version "dbi" "0.10.0")
+  :depends-on ((:version "dbi" "0.11.1")
                "sxql"
                "cl-ppcre"
                "closer-mop"

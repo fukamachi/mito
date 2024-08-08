@@ -240,6 +240,47 @@
 
   (dolist (class-name '(user-setting user tweet friend-relationship tweet2))
     (setf (find-class class-name) nil))
+
+  (disconnect-toplevel))
+
+(deftest cursor
+  (setf *connection* (connect-to-testdb :postgres))
+  (when (find-class 'user nil)
+    (setf (find-class 'user) nil))
+  (defclass user ()
+    ((name :col-type :text
+           :initarg :name))
+    (:metaclass dao-table-class))
+  (mito:execute-sql "DROP TABLE IF EXISTS \"user\"")
+  (mito:ensure-table-exists 'user)
+  (mito:create-dao 'user :name "Eitaro")
+  (mito:create-dao 'user :name "Btaro")
+  (mito:create-dao 'user :name "Charlie")
+  (dbi:with-transaction *connection*
+    (let* ((mito.dao::*want-cursor* t)
+           (cursor (mito.dao:select-dao 'user
+                     (where (:like :name "%aro")))))
+      (ok (typep cursor 'mito.dao::mito-cursor))
+      (let ((row (mito.dao::fetch-dao-from-cursor cursor)))
+        (ok (typep row 'user))
+        (ok (equal (slot-value row 'name) "Eitaro")))
+      (let ((row (mito.dao::fetch-dao-from-cursor cursor)))
+        (ok (typep row 'user))
+        (ok (equal (slot-value row 'name) "Btaro")))
+      (ok (null (mito.dao::fetch-dao-from-cursor cursor)))))
+
+  (let ((records '()))
+    (do-cursor (dao (mito.dao:select-dao 'user) i)
+      (push (cons i dao) records)
+      (when (<= 1 i)
+        (return)))
+    (ok (= (length records) 2))
+    (ok (every (lambda (record)
+                 (typep (cdr record) 'user))
+               records)))
+
+  (when (find-class 'user nil)
+    (setf (find-class 'user) nil))
   (disconnect-toplevel))
 
 (deftest foreign-slots

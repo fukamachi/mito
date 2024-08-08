@@ -28,13 +28,16 @@
                 #:last-insert-id
                 #:execute-sql
                 #:retrieve-by-sql
-                #:table-exists-p)
+                #:table-exists-p
+                #:ensure-sql)
   (:import-from #:mito.logger
                 #:with-sql-logging)
   (:import-from #:mito.util
+                #:lispify
                 #:unlispify
                 #:symbol-name-literally
-                #:ensure-class)
+                #:ensure-class
+                #:execute-with-retry)
   (:import-from #:trivia
                 #:match
                 #:guard)
@@ -58,7 +61,8 @@
            #:count-dao
            #:recreate-table
            #:ensure-table-exists
-           #:deftable))
+           #:deftable
+           #:do-cursor))
 (in-package #:mito.dao)
 
 (defun foreign-value (obj slot)
@@ -198,6 +202,33 @@
         (update-dao obj)
         (insert-dao obj))))
 
+(defstruct mito-cursor
+  cursor
+  fields
+  class)
+
+(defun select-by-sql-as-cursor (class sql &key binds)
+  (multiple-value-bind (sql yield-binds)
+      (ensure-sql sql)
+    (let* ((cursor (dbi:make-cursor *connection* sql))
+           (cursor (execute-with-retry cursor (or binds yield-binds))))
+      (make-mito-cursor :cursor cursor
+                        :fields (mapcar (lambda (column-name)
+                                          (intern (lispify (string-upcase column-name)) :keyword))
+                                        (dbi.driver:query-fields cursor))
+                        :class class))))
+
+(defun fetch-dao-from-cursor (cursor)
+  (let ((fields (mito-cursor-fields cursor))
+        (row (dbi:fetch (mito-cursor-cursor cursor)
+                        :format :values)))
+    (when row
+      (apply #'make-dao-instance (mito-cursor-class cursor)
+             (loop for field in fields
+                   for value in row
+                   collect field
+                   collect value)))))
+
 (defun select-by-sql (class sql &key binds)
   (mapcar (lambda (result)
             (apply #'make-dao-instance class result))
@@ -305,6 +336,8 @@
                                   (expand-op arg class)) args)))
       (otherwise object))))
 
+(defparameter *want-cursor* nil)
+
 (defmacro select-dao (class &body clauses)
   (with-gensyms (sql clause results include-classes foreign-class)
     (once-only (class)
@@ -327,10 +360,12 @@
                 (dolist (,clause (list ,@clauses))
                   (when ,clause
                     (add-child ,sql ,clause)))
-                (let ((,results (select-by-sql ,class ,sql)))
-                  (dolist (,foreign-class (remove-duplicates ,include-classes))
-                    (include-foreign-objects ,foreign-class ,results))
-                  (values ,results ,sql))))))))))
+                (if *want-cursor*
+                    (select-by-sql-as-cursor ,class ,sql)
+                    (let ((,results (select-by-sql ,class ,sql)))
+                      (dolist (,foreign-class (remove-duplicates ,include-classes))
+                        (include-foreign-objects ,foreign-class ,results))
+                      (values ,results ,sql)))))))))))
 
 (defun where-and (fields-and-values class)
   (when fields-and-values
@@ -417,3 +452,17 @@
      ,@(unless (find :conc-name options :key #'car)
                `((:conc-name ,(intern (format nil "~@:(~A-~)" name) (symbol-package name)))))
      ,@options))
+
+(defmacro do-cursor ((dao select &optional index) &body body)
+  (with-gensyms (main cursor)
+    `(flet ((,main ()
+              (let* ((*want-cursor* t)
+                     (,cursor ,select))
+                (loop ,@(and index `(for ,index from 0))
+                      for ,dao = (fetch-dao-from-cursor ,cursor)
+                      while ,dao
+                      do (progn ,@body)))))
+       (if (dbi:in-transaction *connection*)
+           (,main)
+           (dbi:with-transaction *connection*
+             (,main))))))
