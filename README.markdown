@@ -626,6 +626,8 @@ Since `insert-dao`, `update-dao` and `delete-dao` are defined as generic functio
       do (return dao))
 ```
 
+The query form must be one of `select-dao`, `retrieve-dao`, or `select-by-sql`.
+
 ## Installation
 
 ```common-lisp

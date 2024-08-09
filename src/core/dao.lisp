@@ -230,13 +230,16 @@
                    collect value)))))
 
 (defun select-by-sql (class sql &key binds)
-  (mapcar (lambda (result)
-            (apply #'make-dao-instance class result))
-          (retrieve-by-sql sql :binds binds)))
+  (if *want-cursor*
+      (select-by-sql-as-cursor class sql :binds binds)
+      (mapcar (lambda (result)
+                (apply #'make-dao-instance class result))
+              (retrieve-by-sql sql :binds binds))))
 
 (defun include-foreign-objects (foreign-class records)
   (when records
-    (let ((foreign-class (ensure-class foreign-class)))
+    (let ((*want-cursor* nil)
+          (foreign-class (ensure-class foreign-class)))
       (when (cdr (table-primary-key foreign-class))
         (error "Cannot use 'includes' with a class which has composite primary keys."))
       (let* ((class (class-of (first records)))
@@ -360,12 +363,11 @@
                 (dolist (,clause (list ,@clauses))
                   (when ,clause
                     (add-child ,sql ,clause)))
-                (if *want-cursor*
-                    (select-by-sql-as-cursor ,class ,sql)
-                    (let ((,results (select-by-sql ,class ,sql)))
-                      (dolist (,foreign-class (remove-duplicates ,include-classes))
-                        (include-foreign-objects ,foreign-class ,results))
-                      (values ,results ,sql)))))))))))
+                (let ((,results (select-by-sql ,class ,sql)))
+                  (unless *want-cursor*
+                    (dolist (,foreign-class (remove-duplicates ,include-classes))
+                      (include-foreign-objects ,foreign-class ,results)))
+                  (values ,results ,sql))))))))))
 
 (defun where-and (fields-and-values class)
   (when fields-and-values
