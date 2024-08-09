@@ -270,8 +270,8 @@
       (ok (null (mito.dao::fetch-dao-from-cursor cursor)))))
 
   (let ((records '()))
-    (do-cursor (dao (mito.dao:select-dao 'user) i)
-      (push (cons i dao) records)
+    (do-select (user (mito.dao:select-dao 'user) i)
+      (push (cons i user) records)
       (when (<= 1 i)
         (return)))
     (ok (= (length records) 2))

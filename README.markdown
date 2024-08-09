@@ -608,6 +608,24 @@ Since `insert-dao`, `update-dao` and `delete-dao` are defined as generic functio
 ;=> #<USER {100835FB33}>
 ```
 
+### Iteration (Experimental)
+
+`do-select` is a macro to iterate over results from SELECT one by one. It's the same as `cl:loop`, but it uses CURSOR for PostgreSQL, which can reduce memory usage since it won't load whole results on memory.
+
+```common-lisp
+(do-select (dao (select-dao 'user
+                  (where (:< "2024-07-01" :created_at))))
+  ;; Can be a more complex condition
+  (when (equal (user-name dao) "Eitaro")
+    (return dao)))
+
+;; Same but without using CURSOR
+(loop for dao in (select-dao 'user
+                   (where (:< "2024-07-01" :created_at)))
+      when (equal (user-name dao) "Eitaro")
+      do (return dao))
+```
+
 ## Installation
 
 ```common-lisp

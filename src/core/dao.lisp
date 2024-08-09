@@ -62,7 +62,7 @@
            #:recreate-table
            #:ensure-table-exists
            #:deftable
-           #:do-cursor))
+           #:do-select))
 (in-package #:mito.dao)
 
 (defun foreign-value (obj slot)
@@ -453,16 +453,28 @@
                `((:conc-name ,(intern (format nil "~@:(~A-~)" name) (symbol-package name)))))
      ,@options))
 
-(defmacro do-cursor ((dao select &optional index) &body body)
-  (with-gensyms (main cursor)
-    `(flet ((,main ()
-              (let* ((*want-cursor* t)
-                     (,cursor ,select))
-                (loop ,@(and index `(for ,index from 0))
-                      for ,dao = (fetch-dao-from-cursor ,cursor)
-                      while ,dao
-                      do (progn ,@body)))))
-       (if (dbi:in-transaction *connection*)
-           (,main)
-           (dbi:with-transaction *connection*
-             (,main))))))
+(defmacro do-select ((dao select &optional index) &body body)
+  (with-gensyms (main main-body select-fn cursor i)
+    `(block nil
+       (labels ((,main-body (,dao ,(or index i))
+                  ,@(and (not index)
+                         `((declare (ignore ,i))))
+                  ,@body)
+                (,select-fn () ,select)
+                (,main ()
+                  (case (dbi:connection-driver-type *connection*)
+                    (:postgres
+                     (let ((,cursor (let ((*want-cursor* t))
+                                      (,select-fn))))
+                       (loop ,@(and index `(for ,i from 0))
+                             for ,dao = (fetch-dao-from-cursor ,cursor)
+                             while ,dao
+                             do (,main-body ,dao ,i))))
+                    (otherwise
+                     (loop ,@(and index `(for ,i from 0))
+                           for ,dao in (,select-fn)
+                           do (,main-body ,dao ,i))))))
+         (if (dbi:in-transaction *connection*)
+             (,main)
+             (dbi:with-transaction *connection*
+               (,main)))))))
