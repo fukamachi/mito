@@ -640,6 +640,11 @@ Or, with Roswell:
 ros install mito
 ```
 
+If you build a binary, reference a DB driver in your dependencies:
+
+    :dbd-sqlite3 :dbd-mysql :dbd-postgres
+
+
 ## See Also
 
 * [CL-DBI](https://github.com/fukamachi/cl-dbi)
