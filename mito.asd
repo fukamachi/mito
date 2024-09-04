@@ -1,7 +1,7 @@
 (defsystem "mito"
   :version "0.2.0"
   :author "Eitaro Fukamachi"
-  :license "LLGPL"
+  :license "BSD 3-Clause"
   :depends-on ("mito-core"
                "mito-migration"
                "lack-middleware-mito"

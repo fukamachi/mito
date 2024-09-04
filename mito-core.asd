@@ -1,7 +1,7 @@
 (defsystem "mito-core"
   :version "0.2.0"
   :author "Eitaro Fukamachi"
-  :license "LLGPL"
+  :license "BSD 3-Clause"
   :depends-on ((:version "dbi" "0.11.1")
                "sxql"
                "cl-ppcre"

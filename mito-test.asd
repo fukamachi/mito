@@ -1,6 +1,6 @@
 (defsystem "mito-test"
   :author "Eitaro Fukamachi"
-  :license "LLGPL"
+  :license "BSD 3-Clause"
   :depends-on ("mito"
                "dbd-mysql"
                "dbd-postgres"
