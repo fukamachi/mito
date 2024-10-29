@@ -591,6 +591,8 @@ If you need a 'template' for tables, not related to any specific database table,
 ;   )>)
 ```
 
+Examples of inheritance can be found here:
+
 * [mito-attachment](https://github.com/fukamachi/mito-attachment)
 * [mito-auth](https://github.com/fukamachi/mito-auth)
 
@@ -644,6 +646,11 @@ If you build a binary, reference a DB driver in your dependencies:
 
     :dbd-sqlite3 :dbd-mysql :dbd-postgres
 
+
+## Mito Extensions and Plugins
+
+* [mito-attachment](https://github.com/fukamachi/mito-attachment)
+* [mito-auth](https://github.com/fukamachi/mito-auth)
 
 ## See Also
 
