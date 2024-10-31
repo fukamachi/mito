@@ -69,14 +69,7 @@
     (push (intern (symbol-name name) :keyword)
           (getf rest-initargs :initargs)))
 
-  (let ((class (apply #'call-next-method class rest-initargs)))
-    (unless (slot-boundp class 'col-type)
-      (if (or (ghost-slot-p class)
-              (slot-value class 'references))
-          (setf (slot-value class 'col-type) nil)
-          (error 'col-type-required
-                 :slot class)))
-    class))
+  (apply #'call-next-method class rest-initargs))
 
 (defgeneric table-column-references-column (column))
 
