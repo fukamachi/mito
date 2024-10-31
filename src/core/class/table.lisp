@@ -5,7 +5,10 @@
   (:import-from #:mito.class.column
                 #:parse-col-type
                 #:table-column-class
+                #:table-column-references
+                #:column-standard-effective-slot-definitions
                 #:table-column-type
+                #:%table-column-type
                 #:table-column-name
                 #:primary-key-p
                 #:ghost-slot-p)
@@ -140,8 +143,30 @@
 (defmethod c2mop:direct-slot-definition-class ((class table-class) &key &allow-other-keys)
   'table-column-class)
 
+(defmethod c2mop:effective-slot-definition-class ((class table-class) &rest initargs)
+  (declare (ignorable initargs))
+  (find-class 'column-standard-effective-slot-definitions))
+
 (defmethod c2mop:validate-superclass ((class table-class) (super standard-class))
   t)
+
+(defmethod c2mop:compute-effective-slot-definition
+    :around ((class table-class) name direct-slot-definitions)
+  (declare (ignorable name))
+  (let ((result (call-next-method)))
+    (when result
+      ;; set here all the relevant slots. See column-standard-effective-slot-definitions
+      (setf (ghost-slot-p result)
+            (some #'ghost-slot-p direct-slot-definitions))
+      (setf (%table-column-type result)
+            (some #'%table-column-type direct-slot-definitions))
+      ;; table-column-references is a reader, not an accessor. Unclear if this should be set.
+      ;; (setf (table-column-references result)
+      ;;       (some #'table-column-references direct-slot-definitions))
+      (setf (primary-key-p result)
+            (some #'primary-key-p direct-slot-definitions))
+      (setf )
+      result)))
 
 (defgeneric table-name (class)
   (:method ((class table-class))
