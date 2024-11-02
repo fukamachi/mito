@@ -48,7 +48,7 @@
    (references :type references
                :initarg :references
                :initform nil
-               :reader table-column-references)
+               :accessor table-column-references)
    (primary-key :type boolean
                 :initarg :primary-key
                 :initform nil

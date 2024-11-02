@@ -160,9 +160,8 @@
             (some #'ghost-slot-p direct-slot-definitions))
       (setf (%table-column-type result)
             (some #'%table-column-type direct-slot-definitions))
-      ;; table-column-references is a reader, not an accessor. Unclear if this should be set.
-      ;; (setf (table-column-references result)
-      ;;       (some #'table-column-references direct-slot-definitions))
+      (setf (table-column-references result)
+            (some #'table-column-references direct-slot-definitions))
       (setf (primary-key-p result)
             (some #'primary-key-p direct-slot-definitions))
       (setf )
