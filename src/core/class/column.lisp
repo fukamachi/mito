@@ -7,7 +7,9 @@
                 #:delete-from-plist
                 #:ensure-car)
   (:export #:table-column-class
+           #:column-standard-effective-slot-definitions
            #:table-column-type
+           #:%table-column-type
            #:table-column-not-null-p
            #:table-column-name
            #:primary-key-p
@@ -29,14 +31,24 @@
     (otherwise
      (values col-type t))))
 
-(defclass table-column-class (c2mop:standard-direct-slot-definition)
+
+(defgeneric %table-column-type (obj))
+(defmethod %table-column-type (ob) nil)
+(defgeneric table-column-references (obj))
+(defmethod table-column-references (ob) nil)
+(defgeneric primary-key-p (obj))
+(defmethod primary-key-p (ob) nil)
+(defgeneric ghost-slot-p (obj))
+(defmethod ghost-slot-p (ob) nil)
+
+(defclass column-slot-definitions ()
   ((col-type :type (or symbol cons null)
              :initarg :col-type
              :accessor %table-column-type)
    (references :type references
                :initarg :references
                :initform nil
-               :reader table-column-references)
+               :accessor table-column-references)
    (primary-key :type boolean
                 :initarg :primary-key
                 :initform nil
@@ -46,6 +58,13 @@
           :initform nil
           :accessor ghost-slot-p
           :documentation "Option to specify slots as ghost slots. Ghost slots do not depend on a database.")))
+
+(defclass table-column-class (column-slot-definitions c2mop:standard-direct-slot-definition)
+  ())
+
+(defclass column-standard-effective-slot-definitions (column-slot-definitions
+                                                      c2mop:standard-effective-slot-definition)
+  ())
 
 (defgeneric table-column-type (column)
   (:method ((column table-column-class))

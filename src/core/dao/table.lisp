@@ -14,7 +14,12 @@
                 #:table-primary-key
                 #:create-table-sxql)
   (:import-from #:mito.dao.column
+                #:inflate
+                #:inflate-if-bound
+                #:deflate-if-bound
+                #:deflate
                 #:dao-table-column-class
+                #:dao-table-column-standard-effective-slot-definitions
                 #:dao-table-column-inflate)
   (:import-from #:mito.dao.mixin
                 #:dao-table-mixin
@@ -35,6 +40,28 @@
 
 (defmethod c2mop:direct-slot-definition-class ((class dao-table-class) &key)
   'dao-table-column-class)
+
+(defmethod c2mop:effective-slot-definition-class ((class dao-table-class) &rest initargs)
+  (declare (ignorable initargs))
+  (find-class 'dao-table-column-standard-effective-slot-definitions)
+  ;; 'dao-table-column-class
+  )
+
+(defmethod c2mop:validate-superclass ((class dao-table-class) (super standard-class))
+  t)
+
+(defmethod c2mop:compute-effective-slot-definition
+    :around ((class dao-table-class) name direct-slot-definitions)
+  (declare (ignorable name))
+  (let ((result (call-next-method)))
+    (when result
+      ;; set here all the relevant slots. See column-standard-effective-slot-definitions
+      ;; set here inflate and deflate from dao-table-column-standard-effective-slot-definitions
+      (setf (inflate result)
+            (some #'inflate-if-bound direct-slot-definitions))
+      (setf (deflate result)
+            (some #'deflate-if-bound direct-slot-definitions))
+      result)))
 
 (defun initargs-enables-auto-pk (initargs)
   (first (or (getf initargs :auto-pk) '(:serial))))
