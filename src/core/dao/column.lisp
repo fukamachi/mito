@@ -50,10 +50,7 @@
 
 (defclass dao-table-column-standard-effective-slot-definitions
     (dao-table-column-slot-definitions
-     ;; maybe here should be the table-column-class effective slot alternative?
-     column-standard-effective-slot-definitions
-     ;; c2mop:standard-effective-slot-definition
-     )
+     column-standard-effective-slot-definitions)
   ())
 
 (defmethod initialize-instance :around ((object dao-table-column-class) &rest rest-initargs
