@@ -9,3 +9,4 @@
 
 t/test.db
 .qlot/
+.emacs*
