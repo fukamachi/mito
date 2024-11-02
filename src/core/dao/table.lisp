@@ -15,6 +15,7 @@
                 #:create-table-sxql)
   (:import-from #:mito.dao.column
                 #:dao-table-column-class
+                #:dao-table-column-standard-effective-slot-definitions
                 #:dao-table-column-inflate)
   (:import-from #:mito.dao.mixin
                 #:dao-table-mixin
@@ -35,6 +36,15 @@
 
 (defmethod c2mop:direct-slot-definition-class ((class dao-table-class) &key)
   'dao-table-column-class)
+
+(defmethod c2mop:effective-slot-definition-class ((class dao-table-class) &rest initargs)
+  (declare (ignorable initargs))
+  (find-class 'dao-table-column-standard-effective-slot-definitions)
+  ;; 'dao-table-column-class
+  )
+
+(defmethod c2mop:validate-superclass ((class dao-table-class) (super standard-class))
+  t)
 
 (defun initargs-enables-auto-pk (initargs)
   (first (or (getf initargs :auto-pk) '(:serial))))

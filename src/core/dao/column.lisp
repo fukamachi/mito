@@ -3,12 +3,14 @@
   (:use #:cl
         #:mito.util)
   (:import-from #:mito.class.column
+                #:column-standard-effective-slot-definitions
                 #:table-column-class
                 #:table-column-type)
   (:import-from #:local-time)
   (:import-from #:cl-ppcre)
   (:export #:dao-table-column-class
            #:dao-table-column-inflate
+           #:dao-table-column-standard-effective-slot-definitions
            #:dao-table-column-deflate
            #:inflate-for-col-type
            #:deflate-for-col-type))
@@ -16,19 +18,30 @@
 
 (defparameter *conc-name* nil)
 
-(defclass dao-table-column-class (table-column-class)
+(defclass dao-table-column-slot-definitions ()
   ((inflate :type (or function null)
             :initarg :inflate)
    (deflate :type (or function null)
             :initarg :deflate)))
+
+(defclass dao-table-column-class (dao-table-column-slot-definitions table-column-class)
+  ())
+
+(defclass dao-table-column-standard-effective-slot-definitions
+    (dao-table-column-slot-definitions
+     ;; maybe here should be the table-column-class effective slot alternative?
+     column-standard-effective-slot-definitions
+     ;; c2mop:standard-effective-slot-definition
+     )
+  ())
 
 (defmethod initialize-instance :around ((object dao-table-column-class) &rest rest-initargs
                                         &key name readers writers inflate deflate
                                         &allow-other-keys)
   (when *conc-name*
     (let ((accessor (intern
-                      (format nil "~:@(~A~A~)" *conc-name* name)
-                      *package*)))
+                     (format nil "~:@(~A~A~)" *conc-name* name)
+                     *package*)))
       (unless readers
         (pushnew accessor readers)
         (setf (getf rest-initargs :readers) readers))
