@@ -12,6 +12,10 @@
            #:dao-table-column-inflate
            #:dao-table-column-standard-effective-slot-definitions
            #:dao-table-column-deflate
+           #:inflate
+           #:inflate-if-bound
+           #:deflate
+           #:deflate-if-bound
            #:inflate-for-col-type
            #:deflate-for-col-type))
 (in-package :mito.dao.column)
@@ -20,9 +24,26 @@
 
 (defclass dao-table-column-slot-definitions ()
   ((inflate :type (or function null)
+            :accessor inflate
             :initarg :inflate)
    (deflate :type (or function null)
+            :accessor deflate
             :initarg :deflate)))
+
+(defgeneric inflate (obj))
+(defmethod inflate (ob) nil)
+(defgeneric inflate-if-bound (ob))
+(defmethod inflate-if-bound (obj) nil)
+(defmethod inflate-if-bound ((obj dao-table-column-slot-definitions))
+  (when (slot-boundp obj 'mito.dao.column:inflate)
+    (slot-value obj 'mito.dao.column:inflate)))
+(defgeneric deflate (obj))
+(defmethod deflate (ob) nil)
+(defgeneric deflate-if-bound (ob))
+(defmethod deflate-if-bound (obj) nil)
+(defmethod deflate-if-bound ((obj dao-table-column-slot-definitions))
+  (when (slot-boundp obj 'mito.dao.column:deflate)
+    (slot-value obj 'mito.dao.column:deflate)))
 
 (defclass dao-table-column-class (dao-table-column-slot-definitions table-column-class)
   ())
