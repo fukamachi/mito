@@ -43,9 +43,7 @@
 
 (defmethod c2mop:effective-slot-definition-class ((class dao-table-class) &rest initargs)
   (declare (ignorable initargs))
-  (find-class 'dao-table-column-standard-effective-slot-definitions)
-  ;; 'dao-table-column-class
-  )
+  (find-class 'dao-table-column-standard-effective-slot-definitions))
 
 (defmethod c2mop:validate-superclass ((class dao-table-class) (super standard-class))
   t)
@@ -55,7 +53,7 @@
   (declare (ignorable name))
   (let ((result (call-next-method)))
     (when result
-      ;; set here all the relevant slots. See column-standard-effective-slot-definitions
+      ;; set here all the relevant slots.
       ;; set here inflate and deflate from dao-table-column-standard-effective-slot-definitions
       (setf (inflate result)
             (some #'inflate-if-bound direct-slot-definitions))
