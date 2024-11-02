@@ -3,3 +3,5 @@ ql cl-mysql :upstream
 ql dissect :upstream
 ql sxql :upstream
 ql rove :upstream
+github sharplispers/log4cl
+github 40ants/log4sly
