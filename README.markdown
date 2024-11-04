@@ -652,6 +652,7 @@ If you build a binary, reference a DB driver in your dependencies:
 * [mito-attachment](https://github.com/fukamachi/mito-attachment) To ease storing files in the filesystem with a DB representation
 * [mito-auth](https://github.com/fukamachi/mito-auth) To ease handling DB storage of authentication details
 * [mito-validate](https://github.com/daninus14/mito-validate) To ease validating mito class slots and objects
+* [mito-extended](https://github.com/daninus14/mito-extended) Combines `mito-auth`, `mito-validate` and `mito-auth-jzon` together
 
 ## See Also
 
