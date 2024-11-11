@@ -67,9 +67,11 @@
   ())
 
 (defgeneric table-column-type (column)
-  (:method ((column table-column-class))
-    (values
-     (parse-col-type (%table-column-type column)))))
+            (:method ((column table-column-class))
+                     (values
+                      (parse-col-type (if (slot-boundp column 'col-type)
+                                          (%table-column-type column)
+                                        NIL)))))
 
 (defgeneric table-column-not-null-p (column)
   (:method ((column table-column-class))
