@@ -1,23 +1,24 @@
 (in-package :cl-user)
 (defpackage mito.class.column
-  (:use #:cl
-        #:mito.util
-        #:mito.error)
-  (:import-from #:alexandria
-                #:delete-from-plist
-                #:ensure-car)
-  (:export #:table-column-class
-           #:column-standard-effective-slot-definitions
-           #:table-column-type
-           #:%table-column-type
-           #:table-column-not-null-p
-           #:table-column-name
-           #:primary-key-p
-           #:ghost-slot-p
-           #:table-column-references
-           #:table-column-references-column
-           #:table-column-info
-           #:table-column-info-for-create-table))
+            (:use #:cl
+                  #:mito.util
+                  #:mito.error)
+            (:import-from #:alexandria
+                          #:delete-from-plist
+                          #:ensure-car)
+            (:export #:table-column-class
+                     #:col-type                     
+                     #:column-standard-effective-slot-definitions
+                     #:table-column-type
+                     #:%table-column-type
+                     #:table-column-not-null-p
+                     #:table-column-name
+                     #:primary-key-p
+                     #:ghost-slot-p
+                     #:table-column-references
+                     #:table-column-references-column
+                     #:table-column-info
+                     #:table-column-info-for-create-table))
 (in-package :mito.class.column)
 
 (deftype references ()

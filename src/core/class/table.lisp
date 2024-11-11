@@ -158,8 +158,9 @@
                ;; set here all the relevant slots. See column-standard-effective-slot-definitions
                (setf (ghost-slot-p result)
                      (some #'ghost-slot-p direct-slot-definitions))
-               (setf (%table-column-type result)
-                     (some #'%table-column-type direct-slot-definitions))
+               (when (slot-boundp result 'mito.class.column:col-type)
+                 (setf (%table-column-type result)
+                       (some #'%table-column-type direct-slot-definitions)))
                (setf (table-column-references result)
                      (some #'table-column-references direct-slot-definitions))
                (setf (primary-key-p result)
