@@ -81,6 +81,15 @@ If you are using [clack](https://github.com/fukamachi/clack) as your webserver, 
     *app*))
 ```
 
+#### Connecting To `sqlite3` In Memory
+
+To connect to a `sqlite3` in memory database without having to save a file you can do:
+
+```common-lisp
+(mito:connect-toplevel :sqlite3
+                       :database-name #P":memory:")
+```
+
 ### deftable macro
 
 As Mito's dao table class is defined as a CLOS metaclass, a table class can be defined like this:
