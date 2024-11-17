@@ -151,21 +151,28 @@
   t)
 
 (defmethod c2mop:compute-effective-slot-definition
-           :around ((class table-class) name direct-slot-definitions)
-           (declare (ignorable name))
-           (let ((result (call-next-method)))
-             (when result
-               ;; set here all the relevant slots. See column-standard-effective-slot-definitions
-               (setf (ghost-slot-p result)
-                     (some #'ghost-slot-p direct-slot-definitions))
-               (when (slot-boundp result 'mito.class.column:col-type)
-                 (setf (%table-column-type result)
-                       (some #'%table-column-type direct-slot-definitions)))
-               (setf (table-column-references result)
-                     (some #'table-column-references direct-slot-definitions))
-               (setf (primary-key-p result)
-                     (some #'primary-key-p direct-slot-definitions))
-               result)))
+    :around ((class table-class) name direct-slot-definitions)
+  (declare (ignorable name))
+  (let* ((result (call-next-method))
+         (have-col-type-slot (remove-if-not
+                              (lambda (x) (slot-exists-p x 'mito.class.column:col-type))
+                              direct-slot-definitions))
+         (found-col-types (remove-if-not
+                           (lambda (x) (slot-boundp x 'mito.class.column:col-type))
+                           have-col-type-slot)))
+    ;;(break)
+    (when result
+      ;; set here all the relevant slots. See column-standard-effective-slot-definitions
+      (setf (ghost-slot-p result)
+            (some #'ghost-slot-p direct-slot-definitions))
+      (when found-col-types
+        (setf (%table-column-type result)
+              (some #'%table-column-type found-col-types)))
+      (setf (table-column-references result)
+            (some #'table-column-references direct-slot-definitions))
+      (setf (primary-key-p result)
+            (some #'primary-key-p direct-slot-definitions))
+      result)))
 
 (defgeneric table-name (class)
   (:method ((class table-class))
