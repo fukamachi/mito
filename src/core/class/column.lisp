@@ -1,24 +1,24 @@
 (in-package :cl-user)
 (defpackage mito.class.column
-            (:use #:cl
-                  #:mito.util
-                  #:mito.error)
-            (:import-from #:alexandria
-                          #:delete-from-plist
-                          #:ensure-car)
-            (:export #:table-column-class
-                     #:col-type                     
-                     #:column-standard-effective-slot-definitions
-                     #:table-column-type
-                     #:%table-column-type
-                     #:table-column-not-null-p
-                     #:table-column-name
-                     #:primary-key-p
-                     #:ghost-slot-p
-                     #:table-column-references
-                     #:table-column-references-column
-                     #:table-column-info
-                     #:table-column-info-for-create-table))
+  (:use #:cl
+        #:mito.util
+        #:mito.error)
+  (:import-from #:alexandria
+                #:delete-from-plist
+                #:ensure-car)
+  (:export #:table-column-class
+           #:col-type                     
+           #:column-standard-effective-slot-definitions
+           #:table-column-type
+           #:%table-column-type
+           #:table-column-not-null-p
+           #:table-column-name
+           #:primary-key-p
+           #:ghost-slot-p
+           #:table-column-references
+           #:table-column-references-column
+           #:table-column-info
+           #:table-column-info-for-create-table))
 (in-package :mito.class.column)
 
 (deftype references ()
@@ -68,11 +68,11 @@
   ())
 
 (defgeneric table-column-type (column)
-            (:method ((column table-column-class))
-                     (values
-                      (parse-col-type (if (slot-boundp column 'col-type)
-                                          (%table-column-type column)
-                                        NIL)))))
+  (:method ((column table-column-class))
+    (values
+     (parse-col-type (if (slot-boundp column 'col-type)
+                         (%table-column-type column)
+                         NIL)))))
 
 (defgeneric table-column-not-null-p (column)
   (:method ((column table-column-class))
@@ -80,6 +80,8 @@
 
 (defgeneric table-column-name (column)
   (:method ((column table-column-class))
+    (unlispify (symbol-name-literally (c2mop:slot-definition-name column))))
+  (:method ((column column-standard-effective-slot-definitions))
     (unlispify (symbol-name-literally (c2mop:slot-definition-name column)))))
 
 (defmethod initialize-instance :around ((class table-column-class) &rest rest-initargs
