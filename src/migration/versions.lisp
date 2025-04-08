@@ -64,6 +64,7 @@
 (defun initialize-migrations-table ()
   (check-connected)
   (let ((*error-output* (make-broadcast-stream))
+        (sxql:*use-placeholder* nil)
         (driver-type (connection-driver-type *connection*)))
     (dbi:with-transaction *connection*
       (if (table-exists-p *connection* "schema_migrations")
