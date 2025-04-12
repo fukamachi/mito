@@ -86,13 +86,6 @@ If this variable is T they won't be deleted after migration.")
   (let* ((table-name (table-name class))
          (tmp-table-name (gensym table-name)))
 
-    (dolist (idx from-indices)
-      (setf (getf (cdr idx) :columns)
-            (sort (getf (cdr idx) :columns) #'string<=)))
-    (dolist (idx to-indices)
-      (setf (getf (cdr idx) :columns)
-            (sort (getf (cdr idx) :columns) #'string<=)))
-
     (unless (every #'null
                    (append (cdr (multiple-value-list
                                  (list-diff from-columns to-columns
