@@ -248,6 +248,8 @@ For example: (mito:delete-by-values 'user :id 1)"))
                    collect field
                    collect value)))))
 
+(defparameter *want-cursor* nil)
+
 (defun select-by-sql (class sql &key binds)
   (if *want-cursor*
       (select-by-sql-as-cursor class sql :binds binds)
@@ -357,8 +359,6 @@ For example: (mito:delete-by-values 'user :id 1)"))
                       ,@(mapcar (lambda (arg)
                                   (expand-op arg class)) args)))
       (otherwise object))))
-
-(defparameter *want-cursor* nil)
 
 (defmacro select-dao (class &body clauses)
   "Build custom queries with SxQL.
