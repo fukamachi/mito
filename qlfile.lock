@@ -27,3 +27,11 @@
   :initargs nil
   :version "ql-upstream-cacea7331c10fe9d8398d104b2dfd579bf7ea353"
   :remote-url "https://github.com/fukamachi/rove.git"))
+("log4cl" .
+ (:class qlot/source/github:source-github
+  :initargs (:repos "sharplispers/log4cl" :ref nil :branch nil :tag nil)
+  :version "github-fe3da517147d023029782ced7cd989ba24f1e62d"))
+("log4sly" .
+ (:class qlot/source/github:source-github
+  :initargs (:repos "40ants/log4sly" :ref nil :branch nil :tag nil)
+  :version "github-b229658c7fa8a8ff62cddd832e812cda96b50df6"))
