@@ -21,10 +21,14 @@
   (:import-from #:uuid
                 #:make-v4-uuid)
   (:import-from #:sxql)
+  (:import-from #:alexandria
+                #:if-let)
   (:export #:dao-table-mixin
            #:dao-class
            #:dao-synced
+           #:dao-cache
            #:make-dao-instance
+           #:define-accessor
 
            #:serial-pk-mixin
            #:uuid-pk-mixin
@@ -39,7 +43,28 @@
 (defclass dao-class ()
   ((synced :type boolean
            :initform nil
-           :accessor dao-synced)))
+           :accessor dao-synced)
+   (cache :type (or hash-table null)
+          :initform nil
+          :accessor %dao-cache)))
+
+(defun dao-cache (dao key)
+  (if-let (cache-obj (%dao-cache dao))
+      (gethash key cache-obj)
+      (values nil nil)))
+
+(defun (setf dao-cache) (value dao key)
+  (let ((cache-obj (or (%dao-cache dao)
+                       (setf (%dao-cache dao)
+                             (make-hash-table :test 'eq)))))
+    (setf (gethash key cache-obj) value)))
+
+(defmacro define-accessor (name (dao class) &body body)
+  `(defun ,name (,dao)
+     (check-type ,dao ,class)
+     (or (dao-cache ,dao ',name)
+         (setf (dao-cache ,dao ',name)
+               (progn ,@body)))))
 
 (defclass dao-table-mixin (table-class) ())
 
@@ -51,7 +76,7 @@
     (apply #'make-dao-instance
            (find-class class-name)
            initargs))
-  
+
   (:method ((class table-class) &rest initargs)
     (let* ((list (loop for (k v) on initargs by #'cddr
                        for column = (find-if (lambda (initargs)
