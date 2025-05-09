@@ -251,9 +251,12 @@
                                                    :defaults directory))
                   (sxql:*use-placeholder* nil))
              (write-expressions up-expressions up-destination :print t)
-             (write-expressions down-expressions down-destination)
+             (when down-expressions
+               (write-expressions down-expressions down-destination))
              (format t "~&Successfully generated: ~A~%" up-destination)
-             (values up-destination down-destination)))
+             (values up-destination
+                     (when down-expressions
+                       down-destination))))
           (t
            (format t "~&Nothing to migrate.~%")
            (values)))))))
