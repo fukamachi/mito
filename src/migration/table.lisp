@@ -111,11 +111,23 @@ If this variable is T they won't be deleted after migration.")
          (declare (ignore columns-to-delete))
          (let ((new-columns-have-default
                  (loop for new-column in columns-to-add
-                       if (getf (cdr new-column) :default)
-                       collect new-column
-                       else
-                       do (warn "Adding a non-null column ~S but there's no :initform to set default"
-                                (car new-column)))))
+                       for slot = (find-slot-by-name class (lispify (car new-column))
+                                                     :test #'string-equal)
+                       when slot
+                       append
+                       (cond
+                         ((c2mop:slot-definition-initfunction slot)
+                          (list
+                           (cons (car new-column)
+                                 (convert-for-driver-type
+                                  :sqlite3
+                                  (table-column-type slot)
+                                  (dao-table-column-deflate slot
+                                                            (funcall (c2mop:slot-definition-initfunction slot)))))))
+                         (t
+                          (warn "Adding a non-null column ~S but there's no :initform to set default"
+                                (car new-column))
+                          nil)))))
            (sxql:insert-into (sxql:make-sql-symbol table-name)
                              (append (mapcar (compose #'sxql:make-sql-symbol #'car)
                                              columns-intersection)
@@ -125,8 +137,7 @@ If this variable is T they won't be deleted after migration.")
                                (apply #'sxql:make-clause :fields
                                       (append (mapcar (compose #'sxql:make-sql-symbol #'car)
                                                       columns-intersection)
-                                              (mapcar (compose #'sxql:make-sql-symbol #'car)
-                                                      new-columns-have-default)))
+                                              (mapcar #'cdr new-columns-have-default)))
                                (sxql:from tmp-table-name)))))
        (unless *migration-keep-temp-tables*
          (list (sxql:drop-table tmp-table-name)))))))
@@ -350,9 +361,13 @@ If this variable is T they won't be deleted after migration.")
      (migration-expressions-between class driver-type
                                     db-columns table-columns
                                     db-indices table-indices)
-     (migration-expressions-between class driver-type
-                                    table-columns db-columns
-                                    table-indices db-indices))))
+     ;; Don't generate down migration files for SQLite3,
+     ;; as it writes CREATE TABLE statements from the class definition
+     ;; and it ends up to be the same in both up and down.
+     (unless (eq driver-type :sqlite3)
+       (migration-expressions-between class driver-type
+                                      table-columns db-columns
+                                      table-indices db-indices)))))
 
 (defun migration-expressions (class &optional (driver-type (driver-type *connection*)))
   (setf class (ensure-class class))
@@ -390,7 +405,8 @@ If this variable is T they won't be deleted after migration.")
                  add-indices))))
        (multiple-value-bind (up down)
            (migration-expressions-aux class driver-type)
-         (values (order-expressions up) (order-expressions down)))))))
+         (values (order-expressions up)
+                 (and down (order-expressions down))))))))
 
 (defmethod initialize-instance :after ((class dao-table-class) &rest initargs)
   (declare (ignore initargs))
