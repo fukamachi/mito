@@ -3,32 +3,63 @@
   (:use #:cl
         #:mito.util)
   (:import-from #:mito.class.column
+                #:column-standard-effective-slot-definitions
                 #:table-column-class
                 #:table-column-type)
   (:import-from #:local-time)
   (:import-from #:cl-ppcre)
   (:export #:dao-table-column-class
            #:dao-table-column-inflate
+           #:dao-table-column-standard-effective-slot-definitions
            #:dao-table-column-deflate
+           #:inflate
+           #:inflate-if-bound
+           #:deflate
+           #:deflate-if-bound
            #:inflate-for-col-type
            #:deflate-for-col-type))
 (in-package :mito.dao.column)
 
 (defparameter *conc-name* nil)
 
-(defclass dao-table-column-class (table-column-class)
+(defclass dao-table-column-slot-definitions ()
   ((inflate :type (or function null)
+            :accessor inflate
             :initarg :inflate)
    (deflate :type (or function null)
+            :accessor deflate
             :initarg :deflate)))
+
+(defgeneric inflate (obj))
+(defmethod inflate (ob) nil)
+(defgeneric inflate-if-bound (ob))
+(defmethod inflate-if-bound (obj) nil)
+(defmethod inflate-if-bound ((obj dao-table-column-slot-definitions))
+  (when (slot-boundp obj 'mito.dao.column:inflate)
+    (slot-value obj 'mito.dao.column:inflate)))
+(defgeneric deflate (obj))
+(defmethod deflate (ob) nil)
+(defgeneric deflate-if-bound (ob))
+(defmethod deflate-if-bound (obj) nil)
+(defmethod deflate-if-bound ((obj dao-table-column-slot-definitions))
+  (when (slot-boundp obj 'mito.dao.column:deflate)
+    (slot-value obj 'mito.dao.column:deflate)))
+
+(defclass dao-table-column-class (dao-table-column-slot-definitions table-column-class)
+  ())
+
+(defclass dao-table-column-standard-effective-slot-definitions
+    (dao-table-column-slot-definitions
+     column-standard-effective-slot-definitions)
+  ())
 
 (defmethod initialize-instance :around ((object dao-table-column-class) &rest rest-initargs
                                         &key name readers writers inflate deflate
                                         &allow-other-keys)
   (when *conc-name*
     (let ((accessor (intern
-                      (format nil "~:@(~A~A~)" *conc-name* name)
-                      *package*)))
+                     (format nil "~:@(~A~A~)" *conc-name* name)
+                     *package*)))
       (unless readers
         (pushnew accessor readers)
         (setf (getf rest-initargs :readers) readers))
