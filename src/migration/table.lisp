@@ -97,11 +97,12 @@ If this variable is T they won't be deleted after migration.")
                                             :key #'cdr
                                             :test #'plist=
                                             :sort-fn (constantly t))))))
-      (list*
-       (sxql:alter-table (sxql:make-sql-symbol table-name)
-                         (sxql:rename-to tmp-table-name))
+      (append
+       (list
+        (sxql:alter-table (sxql:make-sql-symbol table-name)
+          (sxql:rename-to tmp-table-name)))
 
-       (first (create-table-sxql class :sqlite3))
+       (create-table-sxql class :sqlite3)
 
        (multiple-value-bind (columns-intersection
                              columns-to-delete
@@ -128,17 +129,18 @@ If this variable is T they won't be deleted after migration.")
                           (warn "Adding a non-null column ~S but there's no :initform to set default"
                                 (car new-column))
                           nil)))))
-           (sxql:insert-into (sxql:make-sql-symbol table-name)
-                             (append (mapcar (compose #'sxql:make-sql-symbol #'car)
-                                             columns-intersection)
-                                     (mapcar (compose #'sxql:make-sql-symbol #'car)
-                                             new-columns-have-default))
-                             (sxql:select
-                               (apply #'sxql:make-clause :fields
-                                      (append (mapcar (compose #'sxql:make-sql-symbol #'car)
-                                                      columns-intersection)
-                                              (mapcar #'cdr new-columns-have-default)))
-                               (sxql:from tmp-table-name)))))
+           (list
+            (sxql:insert-into (sxql:make-sql-symbol table-name)
+              (append (mapcar (compose #'sxql:make-sql-symbol #'car)
+                              columns-intersection)
+                      (mapcar (compose #'sxql:make-sql-symbol #'car)
+                              new-columns-have-default))
+              (sxql:select
+                  (apply #'sxql:make-clause :fields
+                         (append (mapcar (compose #'sxql:make-sql-symbol #'car)
+                                         columns-intersection)
+                                 (mapcar #'cdr new-columns-have-default)))
+                (sxql:from tmp-table-name))))))
        (unless *migration-keep-temp-tables*
          (list (sxql:drop-table tmp-table-name)))))))
 
