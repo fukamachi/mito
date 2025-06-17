@@ -63,7 +63,8 @@
                                  nil)
                                (list (sxql:unique-key (mapcar #'sxql:make-sql-symbol (getf (cdr index) :columns))))))
                           (t
-                           (if (eq driver-type :postgres)
+                           (if (eq driver-type :mysql)
+                               (list (sxql:index-key (mapcar #'sxql:make-sql-symbol (getf (cdr index) :columns))))
                                (progn
                                  (appendf add-indices
                                           (list (sxql:create-index (sxql:make-sql-symbol
@@ -73,8 +74,7 @@
                                                                    :on
                                                                    (cons (sxql:make-sql-symbol (table-name class))
                                                                          (mapcar #'sxql:make-sql-symbol (getf (cdr index) :columns))))))
-                                 nil)
-                               (list (sxql:index-key (mapcar #'sxql:make-sql-symbol (getf (cdr index) :columns))))))))
+                                 nil)))))
                       (table-indices-info class driver-type)))
        add-indices))))
 
