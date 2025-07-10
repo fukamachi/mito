@@ -60,11 +60,16 @@
     (setf (gethash key cache-obj) value)))
 
 (defmacro define-accessor (name (dao class) &body body)
-  `(defun ,name (,dao)
-     (check-type ,dao ,class)
-     (or (dao-cache ,dao ',name)
-         (setf (dao-cache ,dao ',name)
-               (progn ,@body)))))
+  (let ((value (gensym "VALUE")))
+    `(progn
+       (defun ,name (,dao)
+         (check-type ,dao ,class)
+         (or (dao-cache ,dao ',name)
+             (setf (dao-cache ,dao ',name)
+                   (progn ,@body))))
+       (defun (setf ,name) (,value ,dao)
+         (setf (dao-cache ,dao ',name) ,value))
+       ',name)))
 
 (defclass dao-table-mixin (table-class) ())
 
@@ -91,6 +96,7 @@
            (obj (allocate-instance class))
            (obj (apply #'shared-initialize obj nil list)))
       (setf (dao-synced obj) t)
+      (setf (%dao-cache obj) nil)
       obj)))
 
 (defun make-relational-reader-method (func-name class slot-name rel-class-name)
