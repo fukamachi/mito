@@ -91,6 +91,7 @@
            (obj (allocate-instance class))
            (obj (apply #'shared-initialize obj nil list)))
       (setf (dao-synced obj) t)
+      (setf (%dao-cache obj) nil)
       obj)))
 
 (defun make-relational-reader-method (func-name class slot-name rel-class-name)
