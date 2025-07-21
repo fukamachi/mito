@@ -10,6 +10,7 @@
                 #:table-class
                 #:table-name
                 #:table-column-slots
+                #:find-parent-column
                 #:find-child-columns
                 #:find-slot-by-name
                 #:table-column-name
@@ -115,36 +116,53 @@
                         ;; I don't know why but SBCL pass a CONS of the instance instead of the instance itself.
                         (when (consp object)
                           (setf object (first object)))
-                        (if (and (slot-boundp object slot-name)
-                                 (or calledp
-                                     (not (null (slot-value object slot-name)))))
-                            (slot-value object slot-name)
-                            (let* ((child-columns (find-child-columns class
-                                                                      (find-slot-by-name class slot-name)))
-                                   (foreign-object
-                                     (and (every (lambda (slot-name)
-                                                   (and (slot-boundp object slot-name)
-                                                        (slot-value object slot-name)))
-                                                 child-columns)
-                                          (let ((result
-                                                  (first
-                                                   (mito.db:retrieve-by-sql
-                                                    (sxql:select :*
-                                                      (sxql:from (sxql:make-sql-symbol (table-name (find-class rel-class-name))))
-                                                      (sxql:where
-                                                       `(:and
-                                                         ,@(mapcar (lambda (slot-name)
-                                                                     `(:= ,(sxql:make-sql-symbol
-                                                                            (table-column-name
-                                                                             (table-column-references-column
-                                                                              (find-slot-by-name class slot-name))))
-                                                                          ,(slot-value object slot-name)))
-                                                                   child-columns)))
-                                                      (sxql:limit 1))))))
-                                            (and result
-                                                 (apply #'make-dao-instance rel-class-name result))))))
-                              (setf calledp t
-                                    (slot-value object slot-name) foreign-object)))))))))
+                        (cond
+                          ((and (slot-boundp object slot-name)
+                                (or calledp
+                                    (not (null (slot-value object slot-name)))))
+                           (slot-value object slot-name))
+                          (t
+                           (let ((parent-column-name
+                                   (find-parent-column class (find-slot-by-name class slot-name))))
+                             (cond
+                               ;; It may have a relational object, but no ID value,
+                               ;; like when it is just created.
+                               ;; For example, let's say it has an "entry", but no "entry-id",
+                               ;; and trying to get the ID directly.
+                               ((and parent-column-name
+                                     (slot-boundp object parent-column-name)
+                                     (not (null (slot-value object parent-column-name))))
+                                (slot-value (slot-value object parent-column-name)
+                                            (c2mop:slot-definition-name
+                                             (table-column-references-column
+                                              (find-slot-by-name class slot-name)))))
+                               (t
+                                (let* ((child-columns (find-child-columns class
+                                                                          (find-slot-by-name class slot-name)))
+                                       (foreign-object
+                                         (and (every (lambda (slot-name)
+                                                       (and (slot-boundp object slot-name)
+                                                            (slot-value object slot-name)))
+                                                     child-columns)
+                                              (let ((result
+                                                      (first
+                                                       (mito.db:retrieve-by-sql
+                                                        (sxql:select :*
+                                                          (sxql:from (sxql:make-sql-symbol (table-name (find-class rel-class-name))))
+                                                          (sxql:where
+                                                           `(:and
+                                                             ,@(mapcar (lambda (slot-name)
+                                                                         `(:= ,(sxql:make-sql-symbol
+                                                                                (table-column-name
+                                                                                 (table-column-references-column
+                                                                                  (find-slot-by-name class slot-name))))
+                                                                              ,(slot-value object slot-name)))
+                                                                       child-columns)))
+                                                          (sxql:limit 1))))))
+                                                (and result
+                                                     (apply #'make-dao-instance rel-class-name result))))))
+                                  (setf calledp t
+                                        (slot-value object slot-name) foreign-object)))))))))))))
 
 (defun add-relational-readers (class)
   (loop for column in (table-direct-column-slots class)
