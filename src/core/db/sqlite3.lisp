@@ -26,12 +26,20 @@
                 :format :values))
         0)))
 
+(defun autoincrement-p (conn table-name)
+  (with-prepared-query query (conn (format nil
+                                           "SELECT 1 FROM sqlite_master WHERE tbl_name = '~A' AND sql LIKE '%AUTOINCREMENT%'"
+                                           table-name))
+    (and (first (dbi:fetch (dbi:execute query) :format :values))
+         t)))
+
 (defun column-definitions (conn table-name)
   (labels ((column-primary-key-p (column)
              (not (= (getf column :|pk|) 0)))
            (column-auto-increment-p (column)
              (and (column-primary-key-p column)
-                  (string-equal (getf column :|type|) "INTEGER"))))
+                  (string-equal (getf column :|type|) "INTEGER")
+                  (autoincrement-p conn table-name))))
     (loop with pk-count = 0
           for column in (table-info conn table-name)
           if (column-primary-key-p column)

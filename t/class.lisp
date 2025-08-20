@@ -227,12 +227,13 @@
                        (created-at :col-type :datetime))
                       (:metaclass table-class)
                       (:keys (user created-at)))
-                    "CREATE TABLE tweet (
+                    '("CREATE TABLE tweet (
     status TEXT NOT NULL,
     user INTEGER NOT NULL,
     created_at DATETIME NOT NULL
 )"
-                    "KEY (ignored)")
+                      "CREATE INDEX key_tweet_user_created_at ON tweet (user, created_at)")
+                    "KEY")
     (is-table-class :sqlite3
                     (defclass tweet ()
                       ((status :col-type :text)
