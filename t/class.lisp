@@ -261,7 +261,7 @@
 )")
   (is-table-class :mysql
                   (defclass tweet ()
-                    ((user-name :references (user name)))
+                    ((user-name :references (user name) :col-type (:or :null :text)))
                     (:metaclass table-class))
                   "CREATE TABLE tweet (
     user_name VARCHAR(64) NOT NULL
