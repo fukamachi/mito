@@ -557,7 +557,7 @@ This function will generate all available migration expressions:
 Here's an example:
 
 ```common-lisp
-;; We start with an example calss not in the database named "song"
+;; We start with an example class not in the database named "song"
 CL-USER> (defclass song ()
   ((name :accessor name :col-type (or :null (:varchar 120))))
   (:metaclass mito:dao-table-class))
@@ -574,7 +574,7 @@ CL-USER> (mito:all-migration-expressions)
 (#<SXQL-STATEMENT: DROP TABLE song>)
 ```
 
-Note that these above are multiple returned. They are the "up" statements which are the migrations to be done and the "down" statements which are to undo the migrations.
+Note that in the example above there were multiple values returned. They are the "up" statements which are the migrations to be done and the "down" statements which are to undo the migrations.
 If you want to deal with the down statements you can use `multiple-value-bind` or `multiple-value-list`.
 
 ##### Generating The Migration Files
