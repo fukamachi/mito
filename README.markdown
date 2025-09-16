@@ -424,6 +424,48 @@ The latter example allows you to create/retrieve `TWEET` by a `USER` object, not
 
 Mito doesn't add foreign key constraints for referring tables, since I'm not sure it's still handful while using with ORMs.
 
+#### Defining One-to-Many and Many-to-Many Relationship Accessors
+
+While one-to-one relationships automatically get accessors via `:col-type`, there's no automatic way to define accessors for retrieving collections of related objects (one-to-many or many-to-many relationships). For this, Mito provides the `define-accessor` macro.
+
+```common-lisp
+(mito:deftable user ()
+  ((name :col-type (:varchar 64))))
+
+(mito:deftable tweet ()
+  ((status :col-type :text)
+   (user :col-type user)))  ; one-to-one, automatic accessor
+
+;; Define accessor for one-to-many relationship (user -> tweets)
+(define-accessor user-tweets (user user)
+  (mito:select-dao 'tweet
+    (sxql:where (:= :user_id (mito:object-id user)))))
+
+;; Usage
+(defvar *user* (mito:create-dao 'user :name "Eitaro Fukamachi"))
+(defvar *tweet1* (mito:create-dao 'tweet :status "Hello" :user *user*))
+(defvar *tweet2* (mito:create-dao 'tweet :status "World" :user *user*))
+
+(user-tweets *user*)  ; Returns list of tweets for this user
+;=> (#<TWEET {100234567}> #<TWEET {100234568}>)
+
+;; The result is cached - subsequent calls don't hit the database
+(user-tweets *user*)  ; Returns cached result
+
+;; You can also set the value directly if needed
+(setf (user-tweets *user*) (list *tweet1*))
+```
+
+The `define-accessor` macro creates cached accessor functions that:
+- Execute the query only on first access
+- Cache results to avoid repeated database hits
+
+This is particularly useful for:
+- **One-to-many relationships**: Getting all children of a parent object
+- **Many-to-many relationships**: Complex queries through junction tables
+- **Reverse relationships**: Accessing the "other direction" of a relationship
+- **Filtered relationships**: Adding WHERE clauses, ordering, etc.
+
 ### Inflation/Deflation
 
 Inflation/Deflation is a function to convert values between Mito and RDBMS.
