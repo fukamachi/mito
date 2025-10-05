@@ -523,6 +523,34 @@ To prevent this performance issue, add `includes` to the above query, which send
 ;=> #<USER {100361E813}>
 ```
 
+#### Filtering with JOINs
+
+While `includes` helps with eager loading, you may want to filter results based on related table columns using SQL JOIN clauses. Mito provides a `joins` function for this:
+
+```common-lisp
+;; Filter tweets by active users only (using INNER JOIN)
+(select-dao 'tweet
+  (joins 'user)
+  (where (:= :user.status "active")))
+;-> ;; SELECT tweet.* FROM tweet INNER JOIN user ON tweet.user_id = user.id WHERE (user.status = ?) ("active")
+
+;; Use LEFT JOIN to include tweets without users
+(select-dao 'tweet
+  (joins 'user :type :left)
+  (where (:is-null :user.id)))
+;-> ;; SELECT tweet.* FROM tweet LEFT JOIN user ON tweet.user_id = user.id WHERE (user.id IS NULL)
+```
+
+**Important:** `joins` only adds SQL JOIN clauses for filtering—it does NOT automatically load foreign objects into ghost slots. If you need both filtering and eager loading, combine `joins` with `includes`:
+
+```common-lisp
+;; Filter by active users AND load user objects
+(select-dao 'tweet
+  (joins 'user)
+  (includes 'user)
+  (where (:= :user.status "active")))
+```
+
 ### Migrations
 
 ```common-lisp

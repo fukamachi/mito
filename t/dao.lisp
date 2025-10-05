@@ -407,3 +407,88 @@
 
   (dolist (class-name '(parent child))
     (setf (find-class class-name) nil)))
+
+(deftest joins
+  (setf *connection* (connect-to-testdb :sqlite3))
+  (when (find-class 'user nil)
+    (setf (find-class 'user) nil))
+  (when (find-class 'tweet nil)
+    (setf (find-class 'tweet) nil))
+
+  (defclass user ()
+    ((name :col-type :text
+           :initarg :name
+           :accessor user-name)
+     (status :col-type (:varchar 20)
+             :initarg :status
+             :accessor user-status))
+    (:metaclass dao-table-class)
+    (:record-timestamps nil))
+
+  (defclass tweet ()
+    ((status :col-type :text
+             :initarg :status
+             :accessor tweet-status)
+     (user :col-type user
+           :initarg :user
+           :accessor tweet-user))
+    (:metaclass dao-table-class)
+    (:record-timestamps nil))
+
+  (mito:execute-sql "DROP TABLE IF EXISTS tweet")
+  (mito:execute-sql "DROP TABLE IF EXISTS user")
+  (mito:ensure-table-exists 'user)
+  (mito:ensure-table-exists 'tweet)
+
+  (let ((active-user (mito:create-dao 'user :name "Active User" :status "active"))
+        (inactive-user (mito:create-dao 'user :name "Inactive User" :status "inactive")))
+    (mito:create-dao 'tweet :status "Tweet from active" :user active-user)
+    (mito:create-dao 'tweet :status "Another from active" :user active-user)
+    (mito:create-dao 'tweet :status "Tweet from inactive" :user inactive-user))
+
+  (testing "Basic INNER JOIN"
+    (let ((tweets (mito:select-dao 'tweet
+                    (mito:joins 'user)
+                    (where (:= :user.status "active")))))
+      (ok (= (length tweets) 2)
+          "Returns tweets from active users only")
+      (ok (every (lambda (tweet)
+                   (not (slot-boundp tweet 'user)))
+                 tweets)
+          "Ghost slots are NOT populated by joins alone")))
+
+  (testing "LEFT JOIN"
+    (let ((tweets (mito:select-dao 'tweet
+                    (mito:joins 'user :type :left)
+                    (where (:= :user.status "active")))))
+      (ok (= (length tweets) 2)
+          "LEFT JOIN returns correct results")))
+
+  (testing "Combining joins and includes"
+    (let ((tweets (mito:select-dao 'tweet
+                    (mito:joins 'user)
+                    (mito:includes 'user)
+                    (where (:= :user.status "active")))))
+      (ok (= (length tweets) 2)
+          "Returns tweets from active users")
+      (ok (every (lambda (tweet)
+                   (slot-boundp tweet 'user))
+                 tweets)
+          "Ghost slots ARE populated when using includes")
+      (ok (every (lambda (tweet)
+                   (equal (user-status (tweet-user tweet)) "active"))
+                 tweets)
+          "Loaded users have correct status")))
+
+  (testing "Error on non-existent relationship"
+    (defclass post ()
+      ((title :col-type :text))
+      (:metaclass dao-table-class))
+    (ok (signals
+         (mito:select-dao 'tweet
+           (mito:joins 'post)))
+        "Raises error when no relationship exists"))
+
+  (dolist (class-name '(user tweet post))
+    (setf (find-class class-name) nil))
+  (disconnect-toplevel))
