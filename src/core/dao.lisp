@@ -2,6 +2,7 @@
   (:use #:cl
         #:sxql
         #:mito.class)
+  (:shadow #:expand-op)
   (:use-reexport #:mito.dao.mixin
                  #:mito.dao.view
                  #:mito.dao.table)
