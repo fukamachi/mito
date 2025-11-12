@@ -546,7 +546,13 @@ MITO-MIGRATIONS> (mito:current-migration-version)
 NIL
 ```
 
+##### Writing Migrations Manually
+
+Migration files can be added by hand as SQL files and `mito:migrate` can be used on those files to process the migrations.
+
 ##### Seeing All The Migration Expressions That Can Be Generated
+
+**Note of Generated Migrations**: `generate-migrations` is meant for simple cases like adding, deleting tables, columns or indices. It's not meant to be a perfect all inclusive migration generator. Rather, it's usage is meant to be like generating a first draft migration file, which the user should review and potentially edit. 
 
 This function will generate all available migration expressions:
 
