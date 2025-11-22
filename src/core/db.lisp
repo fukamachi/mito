@@ -26,6 +26,8 @@
                 #:conjunctive-op)
   (:import-from #:sxql.composed-statement
                 #:composed-statement)
+  (:import-from #:sxql/composer
+                #:select-query-state)
   (:export #:*use-prepare-cached*
            #:last-insert-id
            #:table-indices
@@ -124,7 +126,8 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
     ((or sql-statement
          composed-statement
          ;; For UNION [ALL]
-         conjunctive-op)
+         conjunctive-op
+         select-query-state)
      (sxql-to-sql sql))))
 
 (defgeneric execute-sql (sql &optional binds)
@@ -177,10 +180,10 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
                                (dbi:query-fields query)))))
        (loop for row in rows
              collect
-                (loop for field in fields
-                      for v in row
-                      collect field
-                      collect (convert-nulls-to-nils v)))))
+             (loop for field in fields
+                   for v in row
+                   collect field
+                   collect (convert-nulls-to-nils v)))))
     (:alist
      (let ((rows (dbi:fetch-all query :format :values)))
        (mapcar (lambda (row)
@@ -205,7 +208,7 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
     (check-connected)
     (with-prepared-query query (*connection* sql :use-prepare-cached *use-prepare-cached*)
       (let* ((query (with-trace-sql
-                        (execute-with-retry query binds)))
+                      (execute-with-retry query binds)))
              (format (or format :plist))
              (*plist-row-lispify*
                (if lispify-specified
@@ -226,8 +229,8 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
      (:postgres #'mito.db.postgres:acquire-advisory-lock)
      (:mysql #'mito.db.mysql:acquire-advisory-lock)
      (otherwise
-       ;; Just ignore
-       (lambda (&rest args) (declare (ignore args)))))
+      ;; Just ignore
+      (lambda (&rest args) (declare (ignore args)))))
    conn id))
 
 (defun release-advisory-lock (conn id)
@@ -236,6 +239,6 @@ Note that DBI:PREPARE-CACHED is added CL-DBI v0.9.5.")
      (:postgres #'mito.db.postgres:release-advisory-lock)
      (:mysql #'mito.db.mysql:release-advisory-lock)
      (otherwise
-       ;; Just ignore
-       (lambda (&rest args) (declare (ignore args)))))
+      ;; Just ignore
+      (lambda (&rest args) (declare (ignore args)))))
    conn id))
