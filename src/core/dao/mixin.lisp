@@ -10,6 +10,7 @@
                 #:table-class
                 #:table-name
                 #:table-column-slots
+                #:find-parent-column
                 #:find-child-columns
                 #:find-slot-by-name
                 #:table-column-name
@@ -22,10 +23,14 @@
   (:import-from #:uuid
                 #:make-v4-uuid)
   (:import-from #:sxql)
+  (:import-from #:alexandria
+                #:if-let)
   (:export #:dao-table-mixin
            #:dao-class
            #:dao-synced
+           #:dao-cache
            #:make-dao-instance
+           #:define-accessor
 
            #:serial-pk-mixin
            #:uuid-pk-mixin
@@ -40,7 +45,33 @@
 (defclass dao-class ()
   ((synced :type boolean
            :initform nil
-           :accessor dao-synced)))
+           :accessor dao-synced)
+   (cache :type (or hash-table null)
+          :initform nil
+          :accessor %dao-cache)))
+
+(defun dao-cache (dao key)
+  (if-let (cache-obj (%dao-cache dao))
+      (gethash key cache-obj)
+      (values nil nil)))
+
+(defun (setf dao-cache) (value dao key)
+  (let ((cache-obj (or (%dao-cache dao)
+                       (setf (%dao-cache dao)
+                             (make-hash-table :test 'eq)))))
+    (setf (gethash key cache-obj) value)))
+
+(defmacro define-accessor (name (dao class) &body body)
+  (let ((value (gensym "VALUE")))
+    `(progn
+       (defun ,name (,dao)
+         (check-type ,dao ,class)
+         (or (dao-cache ,dao ',name)
+             (setf (dao-cache ,dao ',name)
+                   (progn ,@body))))
+       (defun (setf ,name) (,value ,dao)
+         (setf (dao-cache ,dao ',name) ,value))
+       ',name)))
 
 (defclass dao-table-mixin (table-class) ())
 
@@ -56,7 +87,7 @@
     (apply #'make-dao-instance
            (find-class class-name)
            initargs))
-  
+
   (:method ((class table-class) &rest initargs)
     (let* ((list (loop for (k v) on initargs by #'cddr
                        for column = (find-if (lambda (initargs)
@@ -71,6 +102,7 @@
            (obj (allocate-instance class))
            (obj (apply #'shared-initialize obj nil list)))
       (setf (dao-synced obj) t)
+      (setf (%dao-cache obj) nil)
       obj)))
 
 (defun make-relational-reader-method (func-name class slot-name rel-class-name)
@@ -89,36 +121,53 @@
                         ;; I don't know why but SBCL pass a CONS of the instance instead of the instance itself.
                         (when (consp object)
                           (setf object (first object)))
-                        (if (and (slot-boundp object slot-name)
-                                 (or calledp
-                                     (not (null (slot-value object slot-name)))))
-                            (slot-value object slot-name)
-                            (let* ((child-columns (find-child-columns class
-                                                                      (find-slot-by-name class slot-name)))
-                                   (foreign-object
-                                     (and (every (lambda (slot-name)
-                                                   (and (slot-boundp object slot-name)
-                                                        (slot-value object slot-name)))
-                                                 child-columns)
-                                          (let ((result
-                                                  (first
-                                                   (mito.db:retrieve-by-sql
-                                                    (sxql:select :*
-                                                      (sxql:from (sxql:make-sql-symbol (table-name (find-class rel-class-name))))
-                                                      (sxql:where
-                                                       `(:and
-                                                         ,@(mapcar (lambda (slot-name)
-                                                                     `(:= ,(sxql:make-sql-symbol
-                                                                            (table-column-name
-                                                                             (table-column-references-column
-                                                                              (find-slot-by-name class slot-name))))
-                                                                          ,(slot-value object slot-name)))
-                                                                   child-columns)))
-                                                      (sxql:limit 1))))))
-                                            (and result
-                                                 (apply #'make-dao-instance rel-class-name result))))))
-                              (setf calledp t
-                                    (slot-value object slot-name) foreign-object)))))))))
+                        (cond
+                          ((and (slot-boundp object slot-name)
+                                (or calledp
+                                    (not (null (slot-value object slot-name)))))
+                           (slot-value object slot-name))
+                          (t
+                           (let ((parent-column-name
+                                   (find-parent-column class (find-slot-by-name class slot-name))))
+                             (cond
+                               ;; It may have a relational object, but no ID value,
+                               ;; like when it is just created.
+                               ;; For example, let's say it has an "entry", but no "entry-id",
+                               ;; and trying to get the ID directly.
+                               ((and parent-column-name
+                                     (slot-boundp object parent-column-name)
+                                     (not (null (slot-value object parent-column-name))))
+                                (slot-value (slot-value object parent-column-name)
+                                            (c2mop:slot-definition-name
+                                             (table-column-references-column
+                                              (find-slot-by-name class slot-name)))))
+                               (t
+                                (let* ((child-columns (find-child-columns class
+                                                                          (find-slot-by-name class slot-name)))
+                                       (foreign-object
+                                         (and (every (lambda (slot-name)
+                                                       (and (slot-boundp object slot-name)
+                                                            (slot-value object slot-name)))
+                                                     child-columns)
+                                              (let ((result
+                                                      (first
+                                                       (mito.db:retrieve-by-sql
+                                                        (sxql:select :*
+                                                          (sxql:from (sxql:make-sql-symbol (table-name (find-class rel-class-name))))
+                                                          (sxql:where
+                                                           `(:and
+                                                             ,@(mapcar (lambda (slot-name)
+                                                                         `(:= ,(sxql:make-sql-symbol
+                                                                                (table-column-name
+                                                                                 (table-column-references-column
+                                                                                  (find-slot-by-name class slot-name))))
+                                                                              ,(slot-value object slot-name)))
+                                                                       child-columns)))
+                                                          (sxql:limit 1))))))
+                                                (and result
+                                                     (apply #'make-dao-instance rel-class-name result))))))
+                                  (setf calledp t
+                                        (slot-value object slot-name) foreign-object)))))))))))))
 
 (defun add-relational-readers (class)
   (loop for column in (table-direct-column-slots class)

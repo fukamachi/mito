@@ -5,7 +5,7 @@
 ("cl-dbi" .
  (:class qlot/source/ql:source-ql-upstream
   :initargs nil
-  :version "ql-upstream-f58761b4da39e0559fcfbd744fa6f024182c6d94"
+  :version "ql-upstream-be4df4f236391f4e4150a1fe77f8acc92b9f3996"
   :remote-url "https://github.com/fukamachi/cl-dbi.git"))
 ("cl-mysql" .
  (:class qlot/source/ql:source-ql-upstream

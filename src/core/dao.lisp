@@ -2,6 +2,7 @@
   (:use #:cl
         #:sxql
         #:mito.class)
+  (:shadow #:expand-op)
   (:use-reexport #:mito.dao.mixin
                  #:mito.dao.view
                  #:mito.dao.table)
@@ -55,6 +56,7 @@
            #:select-dao
            #:select-by-sql
            #:includes
+           #:joins
            #:include-foreign-objects
            #:find-dao
            #:retrieve-dao
@@ -62,7 +64,8 @@
            #:recreate-table
            #:ensure-table-exists
            #:deftable
-           #:do-select))
+           #:do-select
+           #:define-simple-accessor))
 (in-package #:mito.dao)
 
 (defun foreign-value (obj slot)
@@ -248,6 +251,8 @@ For example: (mito:delete-by-values 'user :id 1)"))
                    collect field
                    collect value)))))
 
+(defparameter *want-cursor* nil)
+
 (defun select-by-sql (class sql &key binds)
   (if *want-cursor*
       (select-by-sql-as-cursor class sql :binds binds)
@@ -255,42 +260,100 @@ For example: (mito:delete-by-values 'user :id 1)"))
                 (apply #'make-dao-instance class result))
               (retrieve-by-sql sql :binds binds))))
 
+;;
+;; Relationship helpers
+;;
+
+(defun find-relationship-slots (from-class to-class)
+  "Find all ghost slots in FROM-CLASS that reference TO-CLASS.
+   Returns a list of ghost slots, or NIL if no relationship exists."
+  (let ((to-class-name (class-name to-class)))
+    (remove-duplicates
+     (remove-if-not (lambda (slot)
+                      (and (ghost-slot-p slot)
+                           (eq (table-column-type slot)
+                               to-class-name)))
+                    (table-column-slots from-class)))))
+
+(defun make-join-condition (from-class to-class)
+  "Build JOIN ON conditions for FROM-CLASS joining TO-CLASS.
+   Returns SxQL expression like (:= :blog.user_id :user.id) or (:and ...) for multiple."
+  (let* ((rel-slots (find-relationship-slots from-class to-class))
+         (from-table (table-name from-class))
+         (to-table (table-name to-class))
+         (to-pk (table-primary-key to-class)))
+    (unless rel-slots
+      (error "No relationship found between ~S and ~S"
+             (class-name from-class) (class-name to-class)))
+    `(:and ,@(loop for rel-slot in rel-slots
+                   for fk-columns = (find-child-columns from-class rel-slot)
+                   unless fk-columns
+                     do (error "No foreign key columns found for slot ~S in ~S"
+                               (c2mop:slot-definition-name rel-slot)
+                               (class-name from-class))
+                   unless to-pk
+                     do (error "No primary key found in ~S"
+                               (class-name to-class))
+                   unless (= (length fk-columns) (length to-pk))
+                     do (error "Foreign key columns (~{~S~^, ~}) don't match primary key (~{~S~^, ~}) between ~S and ~S"
+                               fk-columns to-pk
+                               (class-name from-class)
+                               (class-name to-class))
+                   append
+                   (loop for fk-col in fk-columns
+                         for pk-col in to-pk
+                         collect `(:= ,(sxql:make-sql-symbol*
+                                        (list from-table
+                                              (table-column-name
+                                               (find-slot-by-name from-class fk-col))))
+                                      ,(sxql:make-sql-symbol*
+                                        (list to-table (unlispify pk-col)))))))))
+
+(defun retrieve-foreign-objects (foreign-class records)
+  (let ((*want-cursor* nil)
+        (foreign-class (ensure-class foreign-class)))
+    (when (cdr (table-primary-key foreign-class))
+      (error "Cannot use 'includes' with a class which has composite primary keys."))
+    (let* ((class (class-of (first records)))
+           (rel-slots (find-relationship-slots class foreign-class)))
+      (unless rel-slots
+        (error "~S is not related to ~S" class foreign-class))
+      (let* ((fk-columns (find-child-columns class (first rel-slots)))
+             (foreign-pk (first (table-primary-key foreign-class)))
+             (foreign-pk-slot (find-slot-by-name foreign-class foreign-pk)))
+        (unless fk-columns
+          (error "No foreign key columns found for relationship slot ~S in ~S"
+                 (c2mop:slot-definition-name (first rel-slots))
+                 (class-name class)))
+        (let ((rel-slot-values (remove nil
+                                       (loop for obj in records
+                                             collect (slot-value obj (first fk-columns))))))
+          (unless rel-slot-values
+            (return-from retrieve-foreign-objects records))
+          (let ((sql (sxql:select :*
+                     (sxql:from (sxql:make-sql-symbol (table-name foreign-class)))
+                     (sxql:where
+                      (:in (sxql:make-sql-symbol (table-column-name foreign-pk-slot)) rel-slot-values)))))
+            (values
+             (select-by-sql foreign-class sql)
+             rel-slots
+             foreign-pk-slot)))))))
+
 (defun include-foreign-objects (foreign-class records)
   (when records
-    (let ((*want-cursor* nil)
+    (let ((class (class-of (first records)))
           (foreign-class (ensure-class foreign-class)))
-      (when (cdr (table-primary-key foreign-class))
-        (error "Cannot use 'includes' with a class which has composite primary keys."))
-      (let* ((class (class-of (first records)))
-             (rel-slots (remove-duplicates
-                         (remove-if-not (lambda (slot)
-                                          (eq (table-column-type slot)
-                                              (class-name foreign-class)))
-                                        (database-column-slots class)))))
-        (unless rel-slots
-          (error "~S is not related to ~S" class foreign-class))
-        (let* ((foreign-slot (table-column-references-column (first rel-slots)))
-               (rel-slot-values (remove nil
-                                        (loop for obj in records
-                                              append
-                                              (mapcar (lambda (rel-slot)
-                                                        (slot-value obj (c2mop:slot-definition-name rel-slot)))
-                                                      rel-slots)))))
-          (unless rel-slot-values
-            (return-from include-foreign-objects records))
-          (let* ((sql (sxql:select :*
-                        (sxql:from (sxql:make-sql-symbol (table-name foreign-class)))
-                        (sxql:where
-                         (:in (sxql:make-sql-symbol (table-column-name foreign-slot)) rel-slot-values))))
-                 (results (select-by-sql foreign-class sql)))
-            (dolist (obj records)
-              (dolist (rel-slot rel-slots)
-                (setf (slot-value obj (find-parent-column class rel-slot))
-                      (find-if (lambda (result)
-                                 (equal (slot-value result (c2mop:slot-definition-name foreign-slot))
-                                        (slot-value obj (c2mop:slot-definition-name rel-slot))))
-                               results)))))
-          records)))))
+      (multiple-value-bind (results rel-slots foreign-slot)
+          (retrieve-foreign-objects foreign-class records)
+        (dolist (obj records)
+          (dolist (rel-slot rel-slots)
+            (let ((fk-col (first (find-child-columns class rel-slot))))
+              (setf (slot-value obj (c2mop:slot-definition-name rel-slot))
+                    (find-if (lambda (result)
+                               (equal (slot-value result (c2mop:slot-definition-name foreign-slot))
+                                      (slot-value obj fk-col)))
+                             results)))))))
+  records))
 
 (defun child-columns (column class)
   (let ((slot (find-slot-by-name class column :test #'string=)))
@@ -358,8 +421,6 @@ For example: (mito:delete-by-values 'user :id 1)"))
                                   (expand-op arg class)) args)))
       (otherwise object))))
 
-(defparameter *want-cursor* nil)
-
 (defmacro select-dao (class &body clauses)
   "Build custom queries with SxQL.
 
@@ -368,14 +429,25 @@ Example:
   (select-dao 'tweet
     (where (:like :status \"%Japan%\")))
 
-You can use \"includes\" to eagerly load another table and prevent the \"N+1 query\" performance problem.
+You can use \"includes\" to eagerly load another table and prevent the \"N+1 query\" performance problem:
 
-Example:
+  (select-dao 'tweet
+    (includes 'user)
+    (where (:like :status \"%Japan%\")))
 
-  (defvar *tweets-contain-japan*
-    (select-dao 'tweet
-      (includes 'user)
-      (where (:like :status \"%Japan%\"))))
+You can use \"joins\" to add JOIN clauses for filtering by related table columns.
+Note: \"joins\" does NOT automatically load foreign objects. Use \"includes\" if you need the ghost slots populated:
+
+  ;; Filter by related table - ghost slot NOT populated
+  (select-dao 'blog
+    (joins 'user)
+    (where (:= :user.status \"active\")))
+
+  ;; Filter AND load foreign objects
+  (select-dao 'blog
+    (joins 'user)
+    (includes 'user)
+    (where (:= :user.status \"active\")))
 
 See the SxQL documentation for the available clauses and operators."
   (with-gensyms (sql clause results include-classes foreign-class)
@@ -395,7 +467,18 @@ See the SxQL documentation for the available clauses and operators."
               #+sbcl (declare (sb-ext:muffle-conditions sb-ext:code-deletion-note))
               (flet ((includes (&rest classes)
                        (appendf ,include-classes (mapcar #'ensure-class classes))
-                       nil))
+                       nil)
+                     (joins (foreign-class &key (type :inner))
+                       (let ((foreign-class (ensure-class foreign-class)))
+                         (add-child ,sql
+                                   (ecase type
+                                     (:inner (sxql:inner-join
+                                               (sxql:make-sql-symbol (table-name foreign-class))
+                                               :on (make-join-condition ,class foreign-class)))
+                                     (:left (sxql:left-join
+                                              (sxql:make-sql-symbol (table-name foreign-class))
+                                              :on (make-join-condition ,class foreign-class)))))
+                         nil)))
                 (dolist (,clause (list ,@clauses))
                   (when ,clause
                     (add-child ,sql ,clause)))
@@ -516,3 +599,12 @@ See the SxQL documentation for the available clauses and operators."
              (,main)
              (dbi:with-transaction *connection*
                (,main)))))))
+
+(defmacro define-simple-accessor (name (dao class-name) subclass-name)
+  (check-type class-name symbol)
+  (check-type subclass-name symbol)
+  (with-gensyms (results)
+    (let ((subclass (find-class subclass-name)))
+      `(define-accessor ,name (,dao ,class-name)
+         (let ((,results (retrieve-foreign-objects ,subclass (list ,dao))))
+           (first ,results))))))

@@ -292,21 +292,19 @@
                              :primary-key nil
                              :columns (ensure-list (unlispify-keys key))))
                      unique-keys)))
-         ;; Ignore :keys when using SQLite3
-         (unless (eq driver-type :sqlite3)
-           (let ((keys (map-all-superclasses (lambda (class)
-                                               (slot-value class 'keys))
-                                             class)))
-             (when keys
-               (mapcar (lambda (key)
-                         ;; FIXME: it'll raise an error if the index name is too long
-                         (list (format nil "key_~A_~{~A~^_~}"
-                                       table-name
-                                       (unlispify-keys (ensure-list key)))
-                               :unique-key nil
-                               :primary-key nil
-                               :columns (ensure-list (unlispify-keys key))))
-                       keys)))))))))
+         (let ((keys (map-all-superclasses (lambda (class)
+                                             (slot-value class 'keys))
+                                           class)))
+           (when keys
+             (mapcar (lambda (key)
+                       ;; FIXME: it'll raise an error if the index name is too long
+                       (list (format nil "key_~A_~{~A~^_~}"
+                                     table-name
+                                     (unlispify-keys (ensure-list key)))
+                             :unique-key nil
+                             :primary-key nil
+                             :columns (ensure-list (unlispify-keys key))))
+                     keys))))))))
 
 (defun find-parent-column (table slot)
   (let* ((name (c2mop:slot-definition-name slot))
