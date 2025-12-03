@@ -141,7 +141,7 @@
       class)))
 
 (defmethod c2mop:direct-slot-definition-class ((class table-class) &key &allow-other-keys)
-  'table-column-class)
+  (find-class 'table-column-class))
 
 (defmethod c2mop:effective-slot-definition-class ((class table-class) &rest initargs)
   (declare (ignorable initargs))
