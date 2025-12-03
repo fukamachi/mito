@@ -23,7 +23,7 @@
 
 (defmethod c2mop:effective-slot-definition-class ((class dao-table-view) &rest initargs)
   (declare (ignorable initargs))
-  'dao-table-column-standard-effective-slot-definitions)
+  (find-class 'dao-table-column-standard-effective-slot-definitions))
 
 (defstruct (create-view (:include sxql.sql-type:sql-statement (sxql.sql-type:name "CREATE VIEW"))
                         (:constructor make-create-view (view-name &key or-replace as)))
