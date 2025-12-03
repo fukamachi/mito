@@ -160,7 +160,6 @@
          (found-col-types (remove-if-not
                            (lambda (x) (slot-boundp x 'mito.class.column:col-type))
                            have-col-type-slot)))
-    ;;(break)
     (when result
       ;; set here all the relevant slots. See column-standard-effective-slot-definitions
       (setf (ghost-slot-p result)
