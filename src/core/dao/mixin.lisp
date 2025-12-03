@@ -16,6 +16,7 @@
                 #:table-column-name
                 #:table-column-references-column)
   (:import-from #:mito.dao.column
+                #:dao-table-column-standard-effective-slot-definitions
                 #:dao-table-column-class
                 #:dao-table-column-inflate
                 #:*conc-name*)
@@ -76,6 +77,10 @@
 
 (defmethod c2mop:direct-slot-definition-class ((class dao-table-mixin) &key)
   'dao-table-column-class)
+
+(defmethod c2mop:effective-slot-definition-class ((class dao-table-mixin) &rest initargs)
+  (declare (ignorable initargs))
+  (find-class 'mito.dao.column:dao-table-column-standard-effective-slot-definitions))
 
 (defgeneric make-dao-instance (class &rest initargs)
   (:method ((class-name symbol) &rest initargs)
