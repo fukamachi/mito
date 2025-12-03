@@ -72,7 +72,7 @@
     (values
      (parse-col-type (if (slot-boundp column 'col-type)
                          (%table-column-type column)
-                         NIL)))))
+                         nil)))))
 
 (defgeneric table-column-not-null-p (column)
   (:method ((column table-column-class))
