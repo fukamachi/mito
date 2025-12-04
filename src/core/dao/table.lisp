@@ -39,7 +39,7 @@
                       :initform '(t))))
 
 (defmethod c2mop:direct-slot-definition-class ((class dao-table-class) &key)
-  'dao-table-column-class)
+  (find-class 'dao-table-column-class))
 
 (defmethod c2mop:effective-slot-definition-class ((class dao-table-class) &rest initargs)
   (declare (ignorable initargs))
