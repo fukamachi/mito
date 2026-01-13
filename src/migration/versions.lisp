@@ -177,7 +177,7 @@
          (1+ current-version)
          1))))
 
-(defun generate-migrations (directory &key force)
+(defun generate-migrations (directory &key force (statement-separator ""))
   (let ((schema.sql (merge-pathnames #P"schema.sql" directory))
         (directory (merge-pathnames #P"migrations/" directory))
         (current-version (current-migration-version)))
@@ -222,7 +222,7 @@
                  (with-quote-char
                      (map nil
                           (lambda (ex)
-                            (format out "~&~A;~%" (sxql:yield ex)))
+                            (format out "~&~A;~%~A" (sxql:yield ex) statement-separator))
                           expressions))))
              (let ((sxql:*use-placeholder* nil))
                (with-open-file (out schema.sql
