@@ -76,7 +76,7 @@
 (defclass dao-table-mixin (table-class) ())
 
 (defmethod c2mop:direct-slot-definition-class ((class dao-table-mixin) &key)
-  'dao-table-column-class)
+  (find-class 'dao-table-column-class))
 
 (defmethod c2mop:effective-slot-definition-class ((class dao-table-mixin) &rest initargs)
   (declare (ignorable initargs))
