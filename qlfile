@@ -1,5 +1,5 @@
 ql cl-dbi :upstream
 ql cl-mysql :upstream
-git dissect ssh://git@codeberg.org/shinmera/dissect.git
+git dissect https://codeberg.org/shinmera/dissect.git
 ql sxql :upstream
 ql rove :upstream
