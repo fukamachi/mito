@@ -3,7 +3,7 @@
 #|
 exec ros -Q -- $0 "$@"
 |#
-(ql:quickload '(:mito-migration :dbi :sxql :uiop :alexandria) :silent t)
+(ql:quickload '(:mito-migration :dbi :sxql :uiop :alexandria :cl+ssl) :silent t)
 
 (defpackage :ros.script.roswell/mito.3663426439
   (:use #:cl
