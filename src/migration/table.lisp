@@ -118,13 +118,15 @@ If this variable is T they won't be deleted after migration.")
                        append
                        (cond
                          ((c2mop:slot-definition-initfunction slot)
-                          (list
-                           (cons (car new-column)
-                                 (convert-for-driver-type
-                                  :sqlite3
-                                  (table-column-type slot)
-                                  (dao-table-column-deflate slot
-                                                            (funcall (c2mop:slot-definition-initfunction slot)))))))
+                          (let ((value (convert-for-driver-type
+                                        :sqlite3
+                                        (table-column-type slot)
+                                        (dao-table-column-deflate
+                                         slot
+                                         (funcall (c2mop:slot-definition-initfunction slot))))))
+                            (when value
+                              (list
+                               (cons (car new-column) value)))))
                          (t
                           (warn "Adding a non-null column ~S but there's no :initform to set default"
                                 (car new-column))
