@@ -1,6 +1,7 @@
 ARG LISP=sbcl
 
 FROM fukamachi/qlot AS build-env
+ENV QLOT_NO_CACHE=1
 
 WORKDIR /app
 COPY qlfile /app
