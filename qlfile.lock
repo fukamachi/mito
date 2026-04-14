@@ -1,11 +1,11 @@
 ("quicklisp" .
  (:class qlot/source/dist:source-dist
   :initargs (:distribution "https://beta.quicklisp.org/dist/quicklisp.txt" :%version :latest)
-  :version "2023-10-21"))
+  :version "2026-01-01"))
 ("cl-dbi" .
  (:class qlot/source/ql:source-ql-upstream
   :initargs nil
-  :version "ql-upstream-be4df4f236391f4e4150a1fe77f8acc92b9f3996"
+  :version "ql-upstream-2f4f8b474317bef491bad0c67f52a6073fc950f6"
   :remote-url "https://github.com/fukamachi/cl-dbi.git"))
 ("cl-mysql" .
  (:class qlot/source/ql:source-ql-upstream
@@ -13,17 +13,16 @@
   :version "ql-upstream-b273cf772f13a525b534f5ee58bf36fb733204f3"
   :remote-url "https://github.com/hackinghat/cl-mysql.git"))
 ("dissect" .
- (:class qlot/source/ql:source-ql-upstream
-  :initargs nil
-  :version "ql-upstream-a70cabcd748cf7c041196efd711e2dcca2bbbb2c"
-  :remote-url "https://github.com/Shinmera/dissect.git"))
+ (:class qlot/source/git:source-git
+  :initargs (:remote-url "https://codeberg.org/shinmera/dissect.git")
+  :version "git-7047690fff43cd3ed8c432d55b620d53a0312251"))
 ("sxql" .
  (:class qlot/source/ql:source-ql-upstream
   :initargs nil
-  :version "ql-upstream-c79c252bef276bb0343ced5149083e3b91d85d9b"
+  :version "ql-upstream-72c1c8c1642a572fcd2039304cd10ef56925c8c1"
   :remote-url "https://github.com/fukamachi/sxql.git"))
 ("rove" .
  (:class qlot/source/ql:source-ql-upstream
   :initargs nil
-  :version "ql-upstream-cacea7331c10fe9d8398d104b2dfd579bf7ea353"
+  :version "ql-upstream-27c17044e647367ce8379c11b2f937e5024fb220"
   :remote-url "https://github.com/fukamachi/rove.git"))
