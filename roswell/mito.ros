@@ -3,7 +3,7 @@
 #|
 exec ros -Q -- $0 "$@"
 |#
-(ql:quickload '(:mito-migration :dbi :sxql :uiop :alexandria) :silent t)
+(ql:quickload '(:mito-migration :dbi :sxql :uiop :alexandria :cl+ssl) :silent t)
 
 (defpackage :ros.script.roswell/mito.3663426439
   (:use #:cl
@@ -45,7 +45,8 @@ exec ros -Q -- $0 "$@"
         (directory *default-migration-directory*)
         (systems '())
         force
-        dry-run)
+        dry-run
+        ssl)
     (loop for option = (pop args)
           while option
           do (case-equal option
@@ -73,7 +74,11 @@ exec ros -Q -- $0 "$@"
                 (setf dry-run t))
                (("-f" "--force")
                 (setf force t))
+               ("--ssl"
+                (setf ssl t))
                (otherwise (error "Unknown option: ~A" option))))
+    (when ssl
+      (nconcf connect-args (list :use-ssl :try)))
     (values (cons driver-type connect-args) directory (nreverse systems) dry-run force)))
 
 (defun print-usage ()
@@ -95,6 +100,7 @@ Options:
     -D, --directory DIRECTORY       Directory path to keep migration SQL files (default: \"~A\")
     --dry-run                       List SQL expressions to migrate
     -f, --force                     Create a new empty migration file even when it's unnecessary.
+    --ssl                           Use SSL for the database connection (sets :use-ssl :try)
 "
           *default-migration-directory*))
 
