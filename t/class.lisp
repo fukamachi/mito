@@ -2,7 +2,9 @@
   (:use #:cl
         #:rove
         #:mito.class
-        #:mito-test.util))
+        #:mito-test.util)
+  (:import-from #:mito.dao.column
+                #:inflate-for-col-type))
 (in-package #:mito-test.class)
 
 (deftest create-table
@@ -326,3 +328,12 @@
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 )"))
+
+(deftest inflate-for-col-type-null-string
+  (testing "empty string treated as nil for nullable timestamp/date columns"
+    (ok (null (inflate-for-col-type :datetime ""))
+        "empty string inflates to nil for :datetime")
+    (ok (null (inflate-for-col-type :timestamp ""))
+        "empty string inflates to nil for :timestamp")
+    (ok (null (inflate-for-col-type :date ""))
+        "empty string inflates to nil for :date")))

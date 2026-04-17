@@ -105,17 +105,19 @@
            (truncate value)
          (local-time:universal-to-timestamp sec :nsec (* (round (* nsec 1000000)) 1000))))
       (string
-       (local-time:parse-timestring value :date-time-separator #\Space))
+       (unless (string= value "")
+         (local-time:parse-timestring value :date-time-separator #\Space)))
       (null nil)))
   (:method ((col-type (eql :date)) value)
     (etypecase value
       (integer
        (local-time:universal-to-timestamp value))
       (string
-       (ppcre:register-groups-bind ((#'parse-integer year month day))
-           ("^(\\d{4})-(\\d{2})-(\\d{2})$" value)
-         (local-time:universal-to-timestamp
-           (encode-universal-time 0 0 0 day month year))))
+       (unless (string= value "")
+         (ppcre:register-groups-bind ((#'parse-integer year month day))
+             ("^(\\d{4})-(\\d{2})-(\\d{2})$" value)
+           (local-time:universal-to-timestamp
+             (encode-universal-time 0 0 0 day month year)))))
       (null nil)))
   (:method ((col-type (eql :timestamp)) value)
     (inflate-for-col-type :datetime value))
