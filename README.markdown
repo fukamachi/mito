@@ -591,6 +591,123 @@ SQLite3 migration creates temporary tables with pre-migration data. To delete th
 If `mito:*auto-migration-mode*` is set to `t`, and you are connected to a database, Mito will run migrations after
 each change to model definitions.
 
+#### Managed Migrations
+
+##### Initializing The Migrations Table In The Database
+
+```common-lisp
+MITO-MIGRATIONS> (mito:current-migration-version)
+;; CREATE TABLE IF NOT EXISTS "schema_migrations" (
+;;     "version" BIGINT PRIMARY KEY,
+;;     "applied_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+;;     "dirty" BOOLEAN NOT NULL DEFAULT false
+;; ) ()  (3318ms) | MITO.MIGRATION.VERSIONS::INITIALIZE-MIGRATIONS-TABLE
+;; SELECT "version" FROM "schema_migrations" ORDER BY "version" DESC LIMIT 1 () [0 rows] (652ms) | MITO.MIGRATION.VERSIONS:CURRENT-MIGRATION-VERSION
+NIL
+```
+
+This created a table in the database called `schema_migrations`.
+
+Executing it again will not affect the database.
+
+```common-lisp
+MITO-MIGRATIONS> (mito:current-migration-version)
+;; SELECT "version" FROM "schema_migrations" ORDER BY "version" DESC LIMIT 1 () [0 rows] (347ms) | MITO.MIGRATION.VERSIONS:CURRENT-MIGRATION-VERSION
+NIL
+```
+
+##### Writing Migrations Manually
+
+Migration files can be added by hand as SQL files and `mito:migrate` can be used on those files to process the migrations.
+
+##### Seeing All The Migration Expressions That Can Be Generated
+
+**Note of Generated Migrations**: `generate-migrations` is meant for simple cases like adding, deleting tables, columns or indices. It's not meant to be a perfect all inclusive migration generator. Rather, it's usage is meant to be like generating a first draft migration file, which the user should review and potentially edit. 
+
+This function will generate all available migration expressions:
+
+```common-lisp
+(mito:all-migration-expressions)
+```
+
+Here's an example:
+
+```common-lisp
+;; We start with an example class not in the database named "song"
+CL-USER> (defclass song ()
+  ((name :accessor name :col-type (or :null (:varchar 120))))
+  (:metaclass mito:dao-table-class))
+#<MITO.DAO.TABLE:DAO-TABLE-CLASS COMMON-LISP-USER::SONG>
+
+;; Now that we have defined a new table, we can generate all migration expressions
+CL-USER> (mito:all-migration-expressions)
+(#<SXQL-STATEMENT: CREATE TABLE song (
+    id BIGSERIAL NOT NULL PRIMARY KEY,
+    name VARCHAR(120),
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+)>)
+(#<SXQL-STATEMENT: DROP TABLE song>)
+```
+
+Note that in the example above there were multiple values returned. They are the "up" statements which are the migrations to be done and the "down" statements which are to undo the migrations.
+If you want to deal with the down statements you can use `multiple-value-bind` or `multiple-value-list`.
+
+##### Generating The Migration Files
+
+To generate migration files execute this expression:
+
+```common-lisp
+(mito:generate-migrations directory-path)
+```
+
+Following with the example from above for a newly added `song` class.
+
+```common-lisp
+CL-USER> (mito:generate-migrations #P"./db/")
+;; SELECT "version" FROM "schema_migrations" ORDER BY "version" DESC LIMIT 1 () [0 rows] (415ms) | MITO.MIGRATION.VERSIONS:CURRENT-MIGRATION-VERSION
+CREATE TABLE "song" (
+    "id" BIGSERIAL NOT NULL PRIMARY KEY,
+    "name" VARCHAR(120),
+    "created_at" TIMESTAMPTZ,
+    "updated_at" TIMESTAMPTZ
+);
+
+#P"./db/migrations/20250821095530.up.sql"
+#P"./db/migrations/20250821095530.down.sql"
+Successfully generated: ./db/migrations/20250821095530.up.sql
+```
+
+The argument passed to the function is a directory path where the files related to migration will be created.
+
+```bash
+.
+├── migrations
+│   ├── 20250820223115.down.sql
+│   └── 20250820223115.up.sql
+└── schema.sql
+
+2 directories, 3 files
+```
+
+As you can see a `schema.sql` file was generated with the *post* migration schema.
+Up and down migration files were also generated.
+The migration files are named based on time.
+The filename format can be changed with this variable `mito:*migration-version-format*`.
+
+```common-lisp
+MITO-MIGRATIONS> mito:*migration-version-format*
+:TIME
+```
+
+##### Executing Generated Migration Files
+
+TODO
+
+```common-lisp
+(mito:migrate #P"./")
+```
+
 ### Schema versioning
 
 ```
